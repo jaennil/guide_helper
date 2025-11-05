@@ -1,0 +1,17 @@
+[package]
+name = "auth"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+argon2 = "0.5.3"
+axum = "0.8.6"
+config = "0.15.18"
+serde = { version = "1.0.228", features = ["derive"] }
+sqlx = { version = "0.8.6", features = ["postgres"] }
+thiserror = "2.0.17"
+tokio = { version = "1.48.0", features = ["full"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+validator = { version = "0.20.0", features = ["derive"] }
