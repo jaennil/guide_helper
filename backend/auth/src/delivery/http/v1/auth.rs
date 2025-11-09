@@ -1,9 +1,11 @@
-use anyhow::Error;
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use std::sync::Arc;
+
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::usecase;
+use crate::delivery::{contracts::AuthUseCase};
+use crate::AppState;
 
 #[derive(Deserialize, Validate)]
 struct RegisterRequest {
@@ -20,15 +22,19 @@ struct AuthResponse {
     token_type: String,
 }
 
-pub async fn register(Json(payload): Json<RegisterRequest>) -> Result<impl IntoResponse, Error> {
-    payload.validate()?;
+pub async fn register(State(state): State<Arc<AppState>>, Json(payload): Json<RegisterRequest>) -> Result<impl IntoResponse, (StatusCode, String)>
+{
+    if let Err(validation_errors) = payload.validate() {
+        return Err((StatusCode::BAD_REQUEST, format!("validation error: {:?}", validation_errors)));
+    }
 
-    let user = usecase::auth::register(payload.email, payload.password).await?;
-    let (access, refresh) = usecase::auth::login(payload.email, &payload.password).await?;
+    let user = state.auth_usecase.register(payload.email, payload.password).await.unwrap();
+    tracing::debug!(?user);
+    // let (access, refresh) = usecase::auth::login(payload.email, &payload.password).await?;
 
     Ok((StatusCode::CREATED, Json(AuthResponse {
-        access_token: access,
-        refresh_token: refresh,
+        access_token: "access".to_string(),
+        refresh_token: "refresh".to_string(),
         token_type: "Bearer".to_string(),
     })))
 }

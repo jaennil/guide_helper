@@ -1,12 +1,13 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::{domain::user::User, repository::errors::RepositoryError, usecase::contracts::UserRepository};
+
 pub struct PostgresUserRepository {
     pool: PgPool,
 }
 
 impl PostgresUserRepository {
-    pub fn new(poll: PgPool) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
