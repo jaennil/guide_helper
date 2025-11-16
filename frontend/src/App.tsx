@@ -195,6 +195,33 @@ function ManualRoutes({
   );
 }
 
+function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
+  if (photo) {
+    // Создаем кастомную иконку с превью фотографии
+    return L.divIcon({
+      className: "custom-photo-marker",
+      html: `<div class="photo-marker-container"><img src="${photo}" alt="Marker" /></div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+      popupAnchor: [0, -40],
+    });
+  } else {
+    // Используем стандартную иконку
+    return L.icon({
+      iconUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+      iconRetinaUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+  }
+}
+
 function PointPopup({
   point,
   index,
@@ -347,7 +374,11 @@ function App() {
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
         <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
         {routePoints.map((point, index) => (
-          <Marker key={point.id} position={point.position}>
+          <Marker
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
+            position={point.position}
+            icon={createMarkerIcon(point.photo)}
+          >
             <Popup>
               <PointPopup
                 point={point}
