@@ -1,4 +1,4 @@
-use config::Config;
+use config::{Config, Environment};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -10,7 +10,7 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn from_env() -> Self {
         let settings = Config::builder()
-            .add_source(config::Environment::with_prefix("APP"))
+            .add_source(Environment::default())
             .build()
             .unwrap();
 

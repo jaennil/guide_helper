@@ -8,7 +8,7 @@ use crate::delivery::{contracts::AuthUseCase};
 use crate::AppState;
 
 #[derive(Deserialize, Validate)]
-struct RegisterRequest {
+pub struct RegisterRequest {
     #[validate(email)]
     email: String,
     #[validate(length(min = 8))]

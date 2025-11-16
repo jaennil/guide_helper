@@ -8,7 +8,7 @@ COPY Cargo.lock Cargo.toml ./
 
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 
-COPY sql sqlx/
+# COPY sqlx sqlx/
 
 RUN cargo build --release
 
