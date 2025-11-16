@@ -18,6 +18,7 @@ type RouteMode = "auto" | "manual";
 interface RoutePoint {
   id: number;
   position: [number, number];
+  photo?: string; // base64 строка изображения
 }
 
 interface RouteSegment {
@@ -194,6 +195,83 @@ function ManualRoutes({
   );
 }
 
+function PointPopup({
+  point,
+  index,
+  onPhotoChange,
+}: {
+  point: RoutePoint;
+  index: number;
+  onPhotoChange: (pointId: number, photo: string | undefined) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Проверяем, что это изображение
+      if (!file.type.startsWith("image/")) {
+        alert("Пожалуйста, выберите файл изображения");
+        return;
+      }
+
+      // Читаем файл как base64
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result;
+        if (typeof result === "string") {
+          onPhotoChange(point.id, result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    onPhotoChange(point.id, undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="point-popup">
+      <div className="point-popup-header">
+        <strong>Точка {index + 1}</strong>
+      </div>
+      <div className="point-popup-coords">
+        Координаты: {point.position[0].toFixed(6)},{" "}
+        {point.position[1].toFixed(6)}
+      </div>
+      {point.photo && (
+        <div className="point-popup-photo">
+          <img src={point.photo} alt={`Точка ${index + 1}`} />
+          <button
+            type="button"
+            onClick={handleRemovePhoto}
+            className="remove-photo-btn"
+          >
+            Удалить фото
+          </button>
+        </div>
+      )}
+      <div className="point-popup-actions">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+          id={`photo-input-${point.id}`}
+        />
+        <label htmlFor={`photo-input-${point.id}`} className="upload-photo-btn">
+          {point.photo ? "Изменить фото" : "Прикрепить фото"}
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -220,6 +298,12 @@ function App() {
 
       return newPoints;
     });
+  };
+
+  const handlePhotoChange = (pointId: number, photo: string | undefined) => {
+    setRoutePoints((prev) =>
+      prev.map((point) => (point.id === pointId ? { ...point, photo } : point))
+    );
   };
 
   const waypoints = routePoints.map((point) =>
@@ -265,10 +349,11 @@ function App() {
         {routePoints.map((point, index) => (
           <Marker key={point.id} position={point.position}>
             <Popup>
-              Точка {index + 1}
-              <br />
-              Координаты: {point.position[0].toFixed(6)},{" "}
-              {point.position[1].toFixed(6)}
+              <PointPopup
+                point={point}
+                index={index}
+                onPhotoChange={handlePhotoChange}
+              />
             </Popup>
           </Marker>
         ))}
