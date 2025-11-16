@@ -1,9 +1,55 @@
 .App {
-    text-align: center;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+}
+
+body {
+    margin: 0;
+    padding: 0;
 }
 
 .leaflet-container {
-    height: 500px;
+    height: 100vh;
     width: 100%;
-    margin: 10px auto;
+}
+
+/* Скрываем панель управления маршрутизацией */
+.leaflet-routing-container {
+    display: none !important;
+}
+
+/* Скрываем маркеры маршрутизации (используем только наши маркеры) */
+.leaflet-routing-icon {
+    display: none !important;
+}
+
+/* Переключатель режима */
+.mode-switcher {
+    position: absolute;
+    top: 10px;
+    left: 50px;
+    z-index: 1000;
+    background: black;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    display: flex;
+    gap: 15px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.mode-switcher label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.mode-switcher input[type="radio"] {
+    cursor: pointer;
 }
