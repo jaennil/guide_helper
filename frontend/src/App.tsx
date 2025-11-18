@@ -367,8 +367,9 @@ function App() {
         style={{ height: "100vh", width: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            // url="https://tiles.api-maps.yandex.ru/v1/tiles/?x={x}&y={y}&z={z}&lang=en_US&l=map&apikey=97f976c6-cd44-4f4d-a00e-42ff12b8f747"
+          // url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    url="http://localhost:8080/tile/{z}/{x}/{y}"
         />
         <MapClickHandler onMapClick={handleMapClick} />
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
