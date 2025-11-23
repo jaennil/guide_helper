@@ -1,25 +1,6 @@
 version: '3.8'
 
 services:
-  db:
-    image: mysql:8.0
-    container_name: guide_helper_db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: guide_helper
-      MYSQL_USER: guide_helper_user
-      MYSQL_PASSWORD: guide_helper_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend/main
@@ -38,9 +19,6 @@ services:
       DB_CHARSET: utf8mb4
       DB_COLLATION: utf8mb4_unicode_ci
       LOGGER_LEVEL: info
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - guide_helper_network
 
@@ -60,8 +38,5 @@ services:
 networks:
   guide_helper_network:
     driver: bridge
-
-volumes:
-  db_data:
 
 
