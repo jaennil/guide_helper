@@ -1,0 +1,10 @@
+.git
+.gitignore
+*.md
+.env
+.env.local
+.env.*.local
+*.test.go
+*_test.go
+
+

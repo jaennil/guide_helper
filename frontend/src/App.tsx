@@ -18,7 +18,7 @@ type RouteMode = "auto" | "manual";
 interface RoutePoint {
   id: number;
   position: [number, number];
-  photo?: string; // base64 строка изображения
+  photo?: string;
 }
 
 interface RouteSegment {
@@ -58,7 +58,6 @@ function RoutingControl({
   const routingControlsRef = useRef<Map<string, RoutingControlData>>(new Map());
 
   useEffect(() => {
-    // Если точек меньше двух, удаляем все маршруты
     if (waypoints.length < 2) {
       routingControlsRef.current.forEach((data) => {
         map.removeControl(data.control);
@@ -67,12 +66,10 @@ function RoutingControl({
       return;
     }
 
-    // Создаем маршруты для всех сегментов в режиме auto
     routeSegments.forEach((segment) => {
       if (segment.mode === "auto") {
         const key = `${segment.fromIndex}-${segment.toIndex}`;
 
-        // Если маршрут уже существует, пропускаем
         if (routingControlsRef.current.has(key)) {
           return;
         }
@@ -81,7 +78,6 @@ function RoutingControl({
         const toPoint = waypoints[segment.toIndex];
 
         if (fromPoint && toPoint) {
-          // Создаем новый маршрут между точками
           const routingControl = L.Routing.control({
             waypoints: [fromPoint, toPoint],
             routeWhileDragging: false,
@@ -91,7 +87,7 @@ function RoutingControl({
             showAlternatives: false,
             router: L.Routing.osrmv1({
               serviceUrl: "https://router.project-osrm.org/route/v1",
-              profile: "foot", // Пеший режим
+              profile: "foot",
             }),
           }).addTo(map);
 
@@ -101,7 +97,6 @@ function RoutingControl({
             toIndex: segment.toIndex,
           });
 
-          // Скрываем панель управления маршрутизацией с небольшой задержкой
           setTimeout(() => {
             const container = map.getContainer();
             const routingContainers = container.querySelectorAll(
@@ -115,7 +110,6 @@ function RoutingControl({
       }
     });
 
-    // Удаляем маршруты, которых больше нет в routeSegments
     routingControlsRef.current.forEach((data, key) => {
       const exists = routeSegments.some(
         (segment) =>
@@ -130,7 +124,6 @@ function RoutingControl({
     });
   }, [waypoints, routeSegments, map]);
 
-  // Скрываем панели управления при каждом обновлении
   useEffect(() => {
     const container = map.getContainer();
     const routingContainers = container.querySelectorAll(
@@ -141,14 +134,12 @@ function RoutingControl({
     });
   }, [routeSegments, map]);
 
-  // Очистка только при размонтировании компонента
   useEffect(() => {
     return () => {
       routingControlsRef.current.forEach((data) => {
         try {
           map.removeControl(data.control);
         } catch (e) {
-          // Игнорируем ошибки при удалении
         }
       });
       routingControlsRef.current.clear();
@@ -165,7 +156,6 @@ function ManualRoutes({
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
 }) {
-  // Создаем линии только для сегментов в режиме manual
   const routes: [number, number][][] = [];
   routeSegments.forEach((segment) => {
     if (segment.mode === "manual") {
@@ -197,7 +187,6 @@ function ManualRoutes({
 
 function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
   if (photo) {
-    // Создаем кастомную иконку с превью фотографии
     return L.divIcon({
       className: "custom-photo-marker",
       html: `<div class="photo-marker-container"><img src="${photo}" alt="Marker" /></div>`,
@@ -206,7 +195,6 @@ function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
       popupAnchor: [0, -40],
     });
   } else {
-    // Используем стандартную иконку
     return L.icon({
       iconUrl:
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
@@ -236,13 +224,11 @@ function PointPopup({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Проверяем, что это изображение
       if (!file.type.startsWith("image/")) {
         alert("Пожалуйста, выберите файл изображения");
         return;
       }
 
-      // Читаем файл как base64
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result;
@@ -313,7 +299,6 @@ function App() {
     setRoutePoints((prev) => {
       const newPoints = [...prev, newPoint];
 
-      // Если есть хотя бы одна предыдущая точка, создаем сегмент маршрута
       if (prev.length > 0) {
         const newSegment: RouteSegment = {
           fromIndex: prev.length - 1,
@@ -369,7 +354,7 @@ function App() {
         <TileLayer
             // url="https://tiles.api-maps.yandex.ru/v1/tiles/?x={x}&y={y}&z={z}&lang=en_US&l=map&apikey=97f976c6-cd44-4f4d-a00e-42ff12b8f747"
           // url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    url="http://localhost:8080/tile/{z}/{x}/{y}"
+                    url="/api/v1/tile/{z}/{x}/{y}"
         />
         <MapClickHandler onMapClick={handleMapClick} />
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
