@@ -6,17 +6,22 @@ WORKDIR /app
 
 COPY Cargo.lock Cargo.toml ./
 
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-# COPY sqlx sqlx/
-
-RUN cargo build --release
+# to avoid recompiling after every docker compose up --build
+RUN mkdir src \
+    && echo "fn main() {}" > src/main.rs \
+    && cargo build --release --locked \
+    && rm -rf src
 
 COPY src src/
 
 COPY migrations migrations/
 
-RUN cargo build --locked --release
+# COPY sqlx sqlx/
+
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+RUN cargo build --release --locked --target-dir ./
 
 FROM alpine:latest
 
@@ -26,8 +31,9 @@ RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/auth ./app
-COPY migrations ./migrations
+COPY --from=builder auth ./app
+
+# COPY migrations migrations/
 
 RUN chown -R app:app /app
 
