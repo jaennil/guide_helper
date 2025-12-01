@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jaennil/guide_helper/main/internal/infrastructure/http/v1/handler"
-	"github.com/jaennil/guide_helper/main/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/handler"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 )
 
 func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {

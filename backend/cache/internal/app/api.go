@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	v1 "github.com/jaennil/guide_helper/main/internal/infrastructure/http/v1"
-	"github.com/jaennil/guide_helper/main/internal/infrastructure/http/v1/handler"
-	"github.com/jaennil/guide_helper/main/pkg/config"
-	"github.com/jaennil/guide_helper/main/pkg/http_server"
-	"github.com/jaennil/guide_helper/main/pkg/logger"
+	v1 "github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1"
+	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/handler"
+	"github.com/jaennil/guide_helper/backend/cache/internal/repository/cache"
+	"github.com/jaennil/guide_helper/backend/cache/internal/usecase"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/config"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/http_server"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 )
 
 func Run(cfg *config.Config) {
@@ -23,17 +25,27 @@ func Run(cfg *config.Config) {
 	
 	ctx = logger.WithLogger(ctx, l)
 
+	// Initialize the cache repository
+	sqliteCache, err := cache.NewSQLiteCache("file:cache.db?cache=shared&mode=memory")
+	if err != nil {
+		l.Fatal("failed to initialize SQLite cache", "error", err)
+	}
+
+	// Initialize the use case
+	tileCacheUseCase := usecase.NewTileCacheUseCase(sqliteCache)
+
+	// Initialize the HTTP handler
 	validate := validator.New()
-	handler := handler.NewHandler(validate)
+	handler := handler.NewHandler(validate, tileCacheUseCase)
 	router := v1.NewRouter(handler, l)
 
 	httpServer := http_server.NewServer(ctx, cfg.HTTP.Server, router)
 
 	l.Info("starting http server...", "address", httpServer.Addr)
 
-	err := httpServer.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		l.Fatal("http server failed", "error", err)
+	serverErr := httpServer.ListenAndServe()
+	if serverErr != nil && !errors.Is(serverErr, http.ErrServerClosed) {
+		l.Fatal("http server failed", "error", serverErr)
 	}
 	l.Info("http server stopped", "address", httpServer.Addr)
 

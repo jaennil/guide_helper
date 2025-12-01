@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jaennil/guide_helper/main/pkg/config"
-	"github.com/jaennil/guide_helper/main/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/config"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 )
 
 func NewServer(ctx context.Context, cfg config.Server, handler http.Handler) *http.Server {

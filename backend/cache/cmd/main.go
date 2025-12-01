@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/jaennil/guide_helper/main/internal/app"
-	"github.com/jaennil/guide_helper/main/pkg/config"
+	"github.com/jaennil/guide_helper/backend/cache/internal/app"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/config"
 )
 
 func main() {

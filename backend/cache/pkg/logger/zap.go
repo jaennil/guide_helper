@@ -3,7 +3,7 @@ package logger
 import (
 	"log"
 
-	"github.com/jaennil/guide_helper/main/pkg/config"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

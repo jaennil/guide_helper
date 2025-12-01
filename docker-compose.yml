@@ -3,12 +3,12 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend/main
+      context: ./backend/cache
       dockerfile: Dockerfile
     container_name: guide_helper_backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8085:8080"
     environment:
       HTTP_SERVER_PORT: "8080"
       DB_HOST: db
@@ -29,7 +29,7 @@ services:
     container_name: guide_helper_frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3005:80"
     depends_on:
       - backend
     networks:
