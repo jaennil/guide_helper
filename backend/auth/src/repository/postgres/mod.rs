@@ -14,18 +14,18 @@ impl PostgresUserRepository {
 
 impl UserRepository for PostgresUserRepository {
     async fn create(&self, user: &User) -> Result<(), RepositoryError> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO users (id, email, password_hash, created_at, updated_at, deleted_at)
             VALUES ($1, $2, $3, $4, $5, $6)
-            "#,
-            user.id,
-            user.email,
-            user.password_hash,
-            user.created_at,
-            user.updated_at,
-            user.deleted_at
+            "#
         )
+        .bind(user.id)
+        .bind(&user.email)
+        .bind(&user.password_hash)
+        .bind(user.created_at)
+        .bind(user.updated_at)
+        .bind(user.deleted_at)
         .execute(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
