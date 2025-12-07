@@ -72,7 +72,8 @@ func (c *SQLiteCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
 
 func (c *SQLiteCache) Set(k TileCacheKey, v TileCacheValue) error {
 	query := `INSERT INTO tile_cache (x, y, z, tile_data)
-	VALUES (?, ?, ?, ?)`
+	VALUES (?, ?, ?, ?)
+	ON CONFLICT(x, y, z) DO UPDATE SET tile_data = excluded.tile_data`
 
 	_, err := c.db.Exec(query, k.X, k.Y, k.Z, v)
 	if err != nil {

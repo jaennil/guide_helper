@@ -13,7 +13,10 @@ type TypedSyncMap struct {
 
 func (c *TypedSyncMap) Load(k TileCacheKey) (TileCacheValue, bool) {
 	v, exists :=  c.m.Load(k)
-	return v.([]byte), exists
+	if !exists {
+		return nil, false
+	}
+	return v.(TileCacheValue), exists
 }
 
 func (c *TypedSyncMap) Store(k TileCacheKey, v TileCacheValue) {

@@ -28,5 +28,5 @@ func (c *FilesystemCache) Set(k TileCacheKey, v TileCacheValue) error {
 }
 
 func (c *FilesystemCache) keyToString(k TileCacheKey) string {
-	return fmt.Sprintf("%s/%s/%s", k.Z, k.X, k.Y)
+	return fmt.Sprintf("%d/%d/%d", k.Z, k.X, k.Y)
 }
