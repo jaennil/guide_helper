@@ -5,22 +5,14 @@ RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
 WORKDIR /app
 
 COPY Cargo.lock Cargo.toml ./
-
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-# COPY sqlx sqlx/
-
-RUN cargo build --release
-
 COPY src src/
-
 COPY migrations migrations/
 
 RUN cargo build --locked --release
 
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates openssl
+RUN apk add --no-cache ca-certificates openssl wget
 
 RUN addgroup -S app && adduser -S app -G app
 

@@ -5,8 +5,10 @@ services:
       - "8080:8080"
     environment:
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-    #   - JWT_SECRET=/run/secrets/jwt_private.pem
-    #   - JWT_PUBLIC=/run/secrets/jwt_public.pem
+      - DATABASE_MAX_CONNECTIONS=5
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret_key_in_production}
+      - JWT_ACCESS_TOKEN_MINUTES=15
+      - JWT_REFRESH_TOKEN_DAYS=7
     depends_on:
       - db
     volumes:

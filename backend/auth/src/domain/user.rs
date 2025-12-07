@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct User {
     pub id: Uuid,
     pub email: String,

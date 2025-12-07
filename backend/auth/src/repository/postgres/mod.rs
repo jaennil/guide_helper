@@ -32,6 +32,38 @@ impl UserRepository for PostgresUserRepository {
 
         Ok(())
     }
+
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, RepositoryError> {
+        let user = sqlx::query_as::<_, User>(
+            r#"
+            SELECT id, email, password_hash, created_at, updated_at, deleted_at
+            FROM users
+            WHERE email = $1
+            "#
+        )
+        .bind(email)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(user)
+    }
+
+    async fn find_by_id(&self, id: uuid::Uuid) -> Result<Option<User>, RepositoryError> {
+        let user = sqlx::query_as::<_, User>(
+            r#"
+            SELECT id, email, password_hash, created_at, updated_at, deleted_at
+            FROM users
+            WHERE id = $1
+            "#
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(user)
+    }
 }
 
 pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<PgPool, sqlx::Error> {
