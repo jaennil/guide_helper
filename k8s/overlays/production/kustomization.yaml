@@ -14,13 +14,13 @@ resources:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-0a7d906
+  newTag: main-74a975a
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-0a7d906
+  newTag: main-74a975a
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-0a7d906
+  newTag: main-74a975a
 
 replicas:
 - count: 1
