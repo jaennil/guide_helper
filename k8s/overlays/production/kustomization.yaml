@@ -20,7 +20,7 @@ images:
   newTag: main-0a7d906
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-74a975a
+  newTag: main-11f8589
 
 replicas:
 - count: 1
