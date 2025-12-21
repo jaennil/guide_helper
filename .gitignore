@@ -1,0 +1,24 @@
+# Environment files with secrets
+.env
+**/.env
+
+# Editor files
+code
+.vscode/
+.idea/
+
+# Build artifacts
+**/target/
+**/dist/
+**/build/
+**/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Kubernetes secrets (generated locally)
+**/k8s/*-secret.yaml
+!**/k8s/*-secret.example.yaml
+**/k8s/overlays/*/secrets/*.txt
+!**/k8s/overlays/*/secrets/*.txt.example

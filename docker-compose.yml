@@ -11,14 +11,47 @@ services:
       - "8085:8080"
     environment:
       HTTP_SERVER_PORT: "8080"
-      DB_HOST: db
-      DB_PORT: "3306"
-      DB_USER: guide_helper_user
-      DB_PASSWORD: guide_helper_password
-      DB_NAME: guide_helper
-      DB_CHARSET: utf8mb4
-      DB_COLLATION: utf8mb4_unicode_ci
       LOGGER_LEVEL: info
+    networks:
+      - guide_helper_network
+
+  auth:
+    build:
+      context: ./backend/auth
+      dockerfile: Dockerfile
+    container_name: guide_helper_auth
+    restart: unless-stopped
+    ports:
+      - "8086:8080"
+    environment:
+      - DATABASE_URL=postgres://${AUTH_DB_USER:-authuser}:${AUTH_DB_PASSWORD:-authpass123}@postgres:5432/${AUTH_DB_NAME:-auth_db}?sslmode=disable
+      - DATABASE_MAX_CONNECTIONS=5
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret_key_in_production}
+      - JWT_ACCESS_TOKEN_MINUTES=15
+      - JWT_REFRESH_TOKEN_DAYS=7
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - guide_helper_network
+
+  postgres:
+    image: postgres:16
+    container_name: guide_helper_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
+      POSTGRES_USER: ${AUTH_DB_USER:-authuser}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-authpass123}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-authuser} -d ${AUTH_DB_NAME:-auth_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - guide_helper_network
 
@@ -32,11 +65,15 @@ services:
       - "3005:80"
     depends_on:
       - backend
+      - auth
     networks:
       - guide_helper_network
 
 networks:
   guide_helper_network:
     driver: bridge
+
+volumes:
+  postgres_data:
 
 
