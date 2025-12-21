@@ -4,34 +4,34 @@ kind: Kustomization
 namespace: guide-helper
 
 resources:
-  - ../../base
-  - ingress.yaml
+- ../../base
+- ingress.yaml
 
 secretGenerator:
-  - name: postgres-secret
-    files:
-      - POSTGRES_USER=secrets/postgres-user.txt
-      - POSTGRES_PASSWORD=secrets/postgres-password.txt
-      - POSTGRES_DB=secrets/postgres-db.txt
-  - name: auth-secret
-    files:
-      - JWT_SECRET=secrets/jwt-secret.txt
+- files:
+  - POSTGRES_USER=secrets/postgres-user.txt
+  - POSTGRES_PASSWORD=secrets/postgres-password.txt
+  - POSTGRES_DB=secrets/postgres-db.txt
+  name: postgres-secret
+- files:
+  - JWT_SECRET=secrets/jwt-secret.txt
+  name: auth-secret
 
 images:
-  - name: cache
-    newName: ghcr.io/jaennil/guide-helper-cache
-    newTag: latest
-  - name: auth
-    newName: ghcr.io/jaennil/guide-helper-auth
-    newTag: latest
-  - name: frontend
-    newName: ghcr.io/jaennil/guide-helper-frontend
-    newTag: latest
+- name: auth
+  newName: ghcr.io/jaennil/guide-helper-auth
+  newTag: main-e2c237b
+- name: cache
+  newName: ghcr.io/jaennil/guide-helper-cache
+  newTag: main-e2c237b
+- name: frontend
+  newName: ghcr.io/jaennil/guide-helper-frontend
+  newTag: main-e2c237b
 
 replicas:
-  - name: cache
-    count: 1
-  - name: auth
-    count: 1
-  - name: frontend
-    count: 1
+- count: 1
+  name: cache
+- count: 1
+  name: auth
+- count: 1
+  name: frontend
