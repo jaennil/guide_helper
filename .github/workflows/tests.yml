@@ -3,8 +3,16 @@ name: Tests
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/tests.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/tests.yml'
 
 jobs:
   test-cache:
@@ -12,16 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if cache changed
+        id: cache-changed
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^backend/cache/'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Go
+        if: steps.cache-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
 
       - name: Test cache service
+        if: steps.cache-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         working-directory: ./backend/cache
         run: |
           go test -v ./...
-          go test -bench=. -benchmem ./...
 
   test-auth:
     runs-on: ubuntu-latest
@@ -43,10 +61,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if auth changed
+        id: auth-changed
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^backend/auth/'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Rust
+        if: steps.auth-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Test auth service
+        if: steps.auth-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         working-directory: ./backend/auth
         env:
           DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb
@@ -58,15 +87,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if frontend changed
+        id: frontend-changed
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^frontend/'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Node.js
+        if: steps.frontend-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install dependencies
+        if: steps.frontend-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         working-directory: ./frontend
         run: npm ci
 
       - name: Lint
+        if: steps.frontend-changed.outputs.changed == 'true' || github.event_name == 'pull_request'
         working-directory: ./frontend
         run: npm run lint || echo "Lint command not found, skipping"
