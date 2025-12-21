@@ -16,3 +16,4 @@ resources:
   - cache/service.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
+  - tuna/deployment.yaml
