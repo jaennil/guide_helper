@@ -17,7 +17,7 @@ func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
 	api := r.Group("/api")
 	v1 := api.Group("/v1")
 
-	v1.GET("/heathz", handler.Healthz)
+	v1.GET("/healthz", handler.Healthz)
 	v1.GET("/tile/:z/:x/:y", handler.Tile)
 
 	return r
