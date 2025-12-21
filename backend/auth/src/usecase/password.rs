@@ -11,6 +11,7 @@ pub enum PasswordError {
     #[error("Failed to verify password: {0}")]
     VerifyError(String),
     #[error("Invalid password")]
+    #[allow(dead_code)]
     InvalidPassword,
 }
 

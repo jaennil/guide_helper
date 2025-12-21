@@ -7,15 +7,9 @@ resources:
 - ../../base
 - ingress.yaml
 
-secretGenerator:
-- files:
-  - POSTGRES_USER=secrets/postgres-user.txt
-  - POSTGRES_PASSWORD=secrets/postgres-password.txt
-  - POSTGRES_DB=secrets/postgres-db.txt
-  name: postgres-secret
-- files:
-  - JWT_SECRET=secrets/jwt-secret.txt
-  name: auth-secret
+# Secrets are created manually in the cluster
+# kubectl create secret generic postgres-secret -n guide-helper --from-literal=...
+# kubectl create secret generic auth-secret -n guide-helper --from-literal=...
 
 images:
 - name: auth

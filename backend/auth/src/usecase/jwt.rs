@@ -12,6 +12,7 @@ pub enum JwtError {
     #[error("Token expired")]
     TokenExpired,
     #[error("Invalid token")]
+    #[allow(dead_code)]
     InvalidToken,
 }
 
@@ -97,6 +98,7 @@ impl JwtService {
         Ok(token_data.claims)
     }
 
+    #[allow(dead_code)]
     pub fn decode_token_without_validation(&self, token: &str) -> Result<Claims, JwtError> {
         let mut validation = jsonwebtoken::Validation::default();
         validation.validate_exp = false;
