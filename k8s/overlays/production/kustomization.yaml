@@ -23,7 +23,7 @@ images:
   newTag: main-30da384
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: main-30da384
+  newTag: main-1a80171
 
 replicas:
 - count: 1
