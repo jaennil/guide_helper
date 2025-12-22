@@ -7,15 +7,10 @@ metadata:
 spec:
   replicas: 1
   serviceAccountName: prometheus
-  serviceMonitorSelector:
-    matchLabels:
-      app: cache
+  serviceMonitorSelector: {}
   serviceMonitorNamespaceSelector:
     matchNames:
       - guide-helper
-  additionalServiceMonitorSelectors:
-    - matchLabels:
-        app: tiles
   resources:
     requests:
       memory: 400Mi
