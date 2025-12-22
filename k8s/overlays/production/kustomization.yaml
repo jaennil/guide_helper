@@ -17,13 +17,13 @@ images:
   newTag: main-0a7d906
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-0a7d906
-- name: tiles
-  newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: latest
+  newTag: main-30da384
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-11f8589
+  newTag: main-30da384
+- name: tiles
+  newName: ghcr.io/jaennil/guide-helper-tiles
+  newTag: main-30da384
 
 replicas:
 - count: 1
