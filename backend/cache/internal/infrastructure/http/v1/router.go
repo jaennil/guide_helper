@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/handler"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
@@ -20,6 +21,9 @@ func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
 	v1.GET("/healthz", handler.Healthz)
 	v1.GET("/tile/:z/:x/:y", handler.Tile)
 	v1.POST("/tile/:z/:x/:y", handler.StoreTile)
+
+	// Prometheus metrics endpoint
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return r
 }

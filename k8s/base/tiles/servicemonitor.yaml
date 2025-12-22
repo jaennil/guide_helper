@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tiles
+  labels:
+    app: tiles
+spec:
+  selector:
+    matchLabels:
+      app: tiles
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jaennil/guide_helper/backend/tiles/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/tiles/pkg/metrics"
 )
 
 type cacheResponse struct {
@@ -41,6 +42,8 @@ func NewTileUseCase(cacheBaseURL, upstreamTileURL string, logger logger.Logger) 
 }
 
 func (uc *TileUseCase) GetTile(z, x, y int) ([]byte, error) {
+	metrics.TilesRequests.Inc()
+
 	// Try to get from cache first
 	cacheURL := fmt.Sprintf("%s/api/v1/tile/%d/%d/%d", uc.cacheBaseURL, z, x, y)
 	uc.logger.Debug("checking cache", "url", cacheURL)
@@ -63,16 +66,21 @@ func (uc *TileUseCase) GetTile(z, x, y int) ([]byte, error) {
 				} else if cacheResp.Data.Exists && len(cacheResp.Data.Data) > 0 {
 					// Cache hit! Return cached tile
 					uc.logger.Info("cache hit, returning cached tile", "size", len(cacheResp.Data.Data))
+					metrics.TilesCacheHits.Inc()
 					return cacheResp.Data.Data, nil
 				}
 			}
 		}
 		uc.logger.Info("cache miss, fetching from upstream")
+		metrics.TilesCacheMisses.Inc()
 	}
 
 	// Fetch from upstream
 	upstreamURL := fmt.Sprintf("%s/%d/%d/%d.png", uc.upstreamTileURL, z, x, y)
 	uc.logger.Info("fetching from upstream", "url", upstreamURL)
+
+	metrics.TilesUpstreamRequests.Inc()
+	start := time.Now()
 
 	req, err := http.NewRequest(http.MethodGet, upstreamURL, nil)
 	if err != nil {
@@ -85,6 +93,8 @@ func (uc *TileUseCase) GetTile(z, x, y int) ([]byte, error) {
 	req.Header.Set("Referer", "https://guidehelper.ru.tuna.am")
 
 	resp, err = uc.httpClient.Do(req)
+	latency := time.Since(start).Seconds()
+	metrics.TilesUpstreamLatency.Observe(latency)
 	if err != nil {
 		uc.logger.Error("failed to fetch from upstream", "error", err)
 		return nil, fmt.Errorf("failed to fetch tile from upstream: %w", err)

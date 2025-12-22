@@ -14,9 +14,11 @@ resources:
   - cache/configmap.yaml
   - cache/deployment.yaml
   - cache/service.yaml
+  - cache/servicemonitor.yaml
   - tiles/configmap.yaml
   - tiles/deployment.yaml
   - tiles/service.yaml
+  - tiles/servicemonitor.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - tuna/deployment.yaml

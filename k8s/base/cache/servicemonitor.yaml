@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cache
+  labels:
+    app: cache
+spec:
+  selector:
+    matchLabels:
+      app: cache
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s

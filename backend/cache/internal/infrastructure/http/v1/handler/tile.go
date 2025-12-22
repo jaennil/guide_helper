@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/dto"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/metrics"
 )
 
 var cache sync.Map
@@ -52,6 +53,9 @@ func (h *Handler) Tile(c *gin.Context) {
 
 	if exists {
 		l.Info("returned cached tile")
+		metrics.CacheHits.Inc()
+	} else {
+		metrics.CacheMisses.Inc()
 	}
 
 	resp := dto.TileCacheResponse {
@@ -113,6 +117,7 @@ func (h *Handler) StoreTile(c *gin.Context) {
 		return
 	}
 
+	metrics.CacheStores.Inc()
 	h.RespondWithJSON(c, http.StatusOK, "tile stored", nil)
 }
 
