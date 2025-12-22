@@ -51,7 +51,17 @@ func (uc *TileUseCase) GetTile(z, x, y int) ([]byte, error) {
 	upstreamURL := fmt.Sprintf("%s/%d/%d/%d.png", uc.upstreamTileURL, z, x, y)
 	uc.logger.Info("fetching from upstream", "url", upstreamURL)
 
-	resp, err = uc.httpClient.Get(upstreamURL)
+	req, err := http.NewRequest(http.MethodGet, upstreamURL, nil)
+	if err != nil {
+		uc.logger.Error("failed to create request", "error", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set required headers for OpenStreetMap tile usage policy
+	req.Header.Set("User-Agent", "GuideHelper/1.0 (https://github.com/jaennil/guide_helper)")
+	req.Header.Set("Referer", "https://guidehelper.ru.tuna.am")
+
+	resp, err = uc.httpClient.Do(req)
 	if err != nil {
 		uc.logger.Error("failed to fetch from upstream", "error", err)
 		return nil, fmt.Errorf("failed to fetch tile from upstream: %w", err)
