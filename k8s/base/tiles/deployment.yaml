@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiles
+  labels:
+    app: tiles
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tiles
+  template:
+    metadata:
+      labels:
+        app: tiles
+    spec:
+      containers:
+      - name: tiles
+        image: tiles
+        ports:
+        - containerPort: 8080
+          name: http
+        envFrom:
+        - configMapRef:
+            name: tiles-config
+        livenessProbe:
+          httpGet:
+            path: /api/v1/healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

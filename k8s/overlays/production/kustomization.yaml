@@ -18,6 +18,9 @@ images:
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
   newTag: main-0a7d906
+- name: tiles
+  newName: ghcr.io/jaennil/guide-helper-tiles
+  newTag: latest
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
   newTag: main-11f8589
@@ -25,6 +28,8 @@ images:
 replicas:
 - count: 1
   name: cache
+- count: 1
+  name: tiles
 - count: 1
   name: auth
 - count: 1

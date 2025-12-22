@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cache: ${{ steps.filter.outputs.cache }}
+      tiles: ${{ steps.filter.outputs.tiles }}
       auth: ${{ steps.filter.outputs.auth }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
@@ -29,6 +30,8 @@ jobs:
           filters: |
             cache:
               - 'backend/cache/**'
+            tiles:
+              - 'backend/tiles/**'
             auth:
               - 'backend/auth/**'
             frontend:
@@ -48,6 +51,23 @@ jobs:
 
       - name: Test cache service
         working-directory: ./backend/cache
+        run: |
+          go test -v ./...
+
+  test-tiles:
+    needs: changes
+    if: needs.changes.outputs.tiles == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Test tiles service
+        working-directory: ./backend/tiles
         run: |
           go test -v ./...
 

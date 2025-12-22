@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/handler"
-	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/tiles/internal/infrastructure/http/v1/handler"
+	"github.com/jaennil/guide_helper/backend/tiles/pkg/logger"
 )
 
 func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
@@ -19,7 +19,6 @@ func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
 
 	v1.GET("/healthz", handler.Healthz)
 	v1.GET("/tile/:z/:x/:y", handler.Tile)
-	v1.POST("/tile/:z/:x/:y", handler.StoreTile)
 
 	return r
 }
@@ -28,15 +27,10 @@ func ginZapLogger(l logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("logger", l)
 
-		// if c.Request.URL.Path == "/healthz" {
-		// 	c.Next()
-		// 	return
-		// }
-
 		start := time.Now()
-		
+
 		c.Next()
-		
+
 		end := time.Now()
 		latency := end.Sub(start)
 
