@@ -45,11 +45,22 @@
   border-radius: 4px;
   font-size: 1rem;
   box-sizing: border-box;
+  background-color: white;
+  color: #333;
 }
 
 .form-group input:focus {
   outline: none;
   border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #333 !important;
+  border: 1px solid #ddd !important;
 }
 
 .form-group small {
