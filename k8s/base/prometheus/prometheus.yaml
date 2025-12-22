@@ -8,9 +8,7 @@ spec:
   replicas: 1
   serviceAccountName: prometheus
   serviceMonitorSelector: {}
-  serviceMonitorNamespaceSelector:
-    matchNames:
-      - guide-helper
+  serviceMonitorNamespaceSelector: {}
   resources:
     requests:
       memory: 400Mi
