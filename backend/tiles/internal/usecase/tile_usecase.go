@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,17 @@ import (
 
 	"github.com/jaennil/guide_helper/backend/tiles/pkg/logger"
 )
+
+type cacheResponse struct {
+	Success bool      `json:"success"`
+	Message string    `json:"message"`
+	Data    cacheData `json:"data"`
+}
+
+type cacheData struct {
+	Data   []byte `json:"data"`
+	Exists bool   `json:"exists"`
+}
 
 type TileUseCase struct {
 	cacheBaseURL      string
@@ -35,16 +47,27 @@ func (uc *TileUseCase) GetTile(z, x, y int) ([]byte, error) {
 
 	resp, err := uc.httpClient.Get(cacheURL)
 	if err != nil {
-		uc.logger.Warn("failed to check cache", "error", err)
+		uc.logger.Warn("failed to check cache, will fetch from upstream", "error", err)
 	} else {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
-			// Parse response to check if tile exists
-			// For now, we'll fetch the tile data regardless
-			// TODO: Parse JSON response to check "exists" field
-			uc.logger.Info("tile may be in cache, checking...")
+			// Parse JSON response to check if tile exists in cache
+			var cacheResp cacheResponse
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				uc.logger.Warn("failed to read cache response", "error", err)
+			} else {
+				if err := json.Unmarshal(body, &cacheResp); err != nil {
+					uc.logger.Warn("failed to parse cache response", "error", err)
+				} else if cacheResp.Data.Exists && len(cacheResp.Data.Data) > 0 {
+					// Cache hit! Return cached tile
+					uc.logger.Info("cache hit, returning cached tile", "size", len(cacheResp.Data.Data))
+					return cacheResp.Data.Data, nil
+				}
+			}
 		}
+		uc.logger.Info("cache miss, fetching from upstream")
 	}
 
 	// Fetch from upstream
