@@ -5,7 +5,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: guide-helper.local
+  - host: guidehelper.dubrovskih.ru
     http:
       paths:
       - path: /
