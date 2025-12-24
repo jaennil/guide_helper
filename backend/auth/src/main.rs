@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
     let metrics_handle = PrometheusBuilder::new()
         .install_recorder()
         .expect("failed to install Prometheus recorder");
+    metrics_process::Collector::default().describe();
     tracing::info!("prometheus metrics initialized");
 
     let config = config::AppConfig::from_env();
@@ -69,5 +70,6 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn metrics(State(state): State<Arc<AppState>>) -> String {
+    metrics_process::Collector::default().collect();
     state.metrics_handle.render()
 }
