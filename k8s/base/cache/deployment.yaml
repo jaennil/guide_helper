@@ -14,6 +14,9 @@ spec:
       labels:
         app: cache
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: cache
         image: cache

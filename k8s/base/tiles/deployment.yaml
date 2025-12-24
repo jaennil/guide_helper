@@ -14,6 +14,9 @@ spec:
       labels:
         app: tiles
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: tiles
         image: tiles
