@@ -11,6 +11,7 @@ resources:
   - auth/configmap.yaml
   - auth/deployment.yaml
   - auth/service.yaml
+  - auth/servicemonitor.yaml
   - cache/configmap.yaml
   - cache/deployment.yaml
   - cache/service.yaml

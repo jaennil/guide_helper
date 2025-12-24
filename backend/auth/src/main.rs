@@ -6,7 +6,8 @@ mod repository;
 
 use std::sync::Arc;
 
-use axum::{routing::{get, post}, Router};
+use axum::{extract::State, routing::{get, post}, Router};
+use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tracing_subscriber::{fmt, layer::SubscriberExt};
 use crate::delivery::http::v1::auth::{register, login, refresh_token};
 
@@ -14,6 +15,7 @@ use crate::{repository::postgres::{create_pool, PostgresUserRepository}, usecase
 
 struct AppState {
     auth_usecase: AuthUseCase<PostgresUserRepository>,
+    metrics_handle: PrometheusHandle,
 }
 
 #[tokio::main]
@@ -23,6 +25,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)?;
     tracing::info!("starting the app");
+
+    let metrics_handle = PrometheusBuilder::new()
+        .install_recorder()
+        .expect("failed to install Prometheus recorder");
+    tracing::info!("prometheus metrics initialized");
 
     let config = config::AppConfig::from_env();
     tracing::debug!(?config, "config");
@@ -44,10 +51,11 @@ async fn main() -> anyhow::Result<()> {
 
     let auth_usecase = AuthUseCase::with_jwt_service(user_repository, jwt_service);
 
-    let shared_state = Arc::new(AppState{auth_usecase});
+    let shared_state = Arc::new(AppState{auth_usecase, metrics_handle});
     let router = Router::new()
         // .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/healthz", get(|| async { "OK" }))
+        .route("/metrics", get(metrics))
         .route("/api/v1/auth/register", post(register))
         .route("/api/v1/auth/login", post(login))
         .route("/api/v1/auth/refresh", post(refresh_token))
@@ -58,4 +66,8 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, router).await?;
 
     Ok(())
+}
+
+async fn metrics(State(state): State<Arc<AppState>>) -> String {
+    state.metrics_handle.render()
 }
