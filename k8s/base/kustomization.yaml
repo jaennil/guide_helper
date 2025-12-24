@@ -22,9 +22,3 @@ resources:
   - frontend/deployment.yaml
   - frontend/service.yaml
   - tuna/deployment.yaml
-  - prometheus/serviceaccount.yaml
-  - prometheus/prometheus.yaml
-  - prometheus/service.yaml
-  - grafana/configmap.yaml
-  - grafana/deployment.yaml
-  - grafana/service.yaml
