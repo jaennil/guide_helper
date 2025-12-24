@@ -14,7 +14,7 @@ resources:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-0a7d906
+  newTag: main-007572f
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
   newTag: main-4f8cd68
