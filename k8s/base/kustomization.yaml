@@ -19,6 +19,7 @@ resources:
   - tiles/deployment.yaml
   - tiles/service.yaml
   - tiles/servicemonitor.yaml
+  - dashboard.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - tuna/deployment.yaml
