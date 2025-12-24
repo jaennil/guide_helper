@@ -14,10 +14,10 @@ resources:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-4d6c023
+  newTag: main-1775d31
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-4f8cd68
+  newTag: main-1775d31
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
   newTag: main-da6710f
