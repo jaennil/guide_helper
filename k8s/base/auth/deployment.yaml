@@ -62,13 +62,13 @@ spec:
             path: /healthz
             port: 8080
           initialDelaySeconds: 30
-          periodSeconds: 10
+          periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /healthz
             port: 8080
           initialDelaySeconds: 10
-          periodSeconds: 5
+          periodSeconds: 30
         resources:
           requests:
             memory: "128Mi"
