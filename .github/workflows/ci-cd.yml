@@ -235,7 +235,7 @@ jobs:
     needs: [changes, build-cache, build-tiles, build-auth, build-frontend]
     if: |
       always() &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       (needs.build-cache.result == 'success' ||
        needs.build-tiles.result == 'success' ||
@@ -261,27 +261,28 @@ jobs:
           cd k8s/overlays/production
 
           IMAGE_TAG="${GITHUB_SHA::7}"
+          IS_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
 
-          # Update cache image if changed
-          if [ "${{ needs.changes.outputs.cache }}" == "true" ]; then
+          # Update cache image if changed or workflow_dispatch
+          if [ "${{ needs.changes.outputs.cache }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
             kustomize edit set image \
               cache=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-cache:main-${IMAGE_TAG}
           fi
 
-          # Update tiles image if changed
-          if [ "${{ needs.changes.outputs.tiles }}" == "true" ]; then
+          # Update tiles image if changed or workflow_dispatch
+          if [ "${{ needs.changes.outputs.tiles }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
             kustomize edit set image \
               tiles=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-tiles:main-${IMAGE_TAG}
           fi
 
-          # Update auth image if changed
-          if [ "${{ needs.changes.outputs.auth }}" == "true" ]; then
+          # Update auth image if changed or workflow_dispatch
+          if [ "${{ needs.changes.outputs.auth }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
             kustomize edit set image \
               auth=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-auth:main-${IMAGE_TAG}
           fi
 
-          # Update frontend image if changed
-          if [ "${{ needs.changes.outputs.frontend }}" == "true" ]; then
+          # Update frontend image if changed or workflow_dispatch
+          if [ "${{ needs.changes.outputs.frontend }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
             kustomize edit set image \
               frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${IMAGE_TAG}
           fi
