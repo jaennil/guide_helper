@@ -1,0 +1,12 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: auth-secret
+  namespace: guide-helper
+spec:
+  encryptedData:
+    JWT_SECRET: AgDUE40bt9awG0cHWRQwKs6gPy4Sgf0jLbizDLcKOdSDvh+PYdz08QZ9VhzQRS3fJhEFwpFIhCV3WbsIJ92wZaOsN3F1YGKRVUhk5VWaHuitMSOykHDxCkbToZ1GegNxB35fagJfAhdlj4AxmOzdBYKtUGsEYnDrYaO1AviuSjMPmGTxrduuUJY+F4KYO3dI8qjm2JHo9nAWt3J9QdIAsAxFgJJSAT+7Ty7Y4hexo0/wKWs40vLbA2YhtHHHcid4WH254B0c5yUwQWtzieTaaiFvBeea9a30KCPvcdt0KoLWLA2YPfEQGN0tExBG3oWQz/OrpB1d+EWzRp/KhXG1pXDg10gEa7IJD7OrP6gNFrGNco0HzrnH9ezw1CpiH+5GJVESTsEERahHlR3YxOH4zR/UuAoBS3bNsCaDS0dkrMweJaDv+9kThyjrrLWWzWfpLBylGrmVw4luysdUEVTsaB3LSof8Dtfoh4Am7Dw36wPEfqcGewxAxLrEy4C0CiEJXLqGl+VSboAGdLIl+R9tZ0GSsJKklDY1PtfjskJC9kckSJWZeDi0yR7AvZ2Y9tt5LHkCrBomPbap6Kr28qnhrpBktunNZ4nCj/EJlhDKklhwM2/WmhthxlftLTd3euXFfwFmPsi0qBSmVw2Q6aYeM2IZr61vngHyDAjngibYc7m8fL4eS+H+PwBfaoWu6Il92VMym1XeD4hMRpuzCdAzZEg9y9v3X8QLAiWMhgkfiurbbDoPZwA=
+  template:
+    metadata:
+      name: auth-secret
+      namespace: guide-helper

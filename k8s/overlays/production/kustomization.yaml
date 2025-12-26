@@ -6,10 +6,8 @@ namespace: guide-helper
 resources:
 - ../../base
 - ingress.yaml
-
-# Secrets are created manually in the cluster
-# kubectl create secret generic postgres-secret -n guide-helper --from-literal=...
-# kubectl create secret generic auth-secret -n guide-helper --from-literal=...
+- sealed-secrets/postgres-sealed.yaml
+- sealed-secrets/auth-sealed.yaml
 
 images:
 - name: auth
