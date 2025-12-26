@@ -12,16 +12,16 @@ resources:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-1775d31
+  newTag: main-615aee5
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-1775d31
+  newTag: main-615aee5
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-3e10628
+  newTag: main-615aee5
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: main-4f8cd68
+  newTag: main-615aee5
 
 replicas:
 - count: 1
