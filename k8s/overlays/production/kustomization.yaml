@@ -8,6 +8,16 @@ resources:
 - ingress.yaml
 - sealed-secrets/postgres-sealed.yaml
 - sealed-secrets/auth-sealed.yaml
+- sealed-secrets/ghcr-sealed.yaml
+
+patches:
+- patch: |-
+    - op: add
+      path: /spec/template/spec/imagePullSecrets
+      value:
+        - name: ghcr-secret
+  target:
+    kind: Deployment
 
 images:
 - name: auth
