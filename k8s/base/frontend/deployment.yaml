@@ -16,6 +16,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: false  # nginx runs as root by default
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: frontend
         image: frontend
