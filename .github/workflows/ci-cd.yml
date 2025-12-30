@@ -87,6 +87,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-cache:main-${{ github.sha }}-${{ matrix.suffix }}
           cache-from: type=gha,scope=cache-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=cache-${{ matrix.suffix }}
+          provenance: false
 
   merge-cache:
     needs: [changes, build-cache]
@@ -154,6 +155,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-tiles:main-${{ github.sha }}-${{ matrix.suffix }}
           cache-from: type=gha,scope=tiles-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=tiles-${{ matrix.suffix }}
+          provenance: false
 
   merge-tiles:
     needs: [changes, build-tiles]
@@ -221,6 +223,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-auth:main-${{ github.sha }}-${{ matrix.suffix }}
           cache-from: type=gha,scope=auth-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=auth-${{ matrix.suffix }}
+          provenance: false
 
   merge-auth:
     needs: [changes, build-auth]
@@ -288,6 +291,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}-${{ matrix.suffix }}
           cache-from: type=gha,scope=frontend-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=frontend-${{ matrix.suffix }}
+          provenance: false
 
   merge-frontend:
     needs: [changes, build-frontend]
