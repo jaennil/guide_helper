@@ -22,16 +22,16 @@ patches:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-615aee5
+  newTag: main-6198864
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-615aee5
+  newTag: main-6198864
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-3e10628
+  newTag: main-6198864
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: main-615aee5
+  newTag: main-6198864
 
 replicas:
 - count: 1
