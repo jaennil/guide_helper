@@ -6,13 +6,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaennil/guide_helper/backend/cache/internal/infrastructure/http/v1/handler"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/telemetry"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func NewRouter(handler *handler.Handler, l logger.Logger) *gin.Engine {
+func NewRouter(handler *handler.Handler, l logger.Logger, telemetryEnabled bool) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(gin.Recovery())
+
+	// Add OpenTelemetry middleware if enabled
+	if telemetryEnabled {
+		r.Use(telemetry.GinMiddleware("guide-helper-cache"))
+	}
+
 	r.Use(ginZapLogger(l))
 
 	api := r.Group("/api")

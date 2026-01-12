@@ -14,6 +14,7 @@ import (
 	"github.com/jaennil/guide_helper/backend/cache/pkg/config"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/http_server"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/cache/pkg/telemetry"
 )
 
 func Run(cfg *config.Config) {
@@ -22,8 +23,29 @@ func Run(cfg *config.Config) {
 	l.Info("app config", "cfg", cfg)
 
 	ctx := context.TODO()
-	
+
 	ctx = logger.WithLogger(ctx, l)
+
+	// Initialize OpenTelemetry if enabled
+	var shutdownTelemetry func(context.Context) error
+	if cfg.Telemetry.Enabled {
+		var err error
+		shutdownTelemetry, err = telemetry.InitTracer(telemetry.Config{
+			ServiceName:    cfg.Telemetry.ServiceName,
+			ServiceVersion: cfg.Telemetry.ServiceVersion,
+			Environment:    cfg.Telemetry.Environment,
+			OTLPEndpoint:   cfg.Telemetry.OTLPEndpoint,
+		})
+		if err != nil {
+			l.Fatal("failed to initialize telemetry", "error", err)
+		}
+		defer func() {
+			if err := shutdownTelemetry(context.Background()); err != nil {
+				l.Error("failed to shutdown telemetry", "error", err)
+			}
+		}()
+		l.Info("telemetry initialized", "service", cfg.Telemetry.ServiceName)
+	}
 
 	// Initialize the cache repository
 	sqliteCache, err := cache.NewSQLiteCache("file:cache.db?cache=shared&mode=memory")
@@ -37,7 +59,7 @@ func Run(cfg *config.Config) {
 	// Initialize the HTTP handler
 	validate := validator.New()
 	handler := handler.NewHandler(validate, tileCacheUseCase)
-	router := v1.NewRouter(handler, l)
+	router := v1.NewRouter(handler, l, cfg.Telemetry.Enabled)
 
 	httpServer := http_server.NewServer(ctx, cfg.HTTP.Server, router)
 

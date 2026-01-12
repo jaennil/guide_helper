@@ -12,6 +12,7 @@ type (
 	Config struct {
 		HTTP           HTTP      `envPrefix:"HTTP_"`
 		Logger         Logger    `envPrefix:"LOGGER_"`
+		Telemetry      Telemetry `envPrefix:"TELEMETRY_"`
 	}
 
 	HTTP struct {
@@ -28,6 +29,14 @@ type (
 
 	Logger struct {
 		Level string `env:"LEVEL,required"`
+	}
+
+	Telemetry struct {
+		Enabled         bool   `env:"ENABLED" envDefault:"false"`
+		ServiceName     string `env:"SERVICE_NAME" envDefault:"guide-helper-cache"`
+		ServiceVersion  string `env:"SERVICE_VERSION" envDefault:"1.0.0"`
+		Environment     string `env:"ENVIRONMENT" envDefault:"production"`
+		OTLPEndpoint    string `env:"OTLP_ENDPOINT" envDefault:"otel-collector.observability.svc.cluster.local:4317"`
 	}
 )
 
