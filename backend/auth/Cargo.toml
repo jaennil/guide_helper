@@ -17,11 +17,16 @@ thiserror = "2.0.17"
 tokio = { version = "1.48.0", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.29.0"
+opentelemetry = "0.29.0"
+opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.29.0", features = ["grpc-tonic", "trace"] }
 uuid = { version = "1.18.1", features = ["v4"] }
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 metrics-process = "2.3"
 validator = { version = "0.20.0", features = ["derive"] }
+tower-http = { version = "0.6", features = ["trace"] }
 
 [dev-dependencies]
 mockall = "0.13"
