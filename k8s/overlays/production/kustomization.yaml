@@ -22,10 +22,10 @@ patches:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-4d2bf0f
+  newTag: main-cc4a6b7
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-4d2bf0f
+  newTag: main-cc4a6b7
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
   newTag: main-4d2bf0f
