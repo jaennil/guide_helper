@@ -22,7 +22,7 @@ patches:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-504941e
+  newTag: main-5ad9664
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
   newTag: main-504941e
