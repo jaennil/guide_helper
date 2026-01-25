@@ -249,6 +249,7 @@ mod tests {
                 lat: 55.7558,
                 lng: 37.6173,
                 name: None,
+                segment_mode: None,
             }],
         };
 
@@ -263,6 +264,7 @@ mod tests {
                 lat: 55.7558,
                 lng: 37.6173,
                 name: None,
+                segment_mode: None,
             }],
         };
 
@@ -289,6 +291,7 @@ mod tests {
                 lat: 55.7558,
                 lng: 37.6173,
                 name: Some("Moscow".to_string()),
+                segment_mode: Some("auto".to_string()),
             }],
             created_at: Utc::now(),
             updated_at: Utc::now(),

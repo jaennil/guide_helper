@@ -125,6 +125,7 @@ mod tests {
             lat: 55.7558,
             lng: 37.6173,
             name: None,
+            segment_mode: None,
         }];
 
         let result = usecase

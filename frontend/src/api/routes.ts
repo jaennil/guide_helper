@@ -6,6 +6,7 @@ export interface RoutePoint {
   lat: number;
   lng: number;
   name?: string;
+  segment_mode?: 'auto' | 'manual'; // mode for segment TO this point
 }
 
 export interface Route {

@@ -320,13 +320,15 @@ export function MapPage() {
       setRoutePoints(loadedPoints);
       pointIdRef.current = loadedPoints.length;
 
-      // Create segments for loaded points (default to manual)
+      // Create segments for loaded points, restoring saved mode
       const segments: RouteSegment[] = [];
       for (let i = 0; i < loadedPoints.length - 1; i++) {
+        // segment_mode is stored on the destination point
+        const destPoint = route.points[i + 1];
         segments.push({
           fromIndex: i,
           toIndex: i + 1,
-          mode: "manual",
+          mode: (destPoint.segment_mode as RouteMode) || "manual",
         });
       }
       setRouteSegments(segments);
@@ -350,13 +352,21 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      await routesApi.createRoute({
-        name: routeName.trim(),
-        points: routePoints.map((p) => ({
+      // Save points with segment mode info
+      const pointsToSave = routePoints.map((p, index) => {
+        // Find segment that ends at this point
+        const segment = routeSegments.find(s => s.toIndex === index);
+        return {
           lat: p.position[0],
           lng: p.position[1],
           name: undefined,
-        })),
+          segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
+        };
+      });
+
+      await routesApi.createRoute({
+        name: routeName.trim(),
+        points: pointsToSave,
       });
       setShowSaveModal(false);
       setRouteName("");
