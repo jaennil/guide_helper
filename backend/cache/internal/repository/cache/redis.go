@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jaennil/guide_helper/backend/cache/pkg/metrics"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -39,10 +40,15 @@ func NewRedisCache(cfg RedisConfig) (*RedisCache, error) {
 		ttl = 24 * time.Hour // default TTL
 	}
 
-	return &RedisCache{
+	cache := &RedisCache{
 		client: client,
 		ttl:    ttl,
-	}, nil
+	}
+
+	// Start pool stats collector
+	go cache.collectPoolStats()
+
+	return cache, nil
 }
 
 var _ TileCache = (*RedisCache)(nil)
@@ -52,14 +58,19 @@ func (c *RedisCache) keyFor(k TileCacheKey) string {
 }
 
 func (c *RedisCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
+	start := time.Now()
 	ctx := context.Background()
 	key := c.keyFor(k)
 
 	data, err := c.client.Get(ctx, key).Bytes()
+	duration := time.Since(start).Seconds()
+	metrics.RedisOperationDuration.WithLabelValues("get").Observe(duration)
+
 	if err != nil {
 		if err == redis.Nil {
 			return nil, false, nil
 		}
+		metrics.RedisErrors.WithLabelValues("get").Inc()
 		return nil, false, fmt.Errorf("redis get error: %w", err)
 	}
 
@@ -67,11 +78,17 @@ func (c *RedisCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
 }
 
 func (c *RedisCache) Set(k TileCacheKey, v TileCacheValue) error {
+	start := time.Now()
 	ctx := context.Background()
 	key := c.keyFor(k)
 
 	// Cast TileCacheValue to []byte for redis
-	if err := c.client.Set(ctx, key, []byte(v), c.ttl).Err(); err != nil {
+	err := c.client.Set(ctx, key, []byte(v), c.ttl).Err()
+	duration := time.Since(start).Seconds()
+	metrics.RedisOperationDuration.WithLabelValues("set").Observe(duration)
+
+	if err != nil {
+		metrics.RedisErrors.WithLabelValues("set").Inc()
 		return fmt.Errorf("redis set error: %w", err)
 	}
 
@@ -80,4 +97,19 @@ func (c *RedisCache) Set(k TileCacheKey, v TileCacheValue) error {
 
 func (c *RedisCache) Close() error {
 	return c.client.Close()
+}
+
+func (c *RedisCache) collectPoolStats() {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		stats := c.client.PoolStats()
+		metrics.RedisPoolStats.WithLabelValues("hits").Set(float64(stats.Hits))
+		metrics.RedisPoolStats.WithLabelValues("misses").Set(float64(stats.Misses))
+		metrics.RedisPoolStats.WithLabelValues("timeouts").Set(float64(stats.Timeouts))
+		metrics.RedisPoolStats.WithLabelValues("total_conns").Set(float64(stats.TotalConns))
+		metrics.RedisPoolStats.WithLabelValues("idle_conns").Set(float64(stats.IdleConns))
+		metrics.RedisPoolStats.WithLabelValues("stale_conns").Set(float64(stats.StaleConns))
+	}
 }
