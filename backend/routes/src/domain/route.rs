@@ -8,6 +8,7 @@ pub struct RoutePoint {
     pub lng: f64,
     pub name: Option<String>,
     pub segment_mode: Option<String>, // "auto" or "manual" - mode for segment TO this point
+    pub photo: Option<String>,        // base64 encoded image
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
@@ -53,8 +54,8 @@ mod tests {
     fn test_route_creation() {
         let user_id = Uuid::new_v4();
         let points = vec![
-            RoutePoint { lat: 55.7558, lng: 37.6173, name: Some("Moscow".to_string()), segment_mode: None },
-            RoutePoint { lat: 59.9343, lng: 30.3351, name: Some("Saint Petersburg".to_string()), segment_mode: Some("auto".to_string()) },
+            RoutePoint { lat: 55.7558, lng: 37.6173, name: Some("Moscow".to_string()), segment_mode: None, photo: None },
+            RoutePoint { lat: 59.9343, lng: 30.3351, name: Some("Saint Petersburg".to_string()), segment_mode: Some("auto".to_string()), photo: Some("data:image/png;base64,test".to_string()) },
         ];
 
         let route = Route::new(user_id, "Test Route".to_string(), points.clone());
@@ -68,15 +69,15 @@ mod tests {
     #[test]
     fn test_route_update() {
         let user_id = Uuid::new_v4();
-        let points = vec![RoutePoint { lat: 55.7558, lng: 37.6173, name: None, segment_mode: None }];
+        let points = vec![RoutePoint { lat: 55.7558, lng: 37.6173, name: None, segment_mode: None, photo: None }];
         let mut route = Route::new(user_id, "Original".to_string(), points);
         let original_updated_at = route.updated_at;
 
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         let new_points = vec![
-            RoutePoint { lat: 55.7558, lng: 37.6173, name: None, segment_mode: None },
-            RoutePoint { lat: 59.9343, lng: 30.3351, name: None, segment_mode: Some("auto".to_string()) },
+            RoutePoint { lat: 55.7558, lng: 37.6173, name: None, segment_mode: None, photo: None },
+            RoutePoint { lat: 59.9343, lng: 30.3351, name: None, segment_mode: Some("auto".to_string()), photo: None },
         ];
         route.update(Some("Updated".to_string()), Some(new_points));
 
@@ -92,6 +93,7 @@ mod tests {
             lng: 37.6173,
             name: Some("Moscow".to_string()),
             segment_mode: Some("auto".to_string()),
+            photo: Some("data:image/png;base64,test".to_string()),
         };
 
         let json = serde_json::to_string(&point).unwrap();

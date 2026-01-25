@@ -250,6 +250,7 @@ mod tests {
                 lng: 37.6173,
                 name: None,
                 segment_mode: None,
+                photo: None,
             }],
         };
 
@@ -265,6 +266,7 @@ mod tests {
                 lng: 37.6173,
                 name: None,
                 segment_mode: None,
+                photo: None,
             }],
         };
 
@@ -292,6 +294,7 @@ mod tests {
                 lng: 37.6173,
                 name: Some("Moscow".to_string()),
                 segment_mode: Some("auto".to_string()),
+                photo: None,
             }],
             created_at: Utc::now(),
             updated_at: Utc::now(),

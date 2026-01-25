@@ -316,6 +316,7 @@ export function MapPage() {
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
+        photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
       pointIdRef.current = loadedPoints.length;
@@ -352,7 +353,7 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      // Save points with segment mode info
+      // Save points with segment mode info and photos
       const pointsToSave = routePoints.map((p, index) => {
         // Find segment that ends at this point
         const segment = routeSegments.find(s => s.toIndex === index);
@@ -361,6 +362,7 @@ export function MapPage() {
           lng: p.position[1],
           name: undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
+          photo: p.photo,
         };
       });
 

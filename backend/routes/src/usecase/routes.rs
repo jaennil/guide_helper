@@ -126,6 +126,7 @@ mod tests {
             lng: 37.6173,
             name: None,
             segment_mode: None,
+            photo: None,
         }];
 
         let result = usecase

@@ -7,6 +7,7 @@ export interface RoutePoint {
   lng: number;
   name?: string;
   segment_mode?: 'auto' | 'manual'; // mode for segment TO this point
+  photo?: string; // base64 encoded image
 }
 
 export interface Route {
