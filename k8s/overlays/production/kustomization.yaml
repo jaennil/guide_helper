@@ -25,7 +25,7 @@ images:
   newTag: main-5ad9664
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
-  newTag: main-504941e
+  newTag: main-010f2f9
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
   newTag: main-183a98b
