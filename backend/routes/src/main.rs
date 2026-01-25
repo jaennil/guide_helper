@@ -13,7 +13,7 @@ use axum::{
     Router,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use tracing_subscriber::{fmt, layer::SubscriberExt};
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::routes::{create_route, delete_route, get_route, list_routes, update_route};
@@ -29,7 +29,12 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let subscriber = tracing_subscriber::registry().with(fmt::layer());
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+
+    let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt::layer());
 
     tracing::subscriber::set_global_default(subscriber)?;
     tracing::info!("starting the routes service");
@@ -41,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("prometheus metrics initialized");
 
     let config = config::AppConfig::from_env();
-    tracing::debug!(?config, "config loaded");
+    tracing::info!("config loaded");
 
     let pool = create_pool(&config.database_url, config.database_max_connections)
         .await
