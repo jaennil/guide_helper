@@ -28,7 +28,7 @@ images:
   newTag: main-cc4a6b7
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-04912bc
+  newTag: main-c136d8f
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-4d2bf0f
