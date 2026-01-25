@@ -10,3 +10,6 @@ data:
   TELEMETRY_SERVICE_VERSION: "1.0.0"
   TELEMETRY_ENVIRONMENT: "production"
   TELEMETRY_OTLP_ENDPOINT: "otel-collector.observability.svc.cluster.local:4317"
+  REDIS_ENABLED: "true"
+  REDIS_ADDR: "redis:6379"
+  REDIS_TTL: "24h"

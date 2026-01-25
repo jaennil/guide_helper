@@ -8,6 +8,9 @@ resources:
   - postgres/pvc.yaml
   - postgres/deployment.yaml
   - postgres/service.yaml
+  - redis/pvc.yaml
+  - redis/deployment.yaml
+  - redis/service.yaml
   - auth/configmap.yaml
   - auth/deployment.yaml
   - auth/service.yaml

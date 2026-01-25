@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: guide_helper_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - guide_helper_network
+
   cache:
     build:
       context: ./backend/cache
@@ -12,6 +29,11 @@ services:
     environment:
       HTTP_SERVER_PORT: "8080"
       LOGGER_LEVEL: info
+      REDIS_ENABLED: "true"
+      REDIS_ADDR: redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - guide_helper_network
 
@@ -114,5 +136,6 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
 
 
