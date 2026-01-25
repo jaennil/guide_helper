@@ -136,10 +136,15 @@ body {
 
 /* Стили для кастомных маркеров с фотографиями */
 .custom-photo-marker,
-.leaflet-div-icon.custom-photo-marker {
-    background: transparent !important;
+.leaflet-div-icon.custom-photo-marker,
+.leaflet-marker-icon.custom-photo-marker,
+.leaflet-pane .custom-photo-marker {
+    background: none !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    width: auto !important;
+    height: auto !important;
 }
 
 .photo-marker-container {

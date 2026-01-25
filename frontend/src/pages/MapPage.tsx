@@ -81,8 +81,11 @@ function RoutingControl({
         const toPoint = waypoints[segment.toIndex];
 
         if (fromPoint && toPoint) {
+          const plan = new (L.Routing as any).Plan([fromPoint, toPoint], {
+            createMarker: () => false,
+          });
           const routingControl = L.Routing.control({
-            waypoints: [fromPoint, toPoint],
+            plan,
             routeWhileDragging: false,
             addWaypoints: false,
             draggableWaypoints: false,
@@ -92,7 +95,7 @@ function RoutingControl({
               serviceUrl: "https://router.project-osrm.org/route/v1",
               profile: "foot",
             }),
-          }).addTo(map);
+          } as any).addTo(map);
 
           routingControlsRef.current.set(key, {
             control: routingControl,
