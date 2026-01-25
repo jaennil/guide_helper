@@ -184,3 +184,148 @@ body {
     font-size: 1.5rem;
     color: #667eea;
 }
+
+/* Header actions */
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.save-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.save-btn:hover {
+    background: #218838;
+}
+
+.clear-btn {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.clear-btn:hover {
+    background: #e0a800;
+}
+
+.profile-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-btn:hover {
+    background: #138496;
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    min-width: 300px;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    margin: 0 0 1.5rem 0;
+    color: #333;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-form input {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.modal-form input:focus {
+    outline: none;
+    border-color: #28a745;
+}
+
+.modal-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.modal-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-cancel:hover {
+    background: #5a6268;
+}
+
+.modal-save {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-save:hover {
+    background: #218838;
+}
+
+.modal-save:disabled {
+    background: #94d3a2;
+    cursor: not-allowed;
+}

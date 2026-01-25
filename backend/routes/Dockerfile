@@ -1,27 +1,30 @@
-FROM rust:1.87-alpine AS builder
+FROM rust:1.91.0-alpine AS builder
 
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock* ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release || true
-RUN rm -rf src
+COPY Cargo.lock Cargo.toml ./
+COPY src src/
+COPY migrations migrations/
 
-COPY . .
-RUN touch src/main.rs
-RUN cargo build --release
+RUN cargo build --locked --release
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates openssl wget
+
+RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/routes .
-COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/target/release/routes ./app
+COPY migrations ./migrations
+
+RUN chown -R app:app /app
+
+USER app
 
 EXPOSE 8080
 
-CMD ["./routes"]
+CMD ["./app"]

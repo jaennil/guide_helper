@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
 import type { AuthResponse } from '../api/auth';
+import { profileApi } from '../api/profile';
+import type { UserProfile } from '../api/profile';
 import { jwtDecode } from 'jwt-decode';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  user: UserProfile | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   getAccessToken: () => string | null;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +24,22 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const profile = await profileApi.getProfile();
+      setUser(profile);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      setUser(null);
+    }
+  };
+
+  const refreshUser = async () => {
+    await fetchUserProfile();
+  };
 
   // Check if token is expired
   const isTokenExpired = (token: string): boolean => {
@@ -40,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.refreshToken(refreshToken);
       localStorage.setItem(TOKEN_KEY, response.access_token);
       setIsAuthenticated(true);
+      await fetchUserProfile();
       return true;
     } catch (error) {
       console.error('Token refresh failed:', error);
@@ -66,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsAuthenticated(true);
+      await fetchUserProfile();
       setIsLoading(false);
     };
 
@@ -96,26 +118,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
-  const saveTokens = (response: AuthResponse) => {
+  const saveTokens = async (response: AuthResponse) => {
     localStorage.setItem(TOKEN_KEY, response.access_token);
     localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
     setIsAuthenticated(true);
+    await fetchUserProfile();
   };
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login(email, password);
-    saveTokens(response);
+    await saveTokens(response);
   };
 
   const register = async (email: string, password: string) => {
     const response = await authApi.register(email, password);
-    saveTokens(response);
+    await saveTokens(response);
   };
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setIsAuthenticated(false);
+    setUser(null);
   };
 
   const getAccessToken = (): string | null => {
@@ -127,10 +151,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         isAuthenticated,
         isLoading,
+        user,
         login,
         register,
         logout,
         getAccessToken,
+        refreshUser,
       }}
     >
       {children}

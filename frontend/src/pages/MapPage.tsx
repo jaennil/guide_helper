@@ -13,7 +13,8 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import "../App.css";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { routesApi } from "../api/routes";
 
 type RouteMode = "auto" | "manual";
 
@@ -291,10 +292,90 @@ export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeMode, setRouteMode] = useState<RouteMode>("auto");
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [routeName, setRouteName] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saveLoading, setSaveLoading] = useState(false);
   const pointIdRef = useRef(0);
 
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Load route if route ID is in URL
+  useEffect(() => {
+    const routeId = searchParams.get("route");
+    if (routeId) {
+      loadRoute(routeId);
+    }
+  }, [searchParams]);
+
+  const loadRoute = async (routeId: string) => {
+    try {
+      const route = await routesApi.getRoute(routeId);
+      const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
+        id: index,
+        position: [p.lat, p.lng] as [number, number],
+      }));
+      setRoutePoints(loadedPoints);
+      pointIdRef.current = loadedPoints.length;
+
+      // Create segments for loaded points (default to manual)
+      const segments: RouteSegment[] = [];
+      for (let i = 0; i < loadedPoints.length - 1; i++) {
+        segments.push({
+          fromIndex: i,
+          toIndex: i + 1,
+          mode: "manual",
+        });
+      }
+      setRouteSegments(segments);
+    } catch (error) {
+      console.error("Failed to load route:", error);
+    }
+  };
+
+  const handleSaveRoute = async () => {
+    if (!routeName.trim()) {
+      setSaveError("Please enter a route name");
+      return;
+    }
+
+    if (routePoints.length < 2) {
+      setSaveError("Route must have at least 2 points");
+      return;
+    }
+
+    setSaveLoading(true);
+    setSaveError("");
+
+    try {
+      await routesApi.createRoute({
+        name: routeName.trim(),
+        points: routePoints.map((p) => ({
+          lat: p.position[0],
+          lng: p.position[1],
+          name: undefined,
+        })),
+      });
+      setShowSaveModal(false);
+      setRouteName("");
+      alert("Route saved successfully!");
+    } catch (err: any) {
+      setSaveError(err.response?.data || "Failed to save route");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleClearRoute = () => {
+    if (routePoints.length > 0 && !confirm("Clear all points?")) {
+      return;
+    }
+    setRoutePoints([]);
+    setRouteSegments([]);
+    pointIdRef.current = 0;
+  };
 
   const handleMapClick = (lat: number, lng: number) => {
     const newPoint: RoutePoint = {
@@ -357,10 +438,58 @@ export function MapPage() {
             Manual (прямая линия)
           </label>
         </div>
-        <button onClick={handleLogout} className="logout-btn">
-          Logout
-        </button>
+        <div className="header-actions">
+          {routePoints.length >= 2 && (
+            <button onClick={() => setShowSaveModal(true)} className="save-btn">
+              Save Route
+            </button>
+          )}
+          {routePoints.length > 0 && (
+            <button onClick={handleClearRoute} className="clear-btn">
+              Clear
+            </button>
+          )}
+          <button onClick={() => navigate("/profile")} className="profile-btn">
+            {user?.name || user?.email || "Profile"}
+          </button>
+          <button onClick={handleLogout} className="logout-btn">
+            Logout
+          </button>
+        </div>
       </div>
+
+      {showSaveModal && (
+        <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Save Route</h2>
+            <div className="modal-form">
+              <input
+                type="text"
+                placeholder="Enter route name"
+                value={routeName}
+                onChange={(e) => setRouteName(e.target.value)}
+                autoFocus
+              />
+              {saveError && <div className="modal-error">{saveError}</div>}
+              <div className="modal-actions">
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="modal-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRoute}
+                  disabled={saveLoading}
+                  className="modal-save"
+                >
+                  {saveLoading ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <MapContainer
         center={[55.7518, 37.6178]}
         zoom={15}
