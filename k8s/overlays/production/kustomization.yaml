@@ -31,7 +31,7 @@ images:
   newTag: main-183a98b
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-183a98b
+  newTag: main-3a0cb31
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-504941e
