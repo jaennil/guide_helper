@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use axum::{extract::State, middleware, routing::{get, post, put}, Router};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use tracing_subscriber::{fmt, layer::SubscriberExt};
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 use crate::delivery::http::v1::auth::{register, login, refresh_token};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::profile::{get_profile, update_profile, change_password};
@@ -23,11 +23,15 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+
     let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
         .with(fmt::layer());
 
     tracing::subscriber::set_global_default(subscriber)?;
-    tracing::info!("starting the app");
+    tracing::info!("starting the auth service");
 
     let metrics_handle = PrometheusBuilder::new()
         .install_recorder()
@@ -36,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("prometheus metrics initialized");
 
     let config = config::AppConfig::from_env();
-    tracing::debug!(?config, "config");
+    tracing::info!("config loaded");
 
     let pool = create_pool(&config.database_url, config.database_max_connections)
         .await
