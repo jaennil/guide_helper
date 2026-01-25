@@ -31,6 +31,7 @@ pub enum TokenType {
     Refresh,
 }
 
+#[derive(Clone)]
 pub struct JwtService {
     secret: String,
     access_token_duration: Duration,

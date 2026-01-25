@@ -61,6 +61,8 @@ where
             id: uuid,
             email: email,
             password_hash,
+            name: None,
+            avatar_url: None,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -129,6 +131,66 @@ where
             .map_err(|e| anyhow!("Failed to generate access token: {}", e))?;
 
         Ok(new_access_token)
+    }
+
+    async fn get_profile(&self, user_id: Uuid) -> Result<User, Error> {
+        tracing::debug!(%user_id, "getting user profile");
+
+        let user = self.user_repository.find_by_id(user_id).await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+
+        if user.is_deleted() {
+            return Err(anyhow!("User account is deleted"));
+        }
+
+        tracing::debug!(%user_id, "profile retrieved successfully");
+        Ok(user)
+    }
+
+    async fn update_profile(&self, user_id: Uuid, name: Option<String>, avatar_url: Option<String>) -> Result<User, Error> {
+        tracing::debug!(%user_id, ?name, ?avatar_url, "updating user profile");
+
+        let mut user = self.user_repository.find_by_id(user_id).await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+
+        if user.is_deleted() {
+            return Err(anyhow!("User account is deleted"));
+        }
+
+        user.update_profile(name, avatar_url);
+        self.user_repository.update(&user).await?;
+
+        tracing::debug!(%user_id, "profile updated successfully");
+        Ok(user)
+    }
+
+    async fn change_password(&self, user_id: Uuid, old_password: String, new_password: String) -> Result<(), Error> {
+        tracing::debug!(%user_id, "changing user password");
+
+        let mut user = self.user_repository.find_by_id(user_id).await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+
+        if user.is_deleted() {
+            return Err(anyhow!("User account is deleted"));
+        }
+
+        // Verify old password
+        let is_valid = verify_password(&old_password, &user.password_hash)
+            .map_err(|e| anyhow!("Password verification failed: {}", e))?;
+
+        if !is_valid {
+            return Err(anyhow!("Invalid old password"));
+        }
+
+        // Hash new password
+        let new_password_hash = hash_password(&new_password)
+            .map_err(|e| anyhow!("Failed to hash password: {}", e))?;
+
+        user.update_password(new_password_hash);
+        self.user_repository.update(&user).await?;
+
+        tracing::debug!(%user_id, "password changed successfully");
+        Ok(())
     }
 }
 
@@ -248,6 +310,8 @@ mod tests {
             id: Uuid::new_v4(),
             email: email.clone(),
             password_hash: hash_password("somepassword").unwrap(),
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -282,6 +346,8 @@ mod tests {
             id: Uuid::new_v4(),
             email: email.clone(),
             password_hash: password_hash.clone(),
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -321,6 +387,8 @@ mod tests {
             id: Uuid::new_v4(),
             email: email.clone(),
             password_hash,
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -375,6 +443,8 @@ mod tests {
             id: Uuid::new_v4(),
             email: email.clone(),
             password_hash,
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: Some(Utc::now()),
@@ -429,6 +499,8 @@ mod tests {
             id: Uuid::new_v4(),
             email: email.clone(),
             password_hash,
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -467,6 +539,8 @@ mod tests {
             id: user_id,
             email: email.clone(),
             password_hash,
+            name: None,
+            avatar_url: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -532,6 +606,180 @@ mod tests {
         let result = auth_usecase.refresh_token(access_token).await;
 
         assert!(result.is_err());
+    }
+
+    // Profile Tests
+    #[tokio::test]
+    async fn test_get_profile_returns_user() {
+        let mut mock_repo = MockUserRepository::new();
+        let user_id = Uuid::new_v4();
+        let user = User {
+            id: user_id,
+            email: "test@example.com".to_string(),
+            password_hash: "hash".to_string(),
+            name: Some("Test User".to_string()),
+            avatar_url: Some("https://example.com/avatar.png".to_string()),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            deleted_at: None,
+        };
+        let user_clone = user.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .returning(move |_| Ok(Some(user_clone.clone())));
+
+        let auth_usecase = AuthUseCase::new(mock_repo);
+
+        let result = auth_usecase.get_profile(user_id).await;
+
+        assert!(result.is_ok());
+        let profile = result.unwrap();
+        assert_eq!(profile.id, user_id);
+        assert_eq!(profile.name, Some("Test User".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_profile_user_not_found() {
+        let mut mock_repo = MockUserRepository::new();
+        let user_id = Uuid::new_v4();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .returning(|_| Ok(None));
+
+        let auth_usecase = AuthUseCase::new(mock_repo);
+
+        let result = auth_usecase.get_profile(user_id).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("User not found"));
+    }
+
+    #[tokio::test]
+    async fn test_update_profile_success() {
+        let mut mock_repo = MockUserRepository::new();
+        let user_id = Uuid::new_v4();
+        let user = User {
+            id: user_id,
+            email: "test@example.com".to_string(),
+            password_hash: "hash".to_string(),
+            name: None,
+            avatar_url: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            deleted_at: None,
+        };
+        let user_clone = user.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .returning(move |_| Ok(Some(user_clone.clone())));
+
+        mock_repo
+            .expect_update()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let auth_usecase = AuthUseCase::new(mock_repo);
+
+        let result = auth_usecase.update_profile(
+            user_id,
+            Some("New Name".to_string()),
+            Some("https://example.com/new-avatar.png".to_string()),
+        ).await;
+
+        assert!(result.is_ok());
+        let updated_user = result.unwrap();
+        assert_eq!(updated_user.name, Some("New Name".to_string()));
+        assert_eq!(updated_user.avatar_url, Some("https://example.com/new-avatar.png".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_change_password_success() {
+        use crate::usecase::password::hash_password;
+
+        let mut mock_repo = MockUserRepository::new();
+        let user_id = Uuid::new_v4();
+        let old_password = "old_password";
+        let password_hash = hash_password(old_password).unwrap();
+
+        let user = User {
+            id: user_id,
+            email: "test@example.com".to_string(),
+            password_hash,
+            name: None,
+            avatar_url: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            deleted_at: None,
+        };
+        let user_clone = user.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .returning(move |_| Ok(Some(user_clone.clone())));
+
+        mock_repo
+            .expect_update()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let auth_usecase = AuthUseCase::new(mock_repo);
+
+        let result = auth_usecase.change_password(
+            user_id,
+            old_password.to_string(),
+            "new_password".to_string(),
+        ).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_change_password_invalid_old_password() {
+        use crate::usecase::password::hash_password;
+
+        let mut mock_repo = MockUserRepository::new();
+        let user_id = Uuid::new_v4();
+        let password_hash = hash_password("correct_password").unwrap();
+
+        let user = User {
+            id: user_id,
+            email: "test@example.com".to_string(),
+            password_hash,
+            name: None,
+            avatar_url: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            deleted_at: None,
+        };
+        let user_clone = user.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .returning(move |_| Ok(Some(user_clone.clone())));
+
+        let auth_usecase = AuthUseCase::new(mock_repo);
+
+        let result = auth_usecase.change_password(
+            user_id,
+            "wrong_password".to_string(),
+            "new_password".to_string(),
+        ).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid old password"));
     }
 }
 

@@ -6,6 +6,7 @@ pub trait UserRepository: Send + Sync {
     async fn create(&self, user: &User) -> Result<(), RepositoryError>;
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, RepositoryError>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, RepositoryError>;
+    async fn update(&self, user: &User) -> Result<(), RepositoryError>;
 }
 
 #[cfg(test)]
@@ -126,6 +127,34 @@ mod tests {
             .returning(|_| Err(RepositoryError::DatabaseError("Connection lost".to_string())));
 
         let result = mock_repo.find_by_id(user_id).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_mock_repository_update() {
+        let mut mock_repo = MockUserRepository::new();
+        let user = User::new("test@example.com".to_string(), "hash".to_string());
+
+        mock_repo
+            .expect_update()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let result = mock_repo.update(&user).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_mock_repository_update_error() {
+        let mut mock_repo = MockUserRepository::new();
+        let user = User::new("test@example.com".to_string(), "hash".to_string());
+
+        mock_repo
+            .expect_update()
+            .times(1)
+            .returning(|_| Err(RepositoryError::DatabaseError("Connection lost".to_string())));
+
+        let result = mock_repo.update(&user).await;
         assert!(result.is_err());
     }
 }
