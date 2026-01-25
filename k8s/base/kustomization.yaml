@@ -12,6 +12,9 @@ resources:
   - auth/deployment.yaml
   - auth/service.yaml
   - auth/servicemonitor.yaml
+  - routes/configmap.yaml
+  - routes/deployment.yaml
+  - routes/service.yaml
   - cache/configmap.yaml
   - cache/deployment.yaml
   - cache/service.yaml

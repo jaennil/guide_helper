@@ -32,6 +32,9 @@ images:
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-4d2bf0f
+- name: routes
+  newName: ghcr.io/jaennil/guide-helper-routes
+  newTag: main-04912bc
 
 replicas:
 - count: 1
@@ -42,3 +45,5 @@ replicas:
   name: auth
 - count: 1
   name: frontend
+- count: 1
+  name: routes
