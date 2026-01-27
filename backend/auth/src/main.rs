@@ -1,14 +1,15 @@
-mod domain;
 mod config;
 mod delivery;
-mod usecase;
+mod domain;
 mod repository;
+mod telemetry;
+mod usecase;
 
 use std::sync::Arc;
 
 use axum::{extract::State, middleware, routing::{get, post, put}, Router};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
+use tracing_subscriber::EnvFilter;
 use crate::delivery::http::v1::auth::{register, login, refresh_token};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::profile::{get_profile, update_profile, change_password};
@@ -23,14 +24,26 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let config = config::AppConfig::from_env();
+
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info"));
 
-    let subscriber = tracing_subscriber::registry()
-        .with(env_filter)
-        .with(fmt::layer());
+    // Initialize tracing subscriber with optional OpenTelemetry layer
+    if config.telemetry_enabled {
+        let telemetry_config = telemetry::TelemetryConfig {
+            service_name: config.telemetry_service_name.clone(),
+            service_version: config.telemetry_service_version.clone(),
+            environment: config.telemetry_environment.clone(),
+            otlp_endpoint: config.telemetry_otlp_endpoint.clone(),
+        };
 
-    tracing::subscriber::set_global_default(subscriber)?;
+        telemetry::init_telemetry_with_subscriber(&telemetry_config, env_filter)
+            .expect("failed to initialize telemetry");
+    } else {
+        telemetry::init_subscriber_without_telemetry(env_filter);
+    }
+
     tracing::info!("starting the auth service");
 
     let metrics_handle = PrometheusBuilder::new()
@@ -39,8 +52,7 @@ async fn main() -> anyhow::Result<()> {
     metrics_process::Collector::default().describe();
     tracing::info!("prometheus metrics initialized");
 
-    let config = config::AppConfig::from_env();
-    tracing::info!("config loaded");
+    tracing::info!("config loaded, telemetry_enabled={}", config.telemetry_enabled);
 
     let pool = create_pool(&config.database_url, config.database_max_connections)
         .await
@@ -79,6 +91,11 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
     tracing::info!("server running on 0.0.0.0:8080");
     axum::serve(listener, router).await?;
+
+    // Shutdown telemetry on exit
+    if config.telemetry_enabled {
+        telemetry::shutdown_telemetry();
+    }
 
     Ok(())
 }
