@@ -15,6 +15,7 @@ import (
 	"github.com/jaennil/guide_helper/backend/tiles/internal/usecase"
 	"github.com/jaennil/guide_helper/backend/tiles/pkg/config"
 	"github.com/jaennil/guide_helper/backend/tiles/pkg/logger"
+	"github.com/jaennil/guide_helper/backend/tiles/pkg/telemetry"
 )
 
 func Run() {
@@ -29,6 +30,27 @@ func Run() {
 
 	l.Info("starting tiles service", "config", cfg)
 
+	// Initialize OpenTelemetry if enabled
+	var shutdownTelemetry func(context.Context) error
+	if cfg.Telemetry.Enabled {
+		var err error
+		shutdownTelemetry, err = telemetry.InitTracer(telemetry.Config{
+			ServiceName:    cfg.Telemetry.ServiceName,
+			ServiceVersion: cfg.Telemetry.ServiceVersion,
+			Environment:    cfg.Telemetry.Environment,
+			OTLPEndpoint:   cfg.Telemetry.OTLPEndpoint,
+		})
+		if err != nil {
+			l.Fatal("failed to initialize telemetry", "error", err)
+		}
+		defer func() {
+			if err := shutdownTelemetry(context.Background()); err != nil {
+				l.Error("failed to shutdown telemetry", "error", err)
+			}
+		}()
+		l.Info("telemetry initialized", "service", cfg.Telemetry.ServiceName)
+	}
+
 	// Initialize usecase
 	tileUseCase := usecase.NewTileUseCase(
 		cfg.Cache.BaseURL,
@@ -40,7 +62,7 @@ func Run() {
 	h := handler.NewHandler(tileUseCase)
 
 	// Initialize router
-	router := v1.NewRouter(h, l)
+	router := v1.NewRouter(h, l, cfg.Telemetry.Enabled)
 
 	// Initialize HTTP server
 	server := &http.Server{
