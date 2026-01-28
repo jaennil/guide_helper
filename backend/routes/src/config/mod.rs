@@ -6,6 +6,32 @@ pub struct AppConfig {
     pub database_url: String,
     pub database_max_connections: u32,
     pub jwt_secret: String,
+    #[serde(default)]
+    pub telemetry_enabled: bool,
+    #[serde(default = "default_telemetry_service_name")]
+    pub telemetry_service_name: String,
+    #[serde(default = "default_telemetry_service_version")]
+    pub telemetry_service_version: String,
+    #[serde(default = "default_telemetry_environment")]
+    pub telemetry_environment: String,
+    #[serde(default = "default_telemetry_otlp_endpoint")]
+    pub telemetry_otlp_endpoint: String,
+}
+
+fn default_telemetry_service_name() -> String {
+    "guide-helper-routes".to_string()
+}
+
+fn default_telemetry_service_version() -> String {
+    "1.0.0".to_string()
+}
+
+fn default_telemetry_environment() -> String {
+    "production".to_string()
+}
+
+fn default_telemetry_otlp_endpoint() -> String {
+    "http://otel-collector.observability.svc.cluster.local:4317".to_string()
 }
 
 impl AppConfig {

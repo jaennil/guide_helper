@@ -4,3 +4,8 @@ metadata:
   name: routes-config
 data:
   DATABASE_MAX_CONNECTIONS: "5"
+  TELEMETRY_ENABLED: "true"
+  TELEMETRY_SERVICE_NAME: "guide-helper-routes"
+  TELEMETRY_SERVICE_VERSION: "1.0.0"
+  TELEMETRY_ENVIRONMENT: "production"
+  TELEMETRY_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
