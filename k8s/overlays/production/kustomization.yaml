@@ -31,10 +31,10 @@ images:
   newTag: main-183a98b
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-0c4c982
+  newTag: main-32c682d
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: main-0c4c982
+  newTag: main-32c682d
 
 replicas:
 - count: 1
