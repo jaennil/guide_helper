@@ -10,14 +10,14 @@ use std::sync::Arc;
 use axum::{
     extract::State,
     middleware,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::middleware::auth_middleware;
-use crate::delivery::http::v1::routes::{create_route, delete_route, get_route, list_routes, update_route};
+use crate::delivery::http::v1::routes::{create_route, delete_route, get_route, import_route_from_geojson, list_routes, update_route};
 use crate::repository::postgres::{create_pool, PostgresRouteRepository};
 use crate::usecase::jwt::JwtService;
 use crate::usecase::routes::RoutesUseCase;
@@ -81,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
     // All routes require authentication
     let routes_api = Router::new()
         .route("/api/v1/routes", get(list_routes).post(create_route))
+        .route("/api/v1/routes/import", post(import_route_from_geojson))
         .route(
             "/api/v1/routes/{id}",
             get(get_route).put(update_route).delete(delete_route),

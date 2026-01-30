@@ -6,6 +6,7 @@ use axum::{
     response::IntoResponse,
     Extension, Json,
 };
+use axum_extra::extract::Multipart;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -13,6 +14,7 @@ use validator::Validate;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::domain::route::RoutePoint;
+use crate::usecase::geojson_import::{parse_geojson, ImportError};
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -233,6 +235,94 @@ pub async fn delete_route(
                     format!("Failed to delete route: {}", e),
                 ))
             }
+        }
+    }
+}
+
+pub async fn import_route_from_geojson(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::debug!(user_id = %user.user_id, "handling import route from GeoJSON request");
+
+    let mut file_content: Option<String> = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to read multipart field");
+            (StatusCode::BAD_REQUEST, format!("Failed to read multipart: {}", e))
+        })?
+    {
+        let field_name = field.name().unwrap_or("").to_string();
+        tracing::debug!(field_name = %field_name, "processing multipart field");
+
+        if field_name == "file" {
+            let bytes = field.bytes().await.map_err(|e| {
+                tracing::error!(error = %e, "failed to read file bytes");
+                (StatusCode::BAD_REQUEST, format!("Failed to read file: {}", e))
+            })?;
+
+            file_content = Some(String::from_utf8(bytes.to_vec()).map_err(|e| {
+                tracing::error!(error = %e, "file is not valid UTF-8");
+                (StatusCode::BAD_REQUEST, "File must be valid UTF-8".to_string())
+            })?);
+
+            tracing::debug!(content_len = file_content.as_ref().map(|c| c.len()), "read file content");
+            break;
+        }
+    }
+
+    let content = file_content.ok_or_else(|| {
+        tracing::warn!("no 'file' field in multipart request");
+        (StatusCode::BAD_REQUEST, "Missing 'file' field in multipart request".to_string())
+    })?;
+
+    let (name, points) = parse_geojson(&content).map_err(|e| {
+        let status = match &e {
+            ImportError::InvalidGeoJson(_) => StatusCode::BAD_REQUEST,
+            ImportError::MissingRouteName => StatusCode::BAD_REQUEST,
+            ImportError::EmptyRoute => StatusCode::BAD_REQUEST,
+            ImportError::UnsupportedGeometry => StatusCode::BAD_REQUEST,
+        };
+        tracing::warn!(error = %e, "failed to parse GeoJSON");
+        (status, e.to_string())
+    })?;
+
+    tracing::info!(
+        user_id = %user.user_id,
+        route_name = %name,
+        point_count = points.len(),
+        "parsed GeoJSON successfully, creating route"
+    );
+
+    match state
+        .routes_usecase
+        .create_route(user.user_id, name, points)
+        .await
+    {
+        Ok(route) => {
+            tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
+            Ok((
+                StatusCode::CREATED,
+                Json(RouteResponse {
+                    id: route.id,
+                    user_id: route.user_id,
+                    name: route.name,
+                    points: route.points,
+                    created_at: route.created_at,
+                    updated_at: route.updated_at,
+                }),
+            ))
+        }
+        Err(e) => {
+            tracing::error!(user_id = %user.user_id, error = %e, "failed to create route from import");
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create route: {}", e),
+            ))
         }
     }
 }
