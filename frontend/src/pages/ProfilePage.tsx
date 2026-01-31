@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
@@ -32,6 +32,8 @@ export default function ProfilePage() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [routesLoading, setRoutesLoading] = useState(false);
   const [routesError, setRoutesError] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -123,6 +125,26 @@ export default function ProfilePage() {
       setRoutes(routes.filter(r => r.id !== routeId));
     } catch (err: any) {
       setRoutesError(err.response?.data || 'Failed to delete route');
+    }
+  };
+
+  const handleImportGeoJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    setRoutesError('');
+
+    try {
+      const importedRoute = await routesApi.importFromGeoJson(file);
+      setRoutes([importedRoute, ...routes]);
+    } catch (err: any) {
+      setRoutesError(err.response?.data || 'Failed to import route from GeoJSON');
+    } finally {
+      setImportLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -270,7 +292,25 @@ export default function ProfilePage() {
 
           {activeTab === 'routes' && (
             <div className="routes-tab">
-              <h2>My Saved Routes</h2>
+              <div className="routes-header">
+                <h2>My Saved Routes</h2>
+                <div className="routes-actions">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".geojson,.json"
+                    onChange={handleImportGeoJson}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importLoading}
+                    className="btn-secondary"
+                  >
+                    {importLoading ? 'Importing...' : 'Import GeoJSON'}
+                  </button>
+                </div>
+              </div>
 
               {routesLoading && <div className="loading">Loading routes...</div>}
               {routesError && <div className="error-message">{routesError}</div>}

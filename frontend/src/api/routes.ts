@@ -68,4 +68,16 @@ export const routesApi = {
       headers: getAuthHeader(),
     });
   },
+
+  async importFromGeoJson(file: File): Promise<Route> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post(`${API_BASE_URL}/import`, formData, {
+      headers: {
+        ...getAuthHeader(),
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
