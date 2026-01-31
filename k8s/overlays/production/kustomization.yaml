@@ -28,7 +28,7 @@ images:
   newTag: main-2ab881e
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-183a98b
+  newTag: main-34fe417
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
   newTag: main-32c682d
