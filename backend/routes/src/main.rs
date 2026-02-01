@@ -14,7 +14,6 @@ use axum::{
     Router,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::middleware::auth_middleware;
@@ -96,7 +95,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/healthz", get(|| async { "OK" }))
         .route("/metrics", get(metrics))
         .merge(routes_api)
-        .layer(TraceLayer::new_for_http())
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;

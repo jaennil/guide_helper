@@ -42,11 +42,12 @@ pub struct UpdateRouteRequest {
     pub points: Option<Vec<RoutePoint>>,
 }
 
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
 pub async fn list_routes(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    tracing::debug!(user_id = %user.user_id, "handling list routes request");
+    tracing::debug!("handling list routes request");
 
     match state.routes_usecase.get_user_routes(user.user_id).await {
         Ok(routes) => {
@@ -74,6 +75,7 @@ pub async fn list_routes(
     }
 }
 
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
 pub async fn get_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -112,12 +114,13 @@ pub async fn get_route(
     }
 }
 
+#[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id))]
 pub async fn create_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateRouteRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    tracing::debug!(user_id = %user.user_id, "handling create route request");
+    tracing::debug!("handling create route request");
 
     if let Err(validation_errors) = payload.validate() {
         tracing::warn!(user_id = %user.user_id, ?validation_errors, "validation failed");
@@ -156,13 +159,14 @@ pub async fn create_route(
     }
 }
 
+#[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id))]
 pub async fn update_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
     Json(payload): Json<UpdateRouteRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    tracing::debug!(user_id = %user.user_id, %route_id, "handling update route request");
+    tracing::debug!(%route_id, "handling update route request");
 
     if let Err(validation_errors) = payload.validate() {
         tracing::warn!(user_id = %user.user_id, ?validation_errors, "validation failed");
@@ -207,12 +211,13 @@ pub async fn update_route(
     }
 }
 
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
 pub async fn delete_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    tracing::debug!(user_id = %user.user_id, %route_id, "handling delete route request");
+    tracing::debug!(%route_id, "handling delete route request");
 
     match state
         .routes_usecase
@@ -239,12 +244,13 @@ pub async fn delete_route(
     }
 }
 
+#[tracing::instrument(skip(state, multipart), fields(user_id = %user.user_id))]
 pub async fn import_route_from_geojson(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    tracing::debug!(user_id = %user.user_id, "handling import route from GeoJSON request");
+    tracing::debug!("handling import route from GeoJSON request");
 
     let mut file_content: Option<String> = None;
 
