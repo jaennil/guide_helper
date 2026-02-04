@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
         ));
 
     let router = Router::new()
-        .route("/healthz", get(|| async { "OK" }))
+        .route("/healthz", get(healthz))
         .route("/metrics", get(metrics))
         .merge(routes_api)
         .with_state(shared_state);
@@ -112,4 +112,9 @@ async fn main() -> anyhow::Result<()> {
 async fn metrics(State(state): State<Arc<AppState>>) -> String {
     metrics_process::Collector::default().collect();
     state.metrics_handle.render()
+}
+
+#[tracing::instrument]
+async fn healthz() -> &'static str {
+    "OK"
 }
