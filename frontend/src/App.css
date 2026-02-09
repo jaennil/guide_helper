@@ -67,6 +67,26 @@ body {
     cursor: pointer;
 }
 
+/* Переключатель тайлов */
+.tile-switcher {
+    background: black;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.tile-switcher select {
+    background: black;
+    color: white;
+    border: none;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+    outline: none;
+}
+
 /* Стили для попапа точки */
 .point-popup {
     min-width: 200px;

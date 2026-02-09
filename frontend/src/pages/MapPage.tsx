@@ -18,6 +18,13 @@ import { routesApi } from "../api/routes";
 
 type RouteMode = "auto" | "manual";
 
+const TILE_PROVIDERS = [
+  { id: "osm", name: "OpenStreetMap", url: "/api/v1/tile/{z}/{x}/{y}", attribution: "&copy; OpenStreetMap" },
+  { id: "yandex", name: "Yandex", url: "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU", attribution: "&copy; Yandex" },
+  { id: "2gis", name: "2GIS", url: "https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1", attribution: "&copy; 2GIS" },
+  { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
+];
+
 interface RoutePoint {
   id: number;
   position: [number, number];
@@ -295,6 +302,7 @@ export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeMode, setRouteMode] = useState<RouteMode>("auto");
+  const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -424,6 +432,13 @@ export function MapPage() {
     navigate('/login');
   };
 
+  const handleTileProviderChange = (providerId: string) => {
+    setTileProvider(providerId);
+    localStorage.setItem("tileProvider", providerId);
+  };
+
+  const currentProvider = TILE_PROVIDERS.find((p) => p.id === tileProvider) || TILE_PROVIDERS[0];
+
   const waypoints = routePoints.map((point) =>
     L.latLng(point.position[0], point.position[1])
   );
@@ -452,6 +467,18 @@ export function MapPage() {
             />
             Manual (прямая линия)
           </label>
+        </div>
+        <div className="tile-switcher">
+          <select
+            value={tileProvider}
+            onChange={(e) => handleTileProviderChange(e.target.value)}
+          >
+            {TILE_PROVIDERS.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="header-actions">
           {routePoints.length >= 2 && (
@@ -511,7 +538,9 @@ export function MapPage() {
         style={{ height: "100vh", width: "100%" }}
       >
         <TileLayer
-          url="/api/v1/tile/{z}/{x}/{y}"
+          key={tileProvider}
+          url={currentProvider.url}
+          attribution={currentProvider.attribution}
         />
         <MapClickHandler onMapClick={handleMapClick} />
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
