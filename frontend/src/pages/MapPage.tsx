@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, type ChangeEvent } from "react";
+import exifr from "exifr";
 import {
   MapContainer,
   TileLayer,
@@ -352,6 +353,7 @@ export function MapPage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
   const pointIdRef = useRef(0);
+  const photoImportRef = useRef<HTMLInputElement>(null);
 
   const { logout, user } = useAuth();
   const { t } = useLanguage();
@@ -520,6 +522,140 @@ export function MapPage() {
     );
   };
 
+  const handleImportPhotos = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    console.log(`[photo-import] starting import of ${files.length} files`);
+
+    interface ParsedPhoto {
+      lat: number;
+      lng: number;
+      base64: string;
+      date: Date | null;
+    }
+
+    const results = await Promise.allSettled(
+      Array.from(files).map(async (file): Promise<ParsedPhoto | null> => {
+        try {
+          const exifData = await exifr.parse(file, {
+            gps: true,
+            pick: ["DateTimeOriginal"],
+          });
+
+          if (!exifData?.latitude || !exifData?.longitude) {
+            console.log(`[photo-import] no GPS data in: ${file.name}`);
+            return null;
+          }
+
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const result = event.target?.result;
+              if (typeof result === "string") resolve(result);
+              else reject(new Error("Failed to read file as data URL"));
+            };
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          });
+
+          console.log(
+            `[photo-import] parsed ${file.name}: lat=${exifData.latitude}, lng=${exifData.longitude}`
+          );
+
+          return {
+            lat: exifData.latitude,
+            lng: exifData.longitude,
+            base64,
+            date: exifData.DateTimeOriginal
+              ? new Date(exifData.DateTimeOriginal)
+              : null,
+          };
+        } catch (err) {
+          console.error(`[photo-import] failed to parse ${file.name}:`, err);
+          return null;
+        }
+      })
+    );
+
+    const parsed: ParsedPhoto[] = [];
+    let skipped = 0;
+
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value !== null) {
+        parsed.push(result.value);
+      } else {
+        skipped++;
+      }
+    }
+
+    if (parsed.length === 0) {
+      console.log(`[photo-import] no photos with GPS data found`);
+      alert(t("map.noGpsPhotos"));
+      if (photoImportRef.current) photoImportRef.current.value = "";
+      return;
+    }
+
+    // Sort by EXIF date if available
+    parsed.sort((a, b) => {
+      if (a.date && b.date) return a.date.getTime() - b.date.getTime();
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return 0;
+    });
+
+    console.log(
+      `[photo-import] sorted ${parsed.length} photos, ${skipped} skipped`
+    );
+
+    // Create route points and segments
+    const newPoints: RoutePoint[] = parsed.map((photo) => ({
+      id: pointIdRef.current++,
+      position: [photo.lat, photo.lng] as [number, number],
+      photo: photo.base64,
+    }));
+
+    setRoutePoints((prev) => {
+      const newSegments: RouteSegment[] = [];
+
+      // Connect first imported point to last existing point
+      if (prev.length > 0) {
+        newSegments.push({
+          fromIndex: prev.length - 1,
+          toIndex: prev.length,
+          mode: routeMode,
+        });
+      }
+
+      // Connect imported points to each other
+      for (let i = 1; i < newPoints.length; i++) {
+        newSegments.push({
+          fromIndex: prev.length + i - 1,
+          toIndex: prev.length + i,
+          mode: routeMode,
+        });
+      }
+
+      setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
+
+      return [...prev, ...newPoints];
+    });
+
+    // Build alert message
+    let message = t("map.photosImported", { added: parsed.length });
+    if (skipped > 0) {
+      message += "\n" + t("map.photosSkipped", { skipped });
+    }
+    alert(message);
+
+    console.log(
+      `[photo-import] import complete: ${parsed.length} added, ${skipped} skipped`
+    );
+
+    // Reset file input
+    if (photoImportRef.current) photoImportRef.current.value = "";
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -574,6 +710,20 @@ export function MapPage() {
           </select>
         </div>
         <div className="header-actions">
+          <button
+            onClick={() => photoImportRef.current?.click()}
+            className="import-photos-btn"
+          >
+            {t("map.importPhotos")}
+          </button>
+          <input
+            type="file"
+            ref={photoImportRef}
+            multiple
+            accept="image/*"
+            onChange={handleImportPhotos}
+            style={{ display: "none" }}
+          />
           {routePoints.length >= 2 && (
             <button onClick={() => setShowSaveModal(true)} className="save-btn">
               {t("map.saveRoute")}
