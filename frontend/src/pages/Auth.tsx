@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import './Auth.css';
 
@@ -11,6 +12,7 @@ export function Auth() {
   const [loading, setLoading] = useState(false);
 
   const { login, register } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,12 +37,12 @@ export function Auth() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1>Guide Helper</h1>
-        <h2>{isLogin ? 'Login' : 'Register'}</h2>
+        <h1>{t("auth.title")}</h1>
+        <h2>{isLogin ? t("auth.login") : t("auth.register")}</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t("auth.email")}</label>
             <input
               id="email"
               type="email"
@@ -52,7 +54,7 @@ export function Auth() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t("auth.password")}</label>
             <input
               id="password"
               type="password"
@@ -63,14 +65,14 @@ export function Auth() {
               autoComplete={isLogin ? 'current-password' : 'new-password'}
             />
             {!isLogin && (
-              <small>Password must be at least 8 characters</small>
+              <small>{t("auth.passwordMinLength")}</small>
             )}
           </div>
 
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" disabled={loading}>
-            {loading ? 'Loading...' : isLogin ? 'Login' : 'Register'}
+            {loading ? t("auth.loading") : isLogin ? t("auth.login") : t("auth.register")}
           </button>
         </form>
 
@@ -82,7 +84,7 @@ export function Auth() {
               setError('');
             }}
           >
-            {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
+            {isLogin ? t("auth.switchToRegister") : t("auth.switchToLogin")}
           </button>
         </div>
       </div>
