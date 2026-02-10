@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -37,6 +37,19 @@ interface RouteSegment {
   toIndex: number;
   mode: RouteMode;
 }
+
+interface OverlayRoute {
+  id: string;
+  name: string;
+  color: string;
+  points: RoutePoint[];
+  segments: RouteSegment[];
+}
+
+const ROUTE_COLORS = [
+  '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+  '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
+];
 
 function MapClickHandler({
   onMapClick,
@@ -233,6 +246,25 @@ function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
   }
 }
 
+function createColoredMarkerIcon(color: string, photo?: string): L.DivIcon {
+  if (photo) {
+    return L.divIcon({
+      className: "overlay-marker",
+      html: `<div class="photo-marker-container" style="border-color:${color}"><img src="${photo}" alt="Marker" /></div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+      popupAnchor: [0, -40],
+    });
+  }
+  return L.divIcon({
+    className: "overlay-marker",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -10],
+  });
+}
+
 function PointPopup({
   point,
   index,
@@ -318,6 +350,7 @@ export function MapPage() {
   const [routeName, setRouteName] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
+  const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
   const pointIdRef = useRef(0);
 
   const { logout, user } = useAuth();
@@ -330,6 +363,14 @@ export function MapPage() {
     const routeId = searchParams.get("route");
     if (routeId) {
       loadRoute(routeId);
+    }
+
+    const routeIds = searchParams.get("routes");
+    if (routeIds) {
+      const ids = routeIds.split(",").filter(Boolean);
+      if (ids.length > 0) {
+        loadOverlayRoutes(ids);
+      }
     }
   }, [searchParams]);
 
@@ -359,6 +400,46 @@ export function MapPage() {
     } catch (error) {
       console.error("Failed to load route:", error);
     }
+  };
+
+  const loadOverlayRoutes = async (ids: string[]) => {
+    console.log("Loading overlay routes:", ids);
+    const results = await Promise.allSettled(
+      ids.map((id) => routesApi.getRoute(id))
+    );
+
+    const loaded: OverlayRoute[] = [];
+    results.forEach((result, idx) => {
+      if (result.status === "fulfilled") {
+        const route = result.value;
+        const points: RoutePoint[] = route.points.map((p, i) => ({
+          id: i,
+          position: [p.lat, p.lng] as [number, number],
+          photo: p.photo,
+        }));
+        const segments: RouteSegment[] = [];
+        for (let i = 0; i < points.length - 1; i++) {
+          const destPoint = route.points[i + 1];
+          segments.push({
+            fromIndex: i,
+            toIndex: i + 1,
+            mode: (destPoint.segment_mode as RouteMode) || "manual",
+          });
+        }
+        loaded.push({
+          id: route.id,
+          name: route.name,
+          color: ROUTE_COLORS[idx % ROUTE_COLORS.length],
+          points,
+          segments,
+        });
+      } else {
+        console.error(`Failed to load overlay route ${ids[idx]}:`, result.reason);
+      }
+    });
+
+    console.log("Loaded overlay routes:", loaded.length);
+    setOverlayRoutes(loaded);
   };
 
   const handleSaveRoute = async () => {
@@ -512,6 +593,20 @@ export function MapPage() {
         </div>
       </div>
 
+      {overlayRoutes.length > 0 && (
+        <div className="overlay-legend">
+          {overlayRoutes.map((route) => (
+            <div key={route.id} className="overlay-legend-item">
+              <span
+                className="overlay-legend-color"
+                style={{ backgroundColor: route.color }}
+              />
+              <span className="overlay-legend-name">{route.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {showSaveModal && (
         <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -572,6 +667,49 @@ export function MapPage() {
             </Popup>
           </Marker>
         ))}
+        {overlayRoutes.map((overlay) => {
+          const overlayWaypoints = overlay.points.map((p) =>
+            L.latLng(p.position[0], p.position[1])
+          );
+          return (
+            <React.Fragment key={overlay.id}>
+              <RoutingControl
+                waypoints={overlayWaypoints}
+                routeSegments={overlay.segments}
+                color={overlay.color}
+              />
+              <ManualRoutes
+                waypoints={overlayWaypoints}
+                routeSegments={overlay.segments}
+                color={overlay.color}
+              />
+              {overlay.points.map((point, idx) => (
+                <Marker
+                  key={`overlay-${overlay.id}-${idx}`}
+                  position={point.position}
+                  icon={createColoredMarkerIcon(overlay.color, point.photo)}
+                >
+                  <Popup>
+                    <div className="point-popup">
+                      <div className="point-popup-header">
+                        <strong>{overlay.name} — {t("map.point", { index: idx + 1 })}</strong>
+                      </div>
+                      <div className="point-popup-coords">
+                        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+                        {point.position[1].toFixed(6)}
+                      </div>
+                      {point.photo && (
+                        <div className="point-popup-photo">
+                          <img src={point.photo} alt={`${overlay.name} point ${idx + 1}`} />
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </React.Fragment>
+          );
+        })}
       </MapContainer>
     </div>
   );
