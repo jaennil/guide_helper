@@ -13,6 +13,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import "../App.css";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi } from "../api/routes";
 
@@ -233,12 +234,13 @@ function PointPopup({
   onPhotoChange: (pointId: number, photo: string | undefined) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert("Пожалуйста, выберите файл изображения");
+        alert(t("map.selectImageFile"));
         return;
       }
 
@@ -263,21 +265,21 @@ function PointPopup({
   return (
     <div className="point-popup">
       <div className="point-popup-header">
-        <strong>Точка {index + 1}</strong>
+        <strong>{t("map.point", { index: index + 1 })}</strong>
       </div>
       <div className="point-popup-coords">
-        Координаты: {point.position[0].toFixed(6)},{" "}
+        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
         {point.position[1].toFixed(6)}
       </div>
       {point.photo && (
         <div className="point-popup-photo">
-          <img src={point.photo} alt={`Точка ${index + 1}`} />
+          <img src={point.photo} alt={t("map.point", { index: index + 1 })} />
           <button
             type="button"
             onClick={handleRemovePhoto}
             className="remove-photo-btn"
           >
-            Удалить фото
+            {t("map.removePhoto")}
           </button>
         </div>
       )}
@@ -291,7 +293,7 @@ function PointPopup({
           id={`photo-input-${point.id}`}
         />
         <label htmlFor={`photo-input-${point.id}`} className="upload-photo-btn">
-          {point.photo ? "Изменить фото" : "Прикрепить фото"}
+          {point.photo ? t("map.changePhoto") : t("map.attachPhoto")}
         </label>
       </div>
     </div>
@@ -310,6 +312,7 @@ export function MapPage() {
   const pointIdRef = useRef(0);
 
   const { logout, user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -351,12 +354,12 @@ export function MapPage() {
 
   const handleSaveRoute = async () => {
     if (!routeName.trim()) {
-      setSaveError("Please enter a route name");
+      setSaveError(t("map.pleaseEnterRouteName"));
       return;
     }
 
     if (routePoints.length < 2) {
-      setSaveError("Route must have at least 2 points");
+      setSaveError(t("map.routeMinPoints"));
       return;
     }
 
@@ -383,16 +386,16 @@ export function MapPage() {
       });
       setShowSaveModal(false);
       setRouteName("");
-      alert("Route saved successfully!");
+      alert(t("map.routeSaved"));
     } catch (err: any) {
-      setSaveError(err.response?.data || "Failed to save route");
+      setSaveError(err.response?.data || t("map.saveFailed"));
     } finally {
       setSaveLoading(false);
     }
   };
 
   const handleClearRoute = () => {
-    if (routePoints.length > 0 && !confirm("Clear all points?")) {
+    if (routePoints.length > 0 && !confirm(t("map.clearAllPoints"))) {
       return;
     }
     setRoutePoints([]);
@@ -455,7 +458,7 @@ export function MapPage() {
               checked={routeMode === "auto"}
               onChange={(e) => setRouteMode(e.target.value as RouteMode)}
             />
-            Auto (маршрут по дорогам)
+            {t("map.modeAuto")}
           </label>
           <label>
             <input
@@ -465,7 +468,7 @@ export function MapPage() {
               checked={routeMode === "manual"}
               onChange={(e) => setRouteMode(e.target.value as RouteMode)}
             />
-            Manual (прямая линия)
+            {t("map.modeManual")}
           </label>
         </div>
         <div className="tile-switcher">
@@ -483,19 +486,19 @@ export function MapPage() {
         <div className="header-actions">
           {routePoints.length >= 2 && (
             <button onClick={() => setShowSaveModal(true)} className="save-btn">
-              Save Route
+              {t("map.saveRoute")}
             </button>
           )}
           {routePoints.length > 0 && (
             <button onClick={handleClearRoute} className="clear-btn">
-              Clear
+              {t("map.clear")}
             </button>
           )}
           <button onClick={() => navigate("/profile")} className="profile-btn">
-            {user?.name || user?.email || "Profile"}
+            {user?.name || user?.email || t("map.profile")}
           </button>
           <button onClick={handleLogout} className="logout-btn">
-            Logout
+            {t("map.logout")}
           </button>
         </div>
       </div>
@@ -503,11 +506,11 @@ export function MapPage() {
       {showSaveModal && (
         <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Save Route</h2>
+            <h2>{t("map.saveRouteTitle")}</h2>
             <div className="modal-form">
               <input
                 type="text"
-                placeholder="Enter route name"
+                placeholder={t("map.enterRouteName")}
                 value={routeName}
                 onChange={(e) => setRouteName(e.target.value)}
                 autoFocus
@@ -518,14 +521,14 @@ export function MapPage() {
                   onClick={() => setShowSaveModal(false)}
                   className="modal-cancel"
                 >
-                  Cancel
+                  {t("map.cancel")}
                 </button>
                 <button
                   onClick={handleSaveRoute}
                   disabled={saveLoading}
                   className="modal-save"
                 >
-                  {saveLoading ? "Saving..." : "Save"}
+                  {saveLoading ? t("map.saving") : t("map.save")}
                 </button>
               </div>
             </div>
