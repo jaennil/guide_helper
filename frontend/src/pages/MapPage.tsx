@@ -61,9 +61,11 @@ interface RoutingControlData {
 function RoutingControl({
   waypoints,
   routeSegments,
+  color = "#3388ff",
 }: {
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
+  color?: string;
 }) {
   const map = useMapEvents({});
   const routingControlsRef = useRef<Map<string, RoutingControlData>>(new Map());
@@ -99,6 +101,11 @@ function RoutingControl({
             draggableWaypoints: false,
             fitSelectedRoutes: false,
             showAlternatives: false,
+            lineOptions: {
+              styles: [{ color, opacity: 0.7, weight: 4 }],
+              extendToWaypoints: true,
+              missingRouteTolerance: 0,
+            },
             router: L.Routing.osrmv1({
               serviceUrl: "https://router.project-osrm.org/route/v1",
               profile: "foot",
@@ -166,9 +173,11 @@ function RoutingControl({
 function ManualRoutes({
   waypoints,
   routeSegments,
+  color = "#3388ff",
 }: {
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
+  color?: string;
 }) {
   const routes: [number, number][][] = [];
   routeSegments.forEach((segment) => {
@@ -190,7 +199,7 @@ function ManualRoutes({
         <Polyline
           key={index}
           positions={route}
-          color="#3388ff"
+          color={color}
           weight={4}
           opacity={0.7}
         />
