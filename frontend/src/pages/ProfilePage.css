@@ -253,6 +253,14 @@
   color: #999 !important;
 }
 
+.route-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #4CAF50;
+}
+
 .route-actions {
   display: flex;
   gap: 0.5rem;

@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const [routesLoading, setRoutesLoading] = useState(false);
   const [routesError, setRoutesError] = useState('');
   const [importLoading, setImportLoading] = useState(false);
+  const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -149,6 +150,24 @@ export default function ProfilePage() {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const toggleRouteSelection = (id: string) => {
+    setSelectedRouteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleShowSelected = () => {
+    const ids = Array.from(selectedRouteIds).join(',');
+    console.log("Navigating to multi-route view:", ids);
+    navigate(`/map?routes=${ids}`);
   };
 
   const handleLogout = () => {
@@ -306,6 +325,14 @@ export default function ProfilePage() {
               <div className="routes-header">
                 <h2>{t('profile.mySavedRoutes')}</h2>
                 <div className="routes-actions">
+                  {selectedRouteIds.size > 0 && (
+                    <button
+                      onClick={handleShowSelected}
+                      className="btn-primary"
+                    >
+                      {t('profile.showSelected', { count: selectedRouteIds.size })}
+                    </button>
+                  )}
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -339,6 +366,12 @@ export default function ProfilePage() {
                 <div className="routes-list">
                   {routes.map((route) => (
                     <div key={route.id} className="route-card">
+                      <input
+                        type="checkbox"
+                        className="route-checkbox"
+                        checked={selectedRouteIds.has(route.id)}
+                        onChange={() => toggleRouteSelection(route.id)}
+                      />
                       <div className="route-info">
                         <h3>{route.name}</h3>
                         <p>{t('profile.pointsCount', { count: route.points.length })}</p>
