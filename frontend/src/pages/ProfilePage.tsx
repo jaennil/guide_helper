@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { Locale } from '../i18n';
 import { profileApi } from '../api/profile';
 import { routesApi } from '../api/routes';
 import type { Route } from '../api/routes';
@@ -10,6 +12,7 @@ type TabType = 'profile' | 'security' | 'routes';
 
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
+  const { t, locale, setLocale, dateLocale } = useLanguage();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
 
@@ -55,7 +58,7 @@ export default function ProfilePage() {
       const data = await routesApi.getRoutes();
       setRoutes(data);
     } catch (err: any) {
-      setRoutesError(err.response?.data || 'Failed to load routes');
+      setRoutesError(err.response?.data || t('profile.loadRoutesFailed'));
     } finally {
       setRoutesLoading(false);
     }
@@ -73,9 +76,9 @@ export default function ProfilePage() {
         avatar_url: avatarUrl || undefined,
       });
       await refreshUser();
-      setProfileSuccess('Profile updated successfully');
+      setProfileSuccess(t('profile.updateSuccess'));
     } catch (err: any) {
-      setProfileError(err.response?.data || 'Failed to update profile');
+      setProfileError(err.response?.data || t('profile.updateFailed'));
     } finally {
       setProfileLoading(false);
     }
@@ -88,13 +91,13 @@ export default function ProfilePage() {
     setPasswordSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t('profile.passwordsMismatch'));
       setPasswordLoading(false);
       return;
     }
 
     if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters');
+      setPasswordError(t('profile.passwordMinLength'));
       setPasswordLoading(false);
       return;
     }
@@ -104,19 +107,19 @@ export default function ProfilePage() {
         old_password: oldPassword,
         new_password: newPassword,
       });
-      setPasswordSuccess('Password changed successfully');
+      setPasswordSuccess(t('profile.passwordChanged'));
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPasswordError(err.response?.data || 'Failed to change password');
+      setPasswordError(err.response?.data || t('profile.passwordChangeFailed'));
     } finally {
       setPasswordLoading(false);
     }
   };
 
   const handleDeleteRoute = async (routeId: string) => {
-    if (!confirm('Are you sure you want to delete this route?')) {
+    if (!confirm(t('profile.confirmDelete'))) {
       return;
     }
 
@@ -124,7 +127,7 @@ export default function ProfilePage() {
       await routesApi.deleteRoute(routeId);
       setRoutes(routes.filter(r => r.id !== routeId));
     } catch (err: any) {
-      setRoutesError(err.response?.data || 'Failed to delete route');
+      setRoutesError(err.response?.data || t('profile.deleteFailed'));
     }
   };
 
@@ -139,7 +142,7 @@ export default function ProfilePage() {
       const importedRoute = await routesApi.importFromGeoJson(file);
       setRoutes([importedRoute, ...routes]);
     } catch (err: any) {
-      setRoutesError(err.response?.data || 'Failed to import route from GeoJSON');
+      setRoutesError(err.response?.data || t('profile.importFailed'));
     } finally {
       setImportLoading(false);
       if (fileInputRef.current) {
@@ -154,7 +157,7 @@ export default function ProfilePage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    return new Date(dateString).toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -164,13 +167,13 @@ export default function ProfilePage() {
   return (
     <div className="profile-page">
       <header className="profile-header">
-        <h1>Profile</h1>
+        <h1>{t('profile.title')}</h1>
         <div className="header-actions">
           <button onClick={() => navigate('/map')} className="btn-secondary">
-            Back to Map
+            {t('profile.backToMap')}
           </button>
           <button onClick={handleLogout} className="btn-logout">
-            Logout
+            {t('profile.logout')}
           </button>
         </div>
       </header>
@@ -181,19 +184,19 @@ export default function ProfilePage() {
             className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
-            Profile
+            {t('profile.tabs.profile')}
           </button>
           <button
             className={`tab ${activeTab === 'security' ? 'active' : ''}`}
             onClick={() => setActiveTab('security')}
           >
-            Security
+            {t('profile.tabs.security')}
           </button>
           <button
             className={`tab ${activeTab === 'routes' ? 'active' : ''}`}
             onClick={() => setActiveTab('routes')}
           >
-            My Routes
+            {t('profile.tabs.routes')}
           </button>
         </nav>
 
@@ -202,22 +205,22 @@ export default function ProfilePage() {
             <div className="profile-tab">
               <form onSubmit={handleProfileSubmit}>
                 <div className="form-group">
-                  <label>Email</label>
+                  <label>{t('profile.email')}</label>
                   <input type="email" value={user?.email || ''} disabled />
                 </div>
 
                 <div className="form-group">
-                  <label>Name</label>
+                  <label>{t('profile.name')}</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
+                    placeholder={t('profile.enterName')}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Avatar URL</label>
+                  <label>{t('profile.avatarUrl')}</label>
                   <input
                     type="url"
                     value={avatarUrl}
@@ -227,7 +230,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>Member since</label>
+                  <label>{t('profile.memberSince')}</label>
                   <input
                     type="text"
                     value={user ? formatDate(user.created_at) : ''}
@@ -235,11 +238,19 @@ export default function ProfilePage() {
                   />
                 </div>
 
+                <div className="form-group">
+                  <label>{t('profile.language')}</label>
+                  <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                  </select>
+                </div>
+
                 {profileError && <div className="error-message">{profileError}</div>}
                 {profileSuccess && <div className="success-message">{profileSuccess}</div>}
 
                 <button type="submit" disabled={profileLoading} className="btn-primary">
-                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                  {profileLoading ? t('profile.saving') : t('profile.saveChanges')}
                 </button>
               </form>
             </div>
@@ -247,10 +258,10 @@ export default function ProfilePage() {
 
           {activeTab === 'security' && (
             <div className="security-tab">
-              <h2>Change Password</h2>
+              <h2>{t('profile.changePassword')}</h2>
               <form onSubmit={handlePasswordSubmit}>
                 <div className="form-group">
-                  <label>Current Password</label>
+                  <label>{t('profile.currentPassword')}</label>
                   <input
                     type="password"
                     value={oldPassword}
@@ -260,7 +271,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>New Password</label>
+                  <label>{t('profile.newPassword')}</label>
                   <input
                     type="password"
                     value={newPassword}
@@ -271,7 +282,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>Confirm New Password</label>
+                  <label>{t('profile.confirmPassword')}</label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -284,7 +295,7 @@ export default function ProfilePage() {
                 {passwordSuccess && <div className="success-message">{passwordSuccess}</div>}
 
                 <button type="submit" disabled={passwordLoading} className="btn-primary">
-                  {passwordLoading ? 'Changing...' : 'Change Password'}
+                  {passwordLoading ? t('profile.changing') : t('profile.changePasswordBtn')}
                 </button>
               </form>
             </div>
@@ -293,7 +304,7 @@ export default function ProfilePage() {
           {activeTab === 'routes' && (
             <div className="routes-tab">
               <div className="routes-header">
-                <h2>My Saved Routes</h2>
+                <h2>{t('profile.mySavedRoutes')}</h2>
                 <div className="routes-actions">
                   <input
                     type="file"
@@ -307,19 +318,19 @@ export default function ProfilePage() {
                     disabled={importLoading}
                     className="btn-secondary"
                   >
-                    {importLoading ? 'Importing...' : 'Import GeoJSON'}
+                    {importLoading ? t('profile.importing') : t('profile.importGeoJson')}
                   </button>
                 </div>
               </div>
 
-              {routesLoading && <div className="loading">Loading routes...</div>}
+              {routesLoading && <div className="loading">{t('profile.loadingRoutes')}</div>}
               {routesError && <div className="error-message">{routesError}</div>}
 
               {!routesLoading && routes.length === 0 && (
                 <div className="no-routes">
-                  <p>You haven't saved any routes yet.</p>
+                  <p>{t('profile.noRoutes')}</p>
                   <button onClick={() => navigate('/map')} className="btn-primary">
-                    Create a Route
+                    {t('profile.createRoute')}
                   </button>
                 </div>
               )}
@@ -330,9 +341,9 @@ export default function ProfilePage() {
                     <div key={route.id} className="route-card">
                       <div className="route-info">
                         <h3>{route.name}</h3>
-                        <p>{route.points.length} points</p>
+                        <p>{t('profile.pointsCount', { count: route.points.length })}</p>
                         <p className="route-date">
-                          Created: {formatDate(route.created_at)}
+                          {t('profile.created')} {formatDate(route.created_at)}
                         </p>
                       </div>
                       <div className="route-actions">
@@ -340,13 +351,13 @@ export default function ProfilePage() {
                           onClick={() => navigate(`/map?route=${route.id}`)}
                           className="btn-secondary"
                         >
-                          View
+                          {t('profile.view')}
                         </button>
                         <button
                           onClick={() => handleDeleteRoute(route.id)}
                           className="btn-danger"
                         >
-                          Delete
+                          {t('profile.delete')}
                         </button>
                       </div>
                     </div>
