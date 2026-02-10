@@ -71,4 +71,5 @@ export const ru = {
   "profile.deleteFailed": "Не удалось удалить маршрут",
   "profile.importFailed": "Не удалось импортировать маршрут из GeoJSON",
   "profile.language": "Язык",
+  "profile.showSelected": "Показать {{count}} на карте",
 } as const;

@@ -71,4 +71,5 @@ export const en = {
   "profile.deleteFailed": "Failed to delete route",
   "profile.importFailed": "Failed to import route from GeoJSON",
   "profile.language": "Language",
+  "profile.showSelected": "Show {{count}} on map",
 } as const;
