@@ -83,4 +83,8 @@ export const ru = {
   "profile.shareFailed": "Не удалось включить общий доступ",
   "profile.unshareFailed": "Не удалось отключить общий доступ",
   "shared.notFound": "Общий маршрут не найден",
+  "stats.distance": "Расстояние",
+  "stats.elevation": "Набор высоты",
+  "stats.walkingTime": "Время пешком",
+  "stats.loading": "Загрузка...",
 } as const;

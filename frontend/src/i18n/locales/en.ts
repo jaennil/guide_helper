@@ -83,4 +83,8 @@ export const en = {
   "profile.shareFailed": "Failed to enable sharing",
   "profile.unshareFailed": "Failed to disable sharing",
   "shared.notFound": "Shared route not found",
+  "stats.distance": "Distance",
+  "stats.elevation": "Elevation gain",
+  "stats.walkingTime": "Walking time",
+  "stats.loading": "Loading...",
 } as const;
