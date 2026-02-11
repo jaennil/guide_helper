@@ -35,7 +35,7 @@ func Run(cfg *config.Config) {
 			ServiceVersion: cfg.Telemetry.ServiceVersion,
 			Environment:    cfg.Telemetry.Environment,
 			OTLPEndpoint:   cfg.Telemetry.OTLPEndpoint,
-		})
+		}, l)
 		if err != nil {
 			l.Fatal("failed to initialize telemetry", "error", err)
 		}

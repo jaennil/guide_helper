@@ -2,7 +2,6 @@ package logger
 
 import (
 	"context"
-	"log"
 )
 
 type Logger interface {
@@ -30,7 +29,6 @@ func WithLogger(ctx context.Context, logger Logger) context.Context {
 }
 
 func FromContext(ctx context.Context) Logger {
-	log.Println("WARN using no op logger")
 	if logger, ok := ctx.Value(loggerKey).(Logger); ok {
 		return logger
 	}

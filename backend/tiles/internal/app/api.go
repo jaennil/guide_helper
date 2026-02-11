@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,7 +22,7 @@ func Run() {
 	// Load config
 	cfg, err := config.New()
 	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
+		log.Fatalf("failed to load config: %v", err)
 	}
 
 	// Initialize logger
@@ -39,7 +39,7 @@ func Run() {
 			ServiceVersion: cfg.Telemetry.ServiceVersion,
 			Environment:    cfg.Telemetry.Environment,
 			OTLPEndpoint:   cfg.Telemetry.OTLPEndpoint,
-		})
+		}, l)
 		if err != nil {
 			l.Fatal("failed to initialize telemetry", "error", err)
 		}

@@ -2,9 +2,9 @@ package telemetry
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -22,7 +22,7 @@ type Config struct {
 	OTLPEndpoint    string
 }
 
-func InitTracer(cfg Config) (func(context.Context) error, error) {
+func InitTracer(cfg Config, l logger.Logger) (func(context.Context) error, error) {
 	ctx := context.Background()
 
 	// Create resource with service information
@@ -64,7 +64,7 @@ func InitTracer(cfg Config) (func(context.Context) error, error) {
 		propagation.Baggage{},
 	))
 
-	log.Printf("OpenTelemetry initialized: service=%s, endpoint=%s", cfg.ServiceName, cfg.OTLPEndpoint)
+	l.Info("opentelemetry initialized", "service", cfg.ServiceName, "endpoint", cfg.OTLPEndpoint)
 
 	// Return shutdown function
 	return func(ctx context.Context) error {
