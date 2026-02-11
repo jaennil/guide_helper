@@ -65,6 +65,7 @@ pub struct Route {
     pub points: Vec<RoutePoint>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub share_token: Option<Uuid>,
 }
 
 impl Route {
@@ -77,6 +78,7 @@ impl Route {
             points,
             created_at: now,
             updated_at: now,
+            share_token: None,
         }
     }
 

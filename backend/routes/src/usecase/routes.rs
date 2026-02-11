@@ -159,6 +159,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            share_token: None,
         };
         let route_clone = route.clone();
 
@@ -205,6 +206,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            share_token: None,
         };
         let route_clone = route.clone();
 
@@ -232,6 +234,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            share_token: None,
         };
         let route_clone = route.clone();
 
