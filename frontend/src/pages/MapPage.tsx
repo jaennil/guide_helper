@@ -17,6 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
+import { RouteStatsPanel } from "../components/RouteStatsPanel";
 
 type RouteMode = "auto" | "manual";
 
@@ -870,6 +871,11 @@ export function MapPage() {
           );
         })}
       </MapContainer>
+      {routePoints.length >= 2 && (
+        <RouteStatsPanel
+          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+        />
+      )}
     </div>
   );
 }

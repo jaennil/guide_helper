@@ -21,6 +21,7 @@ import {
   type RoutePoint,
   type RouteSegment,
 } from "./MapPage";
+import { RouteStatsPanel } from "../components/RouteStatsPanel";
 
 type RouteMode = "auto" | "manual";
 
@@ -163,6 +164,11 @@ export function SharedMapPage() {
           </Marker>
         ))}
       </MapContainer>
+      {routePoints.length >= 2 && (
+        <RouteStatsPanel
+          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+        />
+      )}
     </div>
   );
 }
