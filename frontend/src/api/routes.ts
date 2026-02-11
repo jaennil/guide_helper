@@ -2,12 +2,18 @@ import axios from 'axios';
 
 const API_BASE_URL = '/api/v1/routes';
 
+export interface PhotoData {
+  original: string;
+  thumbnail_url?: string;
+  status: string;
+}
+
 export interface RoutePoint {
   lat: number;
   lng: number;
   name?: string;
   segment_mode?: 'auto' | 'manual'; // mode for segment TO this point
-  photo?: string; // base64 encoded image
+  photo?: PhotoData;
 }
 
 export interface Route {

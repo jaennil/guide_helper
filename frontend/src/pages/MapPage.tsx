@@ -16,7 +16,7 @@ import "../App.css";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { routesApi } from "../api/routes";
+import { routesApi, type PhotoData } from "../api/routes";
 
 type RouteMode = "auto" | "manual";
 
@@ -30,7 +30,7 @@ const TILE_PROVIDERS = [
 interface RoutePoint {
   id: number;
   position: [number, number];
-  photo?: string;
+  photo?: PhotoData;
 }
 
 interface RouteSegment {
@@ -222,11 +222,17 @@ function ManualRoutes({
   );
 }
 
-function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
-  if (photo) {
+function getPhotoSrc(photo?: PhotoData): string | undefined {
+  if (!photo) return undefined;
+  return photo.thumbnail_url || photo.original;
+}
+
+function createMarkerIcon(photo?: PhotoData): L.Icon | L.DivIcon {
+  const src = getPhotoSrc(photo);
+  if (src) {
     return L.divIcon({
       className: "custom-photo-marker",
-      html: `<div class="photo-marker-container"><img src="${photo}" alt="Marker" /></div>`,
+      html: `<div class="photo-marker-container"><img src="${src}" alt="Marker" /></div>`,
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40],
@@ -247,11 +253,12 @@ function createMarkerIcon(photo?: string): L.Icon | L.DivIcon {
   }
 }
 
-function createColoredMarkerIcon(color: string, photo?: string): L.DivIcon {
-  if (photo) {
+function createColoredMarkerIcon(color: string, photo?: PhotoData): L.DivIcon {
+  const src = getPhotoSrc(photo);
+  if (src) {
     return L.divIcon({
       className: "overlay-marker",
-      html: `<div class="photo-marker-container" style="border-color:${color}"><img src="${photo}" alt="Marker" /></div>`,
+      html: `<div class="photo-marker-container" style="border-color:${color}"><img src="${src}" alt="Marker" /></div>`,
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40],
@@ -273,7 +280,7 @@ function PointPopup({
 }: {
   point: RoutePoint;
   index: number;
-  onPhotoChange: (pointId: number, photo: string | undefined) => void;
+  onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
@@ -290,7 +297,7 @@ function PointPopup({
       reader.onload = (event) => {
         const result = event.target?.result;
         if (typeof result === "string") {
-          onPhotoChange(point.id, result);
+          onPhotoChange(point.id, { original: result, status: "pending" });
         }
       };
       reader.readAsDataURL(file);
@@ -304,6 +311,8 @@ function PointPopup({
     }
   };
 
+  const photoSrc = getPhotoSrc(point.photo);
+
   return (
     <div className="point-popup">
       <div className="point-popup-header">
@@ -313,9 +322,9 @@ function PointPopup({
         {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
         {point.position[1].toFixed(6)}
       </div>
-      {point.photo && (
+      {photoSrc && (
         <div className="point-popup-photo">
-          <img src={point.photo} alt={t("map.point", { index: index + 1 })} />
+          <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
           <button
             type="button"
             onClick={handleRemovePhoto}
@@ -516,7 +525,7 @@ export function MapPage() {
     });
   };
 
-  const handlePhotoChange = (pointId: number, photo: string | undefined) => {
+  const handlePhotoChange = (pointId: number, photo: PhotoData | undefined) => {
     setRoutePoints((prev) =>
       prev.map((point) => (point.id === pointId ? { ...point, photo } : point))
     );
@@ -612,7 +621,7 @@ export function MapPage() {
     const newPoints: RoutePoint[] = parsed.map((photo) => ({
       id: pointIdRef.current++,
       position: [photo.lat, photo.lng] as [number, number],
-      photo: photo.base64,
+      photo: { original: photo.base64, status: "pending" } as PhotoData,
     }));
 
     setRoutePoints((prev) => {
@@ -848,9 +857,9 @@ export function MapPage() {
                         {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
                         {point.position[1].toFixed(6)}
                       </div>
-                      {point.photo && (
+                      {getPhotoSrc(point.photo) && (
                         <div className="point-popup-photo">
-                          <img src={point.photo} alt={`${overlay.name} point ${idx + 1}`} />
+                          <img src={point.photo?.original || getPhotoSrc(point.photo)} alt={`${overlay.name} point ${idx + 1}`} />
                         </div>
                       )}
                     </div>
