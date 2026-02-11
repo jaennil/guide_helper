@@ -154,6 +154,34 @@ services:
     networks:
       - guide_helper_network
 
+  photo-worker:
+    build:
+      context: ./backend/photo-worker
+      dockerfile: Dockerfile
+    container_name: guide_helper_photo_worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://${AUTH_DB_USER:-authuser}:${AUTH_DB_PASSWORD:-authpass123}@postgres:5432/${ROUTES_DB_NAME:-routes_db}?sslmode=disable
+      - DATABASE_MAX_CONNECTIONS=3
+      - NATS_URL=nats://nats:4222
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_BUCKET=photos
+      - PHOTO_BASE_URL=/photos
+      - PHOTO_MAX_WIDTH=1920
+      - PHOTO_QUALITY=85
+      - THUMBNAIL_WIDTH=300
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - guide_helper_network
+
   frontend:
     build:
       context: ./frontend
