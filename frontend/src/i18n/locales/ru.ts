@@ -76,4 +76,11 @@ export const ru = {
   "profile.importFailed": "Не удалось импортировать маршрут из GeoJSON",
   "profile.language": "Язык",
   "profile.showSelected": "Показать {{count}} на карте",
+  "profile.share": "Поделиться",
+  "profile.copyLink": "Копировать ссылку",
+  "profile.unshare": "Закрыть доступ",
+  "profile.linkCopied": "Ссылка скопирована!",
+  "profile.shareFailed": "Не удалось включить общий доступ",
+  "profile.unshareFailed": "Не удалось отключить общий доступ",
+  "shared.notFound": "Общий маршрут не найден",
 } as const;

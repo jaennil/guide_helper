@@ -76,4 +76,11 @@ export const en = {
   "profile.importFailed": "Failed to import route from GeoJSON",
   "profile.language": "Language",
   "profile.showSelected": "Show {{count}} on map",
+  "profile.share": "Share",
+  "profile.copyLink": "Copy Link",
+  "profile.unshare": "Unshare",
+  "profile.linkCopied": "Link copied to clipboard!",
+  "profile.shareFailed": "Failed to enable sharing",
+  "profile.unshareFailed": "Failed to disable sharing",
+  "shared.notFound": "Shared route not found",
 } as const;

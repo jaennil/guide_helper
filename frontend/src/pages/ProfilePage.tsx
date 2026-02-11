@@ -119,6 +119,37 @@ export default function ProfilePage() {
     }
   };
 
+  const handleShareRoute = async (routeId: string) => {
+    try {
+      const { share_token } = await routesApi.enableShare(routeId);
+      setRoutes(routes.map(r =>
+        r.id === routeId ? { ...r, share_token } : r
+      ));
+      const link = `${window.location.origin}/shared/${share_token}`;
+      await navigator.clipboard.writeText(link);
+      alert(t('profile.linkCopied'));
+    } catch (err: any) {
+      setRoutesError(err.response?.data || t('profile.shareFailed'));
+    }
+  };
+
+  const handleCopyLink = async (shareToken: string) => {
+    const link = `${window.location.origin}/shared/${shareToken}`;
+    await navigator.clipboard.writeText(link);
+    alert(t('profile.linkCopied'));
+  };
+
+  const handleUnshareRoute = async (routeId: string) => {
+    try {
+      await routesApi.disableShare(routeId);
+      setRoutes(routes.map(r =>
+        r.id === routeId ? { ...r, share_token: undefined } : r
+      ));
+    } catch (err: any) {
+      setRoutesError(err.response?.data || t('profile.unshareFailed'));
+    }
+  };
+
   const handleDeleteRoute = async (routeId: string) => {
     if (!confirm(t('profile.confirmDelete'))) {
       return;
@@ -386,6 +417,29 @@ export default function ProfilePage() {
                         >
                           {t('profile.view')}
                         </button>
+                        {route.share_token ? (
+                          <>
+                            <button
+                              onClick={() => handleCopyLink(route.share_token!)}
+                              className="btn-secondary"
+                            >
+                              {t('profile.copyLink')}
+                            </button>
+                            <button
+                              onClick={() => handleUnshareRoute(route.id)}
+                              className="btn-secondary"
+                            >
+                              {t('profile.unshare')}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleShareRoute(route.id)}
+                            className="btn-secondary"
+                          >
+                            {t('profile.share')}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteRoute(route.id)}
                           className="btn-danger"
