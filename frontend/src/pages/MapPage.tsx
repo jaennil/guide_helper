@@ -71,6 +71,8 @@ interface RoutingControlData {
   control: L.Routing.Control;
   fromIndex: number;
   toIndex: number;
+  fromLatLng: L.LatLng;
+  toLatLng: L.LatLng;
 }
 
 export function RoutingControl({
@@ -97,52 +99,64 @@ export function RoutingControl({
     routeSegments.forEach((segment) => {
       if (segment.mode === "auto") {
         const key = `${segment.fromIndex}-${segment.toIndex}`;
-
-        if (routingControlsRef.current.has(key)) {
-          return;
-        }
-
         const fromPoint = waypoints[segment.fromIndex];
         const toPoint = waypoints[segment.toIndex];
 
-        if (fromPoint && toPoint) {
-          const plan = new (L.Routing as any).Plan([fromPoint, toPoint], {
-            createMarker: () => false,
-          });
-          const routingControl = L.Routing.control({
-            plan,
-            routeWhileDragging: false,
-            addWaypoints: false,
-            draggableWaypoints: false,
-            fitSelectedRoutes: false,
-            showAlternatives: false,
-            lineOptions: {
-              styles: [{ color, opacity: 0.7, weight: 4 }],
-              extendToWaypoints: true,
-              missingRouteTolerance: 0,
-            },
-            router: L.Routing.osrmv1({
-              serviceUrl: "https://router.project-osrm.org/route/v1",
-              profile: "foot",
-            }),
-          } as any).addTo(map);
+        if (!fromPoint || !toPoint) return;
 
-          routingControlsRef.current.set(key, {
-            control: routingControl,
-            fromIndex: segment.fromIndex,
-            toIndex: segment.toIndex,
-          });
-
-          setTimeout(() => {
-            const container = map.getContainer();
-            const routingContainers = container.querySelectorAll(
-              ".leaflet-routing-container"
-            );
-            routingContainers.forEach((container) => {
-              (container as HTMLElement).style.display = "none";
-            });
-          }, 100);
+        const existing = routingControlsRef.current.get(key);
+        if (existing) {
+          // Update waypoints if positions changed
+          const positionsChanged =
+            !existing.fromLatLng.equals(fromPoint) ||
+            !existing.toLatLng.equals(toPoint);
+          if (positionsChanged) {
+            console.log(`[routing] updating waypoints for segment ${key}`);
+            existing.control.setWaypoints([fromPoint, toPoint]);
+            existing.fromLatLng = fromPoint;
+            existing.toLatLng = toPoint;
+          }
+          return;
         }
+
+        const plan = new (L.Routing as any).Plan([fromPoint, toPoint], {
+          createMarker: () => false,
+        });
+        const routingControl = L.Routing.control({
+          plan,
+          routeWhileDragging: false,
+          addWaypoints: false,
+          draggableWaypoints: false,
+          fitSelectedRoutes: false,
+          showAlternatives: false,
+          lineOptions: {
+            styles: [{ color, opacity: 0.7, weight: 4 }],
+            extendToWaypoints: true,
+            missingRouteTolerance: 0,
+          },
+          router: L.Routing.osrmv1({
+            serviceUrl: "https://router.project-osrm.org/route/v1",
+            profile: "foot",
+          }),
+        } as any).addTo(map);
+
+        routingControlsRef.current.set(key, {
+          control: routingControl,
+          fromIndex: segment.fromIndex,
+          toIndex: segment.toIndex,
+          fromLatLng: fromPoint,
+          toLatLng: toPoint,
+        });
+
+        setTimeout(() => {
+          const container = map.getContainer();
+          const routingContainers = container.querySelectorAll(
+            ".leaflet-routing-container"
+          );
+          routingContainers.forEach((container) => {
+            (container as HTMLElement).style.display = "none";
+          });
+        }, 100);
       }
     });
 
@@ -532,6 +546,15 @@ export function MapPage() {
     );
   };
 
+  const handlePointDrag = (pointId: number, newLat: number, newLng: number) => {
+    console.log(`[drag] point ${pointId} moved to ${newLat.toFixed(6)}, ${newLng.toFixed(6)}`);
+    setRoutePoints((prev) =>
+      prev.map((p) =>
+        p.id === pointId ? { ...p, position: [newLat, newLng] as [number, number] } : p
+      )
+    );
+  };
+
   const handleImportPhotos = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -817,6 +840,13 @@ export function MapPage() {
             key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
             position={point.position}
             icon={createMarkerIcon(point.photo)}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const { lat, lng } = e.target.getLatLng();
+                handlePointDrag(point.id, lat, lng);
+              },
+            }}
           >
             <Popup>
               <PointPopup
