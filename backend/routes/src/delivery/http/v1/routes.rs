@@ -13,8 +13,9 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
-use crate::domain::route::RoutePoint;
+use crate::domain::route::{Route as DomainRoute, RoutePoint};
 use crate::usecase::geojson_import::{parse_geojson, ImportError};
+use crate::usecase::photo_tasks::PhotoProcessTask;
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -137,6 +138,7 @@ pub async fn create_route(
     {
         Ok(route) => {
             tracing::debug!(route_id = %route.id, "route created successfully");
+            publish_photo_task(&state.nats_client, &route).await;
             Ok((
                 StatusCode::CREATED,
                 Json(RouteResponse {
@@ -183,6 +185,7 @@ pub async fn update_route(
     {
         Ok(route) => {
             tracing::debug!(%route_id, "route updated successfully");
+            publish_photo_task(&state.nats_client, &route).await;
             Ok((
                 StatusCode::OK,
                 Json(RouteResponse {
@@ -311,6 +314,7 @@ pub async fn import_route_from_geojson(
     {
         Ok(route) => {
             tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
+            publish_photo_task(&state.nats_client, &route).await;
             Ok((
                 StatusCode::CREATED,
                 Json(RouteResponse {
@@ -329,6 +333,55 @@ pub async fn import_route_from_geojson(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to create route: {}", e),
             ))
+        }
+    }
+}
+
+async fn publish_photo_task(nats_client: &Option<async_nats::Client>, route: &DomainRoute) {
+    if let Some(client) = nats_client {
+        if let Some(task) = PhotoProcessTask::from_route(route) {
+            match serde_json::to_vec(&task) {
+                Ok(payload) => {
+                    let jetstream = async_nats::jetstream::new(client.clone());
+                    match jetstream
+                        .publish("photos.process", payload.into())
+                        .await
+                    {
+                        Ok(ack_future) => {
+                            match ack_future.await {
+                                Ok(_) => {
+                                    tracing::info!(
+                                        route_id = %task.route_id,
+                                        point_count = task.point_indices.len(),
+                                        "published photo processing task to NATS"
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        route_id = %task.route_id,
+                                        error = %e,
+                                        "failed to get NATS publish ack"
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                route_id = %task.route_id,
+                                error = %e,
+                                "failed to publish photo task to NATS"
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(
+                        route_id = %task.route_id,
+                        error = %e,
+                        "failed to serialize photo task"
+                    );
+                }
+            }
         }
     }
 }

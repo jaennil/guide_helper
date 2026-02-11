@@ -16,6 +16,12 @@ pub struct AppConfig {
     pub telemetry_environment: String,
     #[serde(default = "default_telemetry_otlp_endpoint")]
     pub telemetry_otlp_endpoint: String,
+    #[serde(default = "default_nats_url")]
+    pub nats_url: String,
+}
+
+fn default_nats_url() -> String {
+    "nats://localhost:4222".to_string()
 }
 
 fn default_telemetry_service_name() -> String {

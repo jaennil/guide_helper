@@ -27,6 +27,7 @@ pub struct AppState {
     pub routes_usecase: RoutesUseCase<PostgresRouteRepository>,
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
+    pub nats_client: Option<async_nats::Client>,
 }
 
 #[tokio::main]
@@ -73,10 +74,39 @@ async fn main() -> anyhow::Result<()> {
     let jwt_service = JwtService::new(config.jwt_secret);
     let routes_usecase = RoutesUseCase::new(route_repository);
 
+    // Connect to NATS and setup JetStream
+    let nats_client = match async_nats::connect(&config.nats_url).await {
+        Ok(client) => {
+            tracing::info!(nats_url = %config.nats_url, "connected to NATS");
+
+            // Create JetStream stream for photo processing
+            let jetstream = async_nats::jetstream::new(client.clone());
+            match jetstream
+                .get_or_create_stream(async_nats::jetstream::stream::Config {
+                    name: "PHOTOS".to_string(),
+                    subjects: vec!["photos.process".to_string()],
+                    retention: async_nats::jetstream::stream::RetentionPolicy::WorkQueue,
+                    ..Default::default()
+                })
+                .await
+            {
+                Ok(_) => tracing::info!("NATS JetStream stream 'PHOTOS' ready"),
+                Err(e) => tracing::error!(error = %e, "failed to create NATS JetStream stream"),
+            }
+
+            Some(client)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, nats_url = %config.nats_url, "failed to connect to NATS, photo processing will be unavailable");
+            None
+        }
+    };
+
     let shared_state = Arc::new(AppState {
         routes_usecase,
         jwt_service,
         metrics_handle,
+        nats_client,
     });
 
     // All routes require authentication
