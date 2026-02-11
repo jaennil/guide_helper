@@ -6,6 +6,7 @@ import type { Locale } from '../i18n';
 import { profileApi } from '../api/profile';
 import { routesApi } from '../api/routes';
 import type { Route } from '../api/routes';
+import { totalDistance, formatDistance } from '../utils/geo';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -405,7 +406,10 @@ export default function ProfilePage() {
                       />
                       <div className="route-info">
                         <h3>{route.name}</h3>
-                        <p>{t('profile.pointsCount', { count: route.points.length })}</p>
+                        <p>
+                          {t('profile.pointsCount', { count: route.points.length })}
+                          {route.points.length >= 2 && ` · ${formatDistance(totalDistance(route.points))}`}
+                        </p>
                         <p className="route-date">
                           {t('profile.created')} {formatDate(route.created_at)}
                         </p>
