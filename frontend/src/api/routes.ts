@@ -23,6 +23,7 @@ export interface Route {
   points: RoutePoint[];
   created_at: string;
   updated_at: string;
+  share_token?: string;
 }
 
 export interface CreateRouteRequest {
@@ -84,6 +85,24 @@ export const routesApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  async enableShare(id: string): Promise<{ share_token: string }> {
+    const response = await axios.post(`${API_BASE_URL}/${id}/share`, {}, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async disableShare(id: string): Promise<void> {
+    await axios.delete(`${API_BASE_URL}/${id}/share`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  async getSharedRoute(token: string): Promise<Route> {
+    const response = await axios.get(`/api/v1/shared/${token}`);
     return response.data;
   },
 };

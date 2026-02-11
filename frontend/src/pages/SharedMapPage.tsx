@@ -1,0 +1,168 @@
+import { useState, useEffect } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+} from "react-leaflet";
+import L from "leaflet";
+import "leaflet-routing-machine";
+import "leaflet/dist/leaflet.css";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
+import "../App.css";
+import { useParams } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
+import { routesApi, type PhotoData } from "../api/routes";
+import {
+  RoutingControl,
+  ManualRoutes,
+  createMarkerIcon,
+  getPhotoSrc,
+  type RoutePoint,
+  type RouteSegment,
+} from "./MapPage";
+
+type RouteMode = "auto" | "manual";
+
+const TILE_PROVIDERS = [
+  { id: "osm", name: "OpenStreetMap", url: "/api/v1/tile/{z}/{x}/{y}", attribution: "&copy; OpenStreetMap" },
+  { id: "yandex", name: "Yandex", url: "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU", attribution: "&copy; Yandex" },
+  { id: "2gis", name: "2GIS", url: "https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1", attribution: "&copy; 2GIS" },
+  { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
+];
+
+export function SharedMapPage() {
+  const { token } = useParams<{ token: string }>();
+  const { t } = useLanguage();
+
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
+  const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
+  const [routeName, setRouteName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
+
+  useEffect(() => {
+    if (!token) return;
+    loadSharedRoute(token);
+  }, [token]);
+
+  const loadSharedRoute = async (shareToken: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const route = await routesApi.getSharedRoute(shareToken);
+      setRouteName(route.name);
+
+      const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
+        id: index,
+        position: [p.lat, p.lng] as [number, number],
+        photo: p.photo,
+      }));
+      setRoutePoints(loadedPoints);
+
+      const segments: RouteSegment[] = [];
+      for (let i = 0; i < loadedPoints.length - 1; i++) {
+        const destPoint = route.points[i + 1];
+        segments.push({
+          fromIndex: i,
+          toIndex: i + 1,
+          mode: (destPoint.segment_mode as RouteMode) || "manual",
+        });
+      }
+      setRouteSegments(segments);
+    } catch (err: any) {
+      console.error("Failed to load shared route:", err);
+      setError(t("shared.notFound"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTileProviderChange = (providerId: string) => {
+    setTileProvider(providerId);
+    localStorage.setItem("tileProvider", providerId);
+  };
+
+  const currentProvider = TILE_PROVIDERS.find((p) => p.id === tileProvider) || TILE_PROVIDERS[0];
+
+  const waypoints = routePoints.map((point) =>
+    L.latLng(point.position[0], point.position[1])
+  );
+
+  if (loading) {
+    return (
+      <div className="App" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+        <p>{t("common.loading")}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="App" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="App">
+      <div className="map-header">
+        <div className="shared-route-title">
+          <strong>{routeName}</strong>
+        </div>
+        <div className="tile-switcher">
+          <select
+            value={tileProvider}
+            onChange={(e) => handleTileProviderChange(e.target.value)}
+          >
+            {TILE_PROVIDERS.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <MapContainer
+        center={routePoints.length > 0 ? routePoints[0].position : [55.7518, 37.6178]}
+        zoom={13}
+        style={{ height: "100vh", width: "100%" }}
+      >
+        <TileLayer
+          key={tileProvider}
+          url={currentProvider.url}
+          attribution={currentProvider.attribution}
+        />
+        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
+        <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
+        {routePoints.map((point, index) => (
+          <Marker
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
+            position={point.position}
+            icon={createMarkerIcon(point.photo)}
+          >
+            <Popup>
+              <div className="point-popup">
+                <div className="point-popup-header">
+                  <strong>{t("map.point", { index: index + 1 })}</strong>
+                </div>
+                <div className="point-popup-coords">
+                  {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+                  {point.position[1].toFixed(6)}
+                </div>
+                {getPhotoSrc(point.photo) && (
+                  <div className="point-popup-photo">
+                    <img src={point.photo?.original || getPhotoSrc(point.photo)} alt={t("map.point", { index: index + 1 })} />
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+}

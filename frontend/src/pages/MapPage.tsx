@@ -27,13 +27,13 @@ const TILE_PROVIDERS = [
   { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
 ];
 
-interface RoutePoint {
+export interface RoutePoint {
   id: number;
   position: [number, number];
   photo?: PhotoData;
 }
 
-interface RouteSegment {
+export interface RouteSegment {
   fromIndex: number;
   toIndex: number;
   mode: RouteMode;
@@ -72,7 +72,7 @@ interface RoutingControlData {
   toIndex: number;
 }
 
-function RoutingControl({
+export function RoutingControl({
   waypoints,
   routeSegments,
   color = "#3388ff",
@@ -184,7 +184,7 @@ function RoutingControl({
   return null;
 }
 
-function ManualRoutes({
+export function ManualRoutes({
   waypoints,
   routeSegments,
   color = "#3388ff",
@@ -222,12 +222,12 @@ function ManualRoutes({
   );
 }
 
-function getPhotoSrc(photo?: PhotoData): string | undefined {
+export function getPhotoSrc(photo?: PhotoData): string | undefined {
   if (!photo) return undefined;
   return photo.thumbnail_url || photo.original;
 }
 
-function createMarkerIcon(photo?: PhotoData): L.Icon | L.DivIcon {
+export function createMarkerIcon(photo?: PhotoData): L.Icon | L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
     return L.divIcon({

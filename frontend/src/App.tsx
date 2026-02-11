@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { Auth } from './pages/Auth';
 import { MapPage } from './pages/MapPage';
 import ProfilePage from './pages/ProfilePage';
+import { SharedMapPage } from './pages/SharedMapPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import './App.css';
 
@@ -30,6 +31,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/shared/:token" element={<SharedMapPage />} />
           <Route path="/" element={<Navigate to="/map" replace />} />
         </Routes>
       </AuthProvider>
