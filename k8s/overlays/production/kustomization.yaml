@@ -28,10 +28,10 @@ images:
   newTag: main-f0f995a
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-a7aa56f
+  newTag: main-c15b35a
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-a7aa56f
+  newTag: main-c15b35a
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-f0f995a
