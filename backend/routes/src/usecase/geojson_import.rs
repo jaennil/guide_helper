@@ -23,6 +23,7 @@ pub enum ImportError {
 ///
 /// B) FeatureCollection with Point features:
 ///    { "type": "FeatureCollection", "properties": {"name": "..."}, "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [lng, lat]}, "properties": {"name": "point name"}}]}
+#[tracing::instrument(skip(content), fields(input_len = content.len()))]
 pub fn parse_geojson(content: &str) -> Result<(String, Vec<RoutePoint>), ImportError> {
     tracing::debug!("parsing GeoJSON content");
 

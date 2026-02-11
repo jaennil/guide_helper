@@ -16,6 +16,7 @@ pub struct AuthenticatedUser {
     pub email: String,
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn auth_middleware(
     State(state): State<Arc<AppState>>,
     mut request: Request,

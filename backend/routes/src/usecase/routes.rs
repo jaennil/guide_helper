@@ -19,13 +19,14 @@ where
         Self { route_repository }
     }
 
+    #[tracing::instrument(skip(self, points), fields(user_id = %user_id, name = %name, point_count = points.len()))]
     pub async fn create_route(
         &self,
         user_id: Uuid,
         name: String,
         points: Vec<RoutePoint>,
     ) -> Result<Route, Error> {
-        tracing::debug!(%user_id, %name, "creating new route");
+        tracing::debug!("creating new route");
 
         let route = Route::new(user_id, name, points);
         self.route_repository.create(&route).await?;
@@ -34,8 +35,9 @@ where
         Ok(route)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
     pub async fn get_route(&self, user_id: Uuid, route_id: Uuid) -> Result<Route, Error> {
-        tracing::debug!(%user_id, %route_id, "getting route");
+        tracing::debug!("getting route");
 
         let route = self
             .route_repository
@@ -45,14 +47,16 @@ where
 
         // Check that route belongs to user
         if route.user_id != user_id {
+            tracing::warn!("unauthorized route access attempt");
             return Err(anyhow!("Route not found"));
         }
 
         Ok(route)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
     pub async fn get_user_routes(&self, user_id: Uuid) -> Result<Vec<Route>, Error> {
-        tracing::debug!(%user_id, "getting user routes");
+        tracing::debug!("getting user routes");
 
         let routes = self.route_repository.find_by_user_id(user_id).await?;
 
@@ -60,6 +64,7 @@ where
         Ok(routes)
     }
 
+    #[tracing::instrument(skip(self, points), fields(user_id = %user_id, route_id = %route_id))]
     pub async fn update_route(
         &self,
         user_id: Uuid,
@@ -67,7 +72,7 @@ where
         name: Option<String>,
         points: Option<Vec<RoutePoint>>,
     ) -> Result<Route, Error> {
-        tracing::debug!(%user_id, %route_id, "updating route");
+        tracing::debug!("updating route");
 
         let mut route = self
             .route_repository
@@ -77,6 +82,7 @@ where
 
         // Check that route belongs to user
         if route.user_id != user_id {
+            tracing::warn!("unauthorized route update attempt");
             return Err(anyhow!("Route not found"));
         }
 
@@ -87,8 +93,9 @@ where
         Ok(route)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
     pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid) -> Result<(), Error> {
-        tracing::debug!(%user_id, %route_id, "deleting route");
+        tracing::debug!("deleting route");
 
         let route = self
             .route_repository
@@ -98,6 +105,7 @@ where
 
         // Check that route belongs to user
         if route.user_id != user_id {
+            tracing::warn!("unauthorized route delete attempt");
             return Err(anyhow!("Route not found"));
         }
 

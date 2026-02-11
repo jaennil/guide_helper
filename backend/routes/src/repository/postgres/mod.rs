@@ -14,8 +14,9 @@ impl PostgresRouteRepository {
 }
 
 impl RouteRepository for PostgresRouteRepository {
+    #[tracing::instrument(skip(self, route), fields(route_id = %route.id, user_id = %route.user_id))]
     async fn create(&self, route: &Route) -> Result<(), RepositoryError> {
-        tracing::debug!(route_id = %route.id, user_id = %route.user_id, "creating route");
+        tracing::debug!("creating route");
 
         sqlx::query(
             r#"
@@ -37,8 +38,9 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), fields(route_id = %id))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Route>, RepositoryError> {
-        tracing::debug!(route_id = %id, "finding route by id");
+        tracing::debug!("finding route by id");
 
         let route = sqlx::query_as::<_, Route>(
             r#"
@@ -55,8 +57,9 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(route)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<Route>, RepositoryError> {
-        tracing::debug!(user_id = %user_id, "finding routes by user_id");
+        tracing::debug!("finding routes by user_id");
 
         let routes = sqlx::query_as::<_, Route>(
             r#"
@@ -75,8 +78,9 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(routes)
     }
 
+    #[tracing::instrument(skip(self, route), fields(route_id = %route.id))]
     async fn update(&self, route: &Route) -> Result<(), RepositoryError> {
-        tracing::debug!(route_id = %route.id, "updating route");
+        tracing::debug!("updating route");
 
         let result = sqlx::query(
             r#"
@@ -101,8 +105,9 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), fields(route_id = %id))]
     async fn delete(&self, id: Uuid) -> Result<(), RepositoryError> {
-        tracing::debug!(route_id = %id, "deleting route");
+        tracing::debug!("deleting route");
 
         let result = sqlx::query(
             r#"
