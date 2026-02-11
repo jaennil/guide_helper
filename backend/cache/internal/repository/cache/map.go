@@ -1,9 +1,14 @@
 package cache
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
+)
 
 type MapCache struct {
-	m *TypedSyncMap
+	m      *TypedSyncMap
+	logger logger.Logger
 }
 
 
@@ -23,9 +28,10 @@ func (c *TypedSyncMap) Store(k TileCacheKey, v TileCacheValue) {
 	c.m.Store(k, v)
 }
 
-func NewMapCache() *MapCache {
-	return &MapCache {
-		m: &TypedSyncMap{},
+func NewMapCache(l logger.Logger) *MapCache {
+	return &MapCache{
+		m:      &TypedSyncMap{},
+		logger: l,
 	}
 }
 
@@ -33,10 +39,12 @@ var _ TileCache = (*MapCache)(nil)
 
 func (c *MapCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
 	v, exists := c.m.Load(k)
+	c.logger.Debug("map cache get", "z", k.Z, "x", k.X, "y", k.Y, "hit", exists)
 	return v, exists, nil
 }
 
 func (c *MapCache) Set(k TileCacheKey, v TileCacheValue) error {
+	c.logger.Debug("map cache set", "z", k.Z, "x", k.X, "y", k.Y)
 	c.m.Store(k, v)
 	return nil
 }

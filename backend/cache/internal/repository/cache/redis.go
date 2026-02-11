@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 	"github.com/jaennil/guide_helper/backend/cache/pkg/metrics"
 	"github.com/redis/go-redis/v9"
 )
@@ -12,6 +13,7 @@ import (
 type RedisCache struct {
 	client *redis.Client
 	ttl    time.Duration
+	logger logger.Logger
 }
 
 type RedisConfig struct {
@@ -21,7 +23,7 @@ type RedisConfig struct {
 	TTL      time.Duration
 }
 
-func NewRedisCache(cfg RedisConfig) (*RedisCache, error) {
+func NewRedisCache(cfg RedisConfig, l logger.Logger) (*RedisCache, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,
@@ -43,6 +45,7 @@ func NewRedisCache(cfg RedisConfig) (*RedisCache, error) {
 	cache := &RedisCache{
 		client: client,
 		ttl:    ttl,
+		logger: l,
 	}
 
 	// Start pool stats collector
@@ -62,6 +65,8 @@ func (c *RedisCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
 	ctx := context.Background()
 	key := c.keyFor(k)
 
+	c.logger.Debug("redis cache get", "key", key)
+
 	data, err := c.client.Get(ctx, key).Bytes()
 	duration := time.Since(start).Seconds()
 	metrics.RedisOperationDuration.WithLabelValues("get").Observe(duration)
@@ -71,6 +76,7 @@ func (c *RedisCache) Get(k TileCacheKey) (TileCacheValue, bool, error) {
 			return nil, false, nil
 		}
 		metrics.RedisErrors.WithLabelValues("get").Inc()
+		c.logger.Error("redis cache get failed", "key", key, "error", err)
 		return nil, false, fmt.Errorf("redis get error: %w", err)
 	}
 
@@ -82,6 +88,8 @@ func (c *RedisCache) Set(k TileCacheKey, v TileCacheValue) error {
 	ctx := context.Background()
 	key := c.keyFor(k)
 
+	c.logger.Debug("redis cache set", "key", key)
+
 	// Cast TileCacheValue to []byte for redis
 	err := c.client.Set(ctx, key, []byte(v), c.ttl).Err()
 	duration := time.Since(start).Seconds()
@@ -89,6 +97,7 @@ func (c *RedisCache) Set(k TileCacheKey, v TileCacheValue) error {
 
 	if err != nil {
 		metrics.RedisErrors.WithLabelValues("set").Inc()
+		c.logger.Error("redis cache set failed", "key", key, "error", err)
 		return fmt.Errorf("redis set error: %w", err)
 	}
 
@@ -96,6 +105,7 @@ func (c *RedisCache) Set(k TileCacheKey, v TileCacheValue) error {
 }
 
 func (c *RedisCache) Close() error {
+	c.logger.Info("redis connection closed")
 	return c.client.Close()
 }
 

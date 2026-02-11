@@ -23,7 +23,8 @@ func (h *Handler) Tile(c *gin.Context) {
 
 	x, err := strconv.Atoi(strX)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H {
+		l.Error("invalid x parameter", "value", strX, "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "x should be integer",
 		})
 		return
@@ -31,7 +32,8 @@ func (h *Handler) Tile(c *gin.Context) {
 
 	y, err := strconv.Atoi(strY)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H {
+		l.Error("invalid y parameter", "value", strY, "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "y should be integer",
 		})
 		return
@@ -39,7 +41,8 @@ func (h *Handler) Tile(c *gin.Context) {
 
 	z, err := strconv.Atoi(strZ)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H {
+		l.Error("invalid z parameter", "value", strZ, "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "z should be integer",
 		})
 		return
@@ -47,6 +50,7 @@ func (h *Handler) Tile(c *gin.Context) {
 
 	data, exists, err := h.tileCacheUseCase.GetCachedTile(x, y, z)
 	if err != nil {
+		l.Error("failed to get cached tile", "z", z, "x", x, "y", y, "error", err)
 		h.RespondWithInternalServerError(c)
 		return
 	}
@@ -76,6 +80,7 @@ func (h *Handler) StoreTile(c *gin.Context) {
 
 	x, err := strconv.Atoi(strX)
 	if err != nil {
+		l.Error("invalid x parameter", "value", strX, "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "x should be integer",
 		})
@@ -84,6 +89,7 @@ func (h *Handler) StoreTile(c *gin.Context) {
 
 	y, err := strconv.Atoi(strY)
 	if err != nil {
+		l.Error("invalid y parameter", "value", strY, "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "y should be integer",
 		})
@@ -92,6 +98,7 @@ func (h *Handler) StoreTile(c *gin.Context) {
 
 	z, err := strconv.Atoi(strZ)
 	if err != nil {
+		l.Error("invalid z parameter", "value", strZ, "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "z should be integer",
 		})

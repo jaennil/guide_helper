@@ -56,7 +56,7 @@ func Run(cfg *config.Config) {
 			Password: cfg.Redis.Password,
 			DB:       cfg.Redis.DB,
 			TTL:      cfg.Redis.TTL,
-		})
+		}, l)
 		if err != nil {
 			l.Fatal("failed to initialize Redis cache", "error", err)
 		}
@@ -64,7 +64,7 @@ func Run(cfg *config.Config) {
 		l.Info("Redis cache initialized successfully")
 	} else {
 		l.Info("initializing SQLite in-memory cache")
-		sqliteCache, err := cache.NewSQLiteCache("file:cache.db?cache=shared&mode=memory")
+		sqliteCache, err := cache.NewSQLiteCache("file:cache.db?cache=shared&mode=memory", l)
 		if err != nil {
 			l.Fatal("failed to initialize SQLite cache", "error", err)
 		}
@@ -73,7 +73,7 @@ func Run(cfg *config.Config) {
 	}
 
 	// Initialize the use case
-	tileCacheUseCase := usecase.NewTileCacheUseCase(tileCache)
+	tileCacheUseCase := usecase.NewTileCacheUseCase(tileCache, l)
 
 	// Initialize the HTTP handler
 	validate := validator.New()

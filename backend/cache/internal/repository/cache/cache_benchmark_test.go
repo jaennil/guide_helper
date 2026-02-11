@@ -1,11 +1,14 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jaennil/guide_helper/backend/cache/pkg/logger"
 )
 
 const (
@@ -31,7 +34,8 @@ func generateRandomKey() TileCacheKey {
 func setupSQLiteCache(b *testing.B) (*SQLiteCache, func()) {
 	b.Helper()
 	tmpFile := filepath.Join(b.TempDir(), "test.db")
-	cache, err := NewSQLiteCache(tmpFile)
+	l := logger.FromContext(context.Background())
+	cache, err := NewSQLiteCache(tmpFile, l)
 	if err != nil {
 		b.Fatalf("Failed to create SQLite cache: %v", err)
 	}
@@ -43,7 +47,8 @@ func setupSQLiteCache(b *testing.B) (*SQLiteCache, func()) {
 
 func setupMapCache(b *testing.B) (*MapCache, func()) {
 	b.Helper()
-	return NewMapCache(), func() {}
+	l := logger.FromContext(context.Background())
+	return NewMapCache(l), func() {}
 }
 
 func setupFilesystemCache(b *testing.B) (*FilesystemCache, func()) {
@@ -64,7 +69,8 @@ func setupFilesystemCache(b *testing.B) (*FilesystemCache, func()) {
 	oldDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
 
-	return &FilesystemCache{}, func() {
+	l := logger.FromContext(context.Background())
+	return &FilesystemCache{logger: l}, func() {
 		os.Chdir(oldDir)
 	}
 }
