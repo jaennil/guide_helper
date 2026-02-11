@@ -57,7 +57,7 @@ pub fn init_telemetry_with_subscriber(
 
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(fmt::layer())
+        .with(fmt::layer().json())
         .with(otel_layer)
         .init();
 
@@ -73,7 +73,7 @@ pub fn init_telemetry_with_subscriber(
 pub fn init_subscriber_without_telemetry(env_filter: EnvFilter) {
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(fmt::layer())
+        .with(fmt::layer().json())
         .init();
 }
 

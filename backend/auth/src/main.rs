@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use axum::{extract::State, middleware, routing::{get, post, put}, Router};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 use crate::delivery::http::v1::auth::{register, login, refresh_token};
 use crate::delivery::http::v1::middleware::auth_middleware;
@@ -86,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/auth/login", post(login))
         .route("/api/v1/auth/refresh", post(refresh_token))
         .merge(protected_routes)
+        .layer(TraceLayer::new_for_http())
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
