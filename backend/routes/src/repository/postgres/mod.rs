@@ -44,7 +44,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let route = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at
+            SELECT id, user_id, name, points, created_at, updated_at, share_token
             FROM routes
             WHERE id = $1
             "#
@@ -63,7 +63,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let routes = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at
+            SELECT id, user_id, name, points, created_at, updated_at, share_token
             FROM routes
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -103,6 +103,50 @@ impl RouteRepository for PostgresRouteRepository {
 
         tracing::debug!(route_id = %route.id, "route updated successfully");
         Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %id))]
+    async fn set_share_token(&self, id: Uuid, token: Option<Uuid>) -> Result<(), RepositoryError> {
+        tracing::debug!(?token, "setting share token");
+
+        let result = sqlx::query(
+            r#"
+            UPDATE routes
+            SET share_token = $2
+            WHERE id = $1
+            "#
+        )
+        .bind(id)
+        .bind(token)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(route_id = %id, "share token set successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(share_token = %token))]
+    async fn find_by_share_token(&self, token: Uuid) -> Result<Option<Route>, RepositoryError> {
+        tracing::debug!("finding route by share token");
+
+        let route = sqlx::query_as::<_, Route>(
+            r#"
+            SELECT id, user_id, name, points, created_at, updated_at, share_token
+            FROM routes
+            WHERE share_token = $1
+            "#
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(route)
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %id))]
