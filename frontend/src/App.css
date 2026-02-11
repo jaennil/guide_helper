@@ -421,3 +421,37 @@ body {
     border: none !important;
     box-shadow: none !important;
 }
+
+/* Route stats panel */
+.route-stats-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 10px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 10px 14px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    pointer-events: auto;
+    min-width: 140px;
+}
+
+.route-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 0;
+}
+
+.route-stat-value {
+    font-weight: bold;
+    color: #333;
+}
+
+.route-stat-label {
+    color: #666;
+    font-size: 12px;
+}
