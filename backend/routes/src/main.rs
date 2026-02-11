@@ -18,7 +18,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::middleware::auth_middleware;
-use crate::delivery::http::v1::routes::{create_route, delete_route, get_route, import_route_from_geojson, list_routes, update_route};
+use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
 use crate::repository::postgres::{create_pool, PostgresRouteRepository};
 use crate::usecase::jwt::JwtService;
 use crate::usecase::routes::RoutesUseCase;
@@ -117,6 +117,7 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/routes/{id}",
             get(get_route).put(update_route).delete(delete_route),
         )
+        .route("/api/v1/routes/{id}/share", post(enable_share).delete(disable_share))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,
@@ -125,6 +126,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .route("/healthz", get(healthz))
         .route("/metrics", get(metrics))
+        .route("/api/v1/shared/{token}", get(get_shared_route))
         .merge(routes_api)
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state);

@@ -26,6 +26,8 @@ pub struct RouteResponse {
     pub points: Vec<RoutePoint>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub share_token: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -54,13 +56,17 @@ pub async fn list_routes(
         Ok(routes) => {
             let response: Vec<RouteResponse> = routes
                 .into_iter()
-                .map(|r| RouteResponse {
-                    id: r.id,
-                    user_id: r.user_id,
-                    name: r.name,
-                    points: r.points,
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
+                .map(|r| {
+                    let share_token = r.share_token.map(|t| t.to_string());
+                    RouteResponse {
+                        id: r.id,
+                        user_id: r.user_id,
+                        name: r.name,
+                        points: r.points,
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                        share_token,
+                    }
                 })
                 .collect();
             tracing::debug!(user_id = %user.user_id, count = response.len(), "routes listed successfully");
@@ -96,6 +102,7 @@ pub async fn get_route(
                     points: route.points,
                     created_at: route.created_at,
                     updated_at: route.updated_at,
+                    share_token: route.share_token.map(|t| t.to_string()),
                 }),
             ))
         }
@@ -148,6 +155,7 @@ pub async fn create_route(
                     points: route.points,
                     created_at: route.created_at,
                     updated_at: route.updated_at,
+                    share_token: route.share_token.map(|t| t.to_string()),
                 }),
             ))
         }
@@ -195,6 +203,7 @@ pub async fn update_route(
                     points: route.points,
                     created_at: route.created_at,
                     updated_at: route.updated_at,
+                    share_token: route.share_token.map(|t| t.to_string()),
                 }),
             ))
         }
@@ -324,6 +333,7 @@ pub async fn import_route_from_geojson(
                     points: route.points,
                     created_at: route.created_at,
                     updated_at: route.updated_at,
+                    share_token: route.share_token.map(|t| t.to_string()),
                 }),
             ))
         }
@@ -333,6 +343,112 @@ pub async fn import_route_from_geojson(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to create route: {}", e),
             ))
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct ShareResponse {
+    pub share_token: String,
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
+pub async fn enable_share(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(route_id): Path<Uuid>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::debug!(%route_id, "handling enable share request");
+
+    match state
+        .routes_usecase
+        .enable_sharing(user.user_id, route_id)
+        .await
+    {
+        Ok(token) => {
+            tracing::info!(%route_id, %token, "sharing enabled");
+            Ok((
+                StatusCode::OK,
+                Json(ShareResponse {
+                    share_token: token.to_string(),
+                }),
+            ))
+        }
+        Err(e) => {
+            let error_msg = e.to_string();
+            if error_msg.contains("not found") {
+                tracing::warn!(%route_id, "route not found");
+                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
+            } else {
+                tracing::error!(%route_id, error = %e, "failed to enable sharing");
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to enable sharing: {}", e),
+                ))
+            }
+        }
+    }
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
+pub async fn disable_share(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(route_id): Path<Uuid>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::debug!(%route_id, "handling disable share request");
+
+    match state
+        .routes_usecase
+        .disable_sharing(user.user_id, route_id)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(%route_id, "sharing disabled");
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let error_msg = e.to_string();
+            if error_msg.contains("not found") {
+                tracing::warn!(%route_id, "route not found");
+                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
+            } else {
+                tracing::error!(%route_id, error = %e, "failed to disable sharing");
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to disable sharing: {}", e),
+                ))
+            }
+        }
+    }
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn get_shared_route(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<Uuid>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::debug!(%token, "handling get shared route request");
+
+    match state.routes_usecase.get_shared_route(token).await {
+        Ok(route) => {
+            tracing::debug!(route_id = %route.id, "shared route retrieved");
+            Ok((
+                StatusCode::OK,
+                Json(RouteResponse {
+                    id: route.id,
+                    user_id: route.user_id,
+                    name: route.name,
+                    points: route.points,
+                    created_at: route.created_at,
+                    updated_at: route.updated_at,
+                    share_token: route.share_token.map(|t| t.to_string()),
+                }),
+            ))
+        }
+        Err(e) => {
+            tracing::warn!(%token, error = %e, "shared route not found");
+            Err((StatusCode::NOT_FOUND, "Shared route not found".to_string()))
         }
     }
 }
@@ -447,9 +563,17 @@ mod tests {
             }],
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            share_token: None,
         };
 
-        let json = serde_json::to_string(&response);
-        assert!(json.is_ok());
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(!json.contains("share_token"));
+
+        let response_with_token = RouteResponse {
+            share_token: Some(Uuid::new_v4().to_string()),
+            ..response
+        };
+        let json_with_token = serde_json::to_string(&response_with_token).unwrap();
+        assert!(json_with_token.contains("share_token"));
     }
 }
