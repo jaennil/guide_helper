@@ -36,6 +36,7 @@ struct AuthResponse {
     token_type: String,
 }
 
+#[tracing::instrument(skip(state, payload), fields(email = %payload.email))]
 pub async fn register(State(state): State<Arc<AppState>>, Json(payload): Json<RegisterRequest>) -> Result<impl IntoResponse, (StatusCode, String)>
 {
     if let Err(validation_errors) = payload.validate() {
@@ -68,6 +69,7 @@ pub async fn register(State(state): State<Arc<AppState>>, Json(payload): Json<Re
     }
 }
 
+#[tracing::instrument(skip(state, payload), fields(email = %payload.email))]
 pub async fn login(State(state): State<Arc<AppState>>, Json(payload): Json<LoginRequest>) -> Result<impl IntoResponse, (StatusCode, String)>
 {
     if let Err(validation_errors) = payload.validate() {
@@ -90,6 +92,7 @@ pub async fn login(State(state): State<Arc<AppState>>, Json(payload): Json<Login
     }
 }
 
+#[tracing::instrument(skip(state, payload))]
 pub async fn refresh_token(State(state): State<Arc<AppState>>, Json(payload): Json<RefreshTokenRequest>) -> Result<impl IntoResponse, (StatusCode, String)>
 {
     if let Err(validation_errors) = payload.validate() {

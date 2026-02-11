@@ -15,6 +15,7 @@ pub enum PasswordError {
     InvalidPassword,
 }
 
+#[tracing::instrument(skip_all)]
 pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -22,20 +23,27 @@ pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     argon2
         .hash_password(password.as_bytes(), &salt)
         .map(|hash| hash.to_string())
-        .map_err(|e| PasswordError::HashError(e.to_string()))
+        .map_err(|e| {
+            tracing::error!("password hashing failed");
+            PasswordError::HashError(e.to_string())
+        })
 }
 
+#[tracing::instrument(skip_all)]
 pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, PasswordError> {
     let parsed_hash = PasswordHash::new(password_hash)
         .map_err(|e| PasswordError::VerifyError(e.to_string()))?;
 
     let argon2 = Argon2::default();
 
-    match argon2.verify_password(password.as_bytes(), &parsed_hash) {
+    let is_valid = match argon2.verify_password(password.as_bytes(), &parsed_hash) {
         Ok(_) => Ok(true),
         Err(argon2::password_hash::Error::Password) => Ok(false),
         Err(e) => Err(PasswordError::VerifyError(e.to_string())),
-    }
+    }?;
+
+    tracing::debug!(success = is_valid, "password verification completed");
+    Ok(is_valid)
 }
 
 #[cfg(test)]

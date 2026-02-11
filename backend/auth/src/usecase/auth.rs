@@ -44,6 +44,7 @@ impl<R> contracts::AuthUseCase for AuthUseCase<R>
 where
     R: UserRepository,
 {
+    #[tracing::instrument(skip(self, password), fields(email = %email))]
     async fn register(&self, email: String, password: String) -> Result<domain::user::User, Error> {
         // Check if user already exists
         if let Some(_existing_user) = self.user_repository.find_by_email(&email).await? {
@@ -73,6 +74,7 @@ where
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self, password), fields(email = %email))]
     async fn login(&self, email: String, password: String) -> Result<crate::delivery::contracts::LoginResult, Error> {
         // Find user by email
         let user = self.user_repository.find_by_email(&email).await?
@@ -88,6 +90,7 @@ where
             .map_err(|e| anyhow!("Password verification failed: {}", e))?;
 
         if !is_valid {
+            tracing::warn!("invalid password attempt");
             return Err(anyhow!("Invalid credentials"));
         }
 
@@ -104,6 +107,7 @@ where
         })
     }
 
+    #[tracing::instrument(skip(self, refresh_token))]
     async fn refresh_token(&self, refresh_token: String) -> Result<String, Error> {
         // Validate the refresh token
         let claims = self.jwt_service.validate_token(&refresh_token)
@@ -164,8 +168,9 @@ where
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self, old_password, new_password), fields(user_id = %user_id))]
     async fn change_password(&self, user_id: Uuid, old_password: String, new_password: String) -> Result<(), Error> {
-        tracing::debug!(%user_id, "changing user password");
+        tracing::debug!("changing user password");
 
         let mut user = self.user_repository.find_by_id(user_id).await?
             .ok_or_else(|| anyhow!("User not found"))?;
@@ -179,6 +184,7 @@ where
             .map_err(|e| anyhow!("Password verification failed: {}", e))?;
 
         if !is_valid {
+            tracing::warn!("old password verification failed");
             return Err(anyhow!("Invalid old password"));
         }
 

@@ -13,6 +13,7 @@ impl PostgresUserRepository {
 }
 
 impl UserRepository for PostgresUserRepository {
+    #[tracing::instrument(skip(self, user), fields(user_id = %user.id, email = %user.email))]
     async fn create(&self, user: &User) -> Result<(), RepositoryError> {
         sqlx::query(
             r#"
@@ -35,6 +36,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), fields(email = %email))]
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, RepositoryError> {
         let user = sqlx::query_as::<_, User>(
             r#"
@@ -51,6 +53,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %id))]
     async fn find_by_id(&self, id: uuid::Uuid) -> Result<Option<User>, RepositoryError> {
         let user = sqlx::query_as::<_, User>(
             r#"
@@ -67,6 +70,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self, user), fields(user_id = %user.id))]
     async fn update(&self, user: &User) -> Result<(), RepositoryError> {
         sqlx::query(
             r#"

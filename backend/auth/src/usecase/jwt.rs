@@ -47,10 +47,12 @@ impl JwtService {
         }
     }
 
+    #[tracing::instrument(skip(self, email), fields(user_id = %user_id))]
     pub fn generate_access_token(&self, user_id: Uuid, email: String) -> Result<String, JwtError> {
         self.generate_token(user_id, email, TokenType::Access, self.access_token_duration)
     }
 
+    #[tracing::instrument(skip(self, email), fields(user_id = %user_id))]
     pub fn generate_refresh_token(&self, user_id: Uuid, email: String) -> Result<String, JwtError> {
         self.generate_token(user_id, email, TokenType::Refresh, self.refresh_token_duration)
     }
@@ -82,6 +84,7 @@ impl JwtService {
         .map_err(|e| JwtError::TokenGenerationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self, token))]
     pub fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
         let mut validation = jsonwebtoken::Validation::default();
         validation.validate_exp = true;
@@ -91,15 +94,19 @@ impl JwtService {
             &jsonwebtoken::DecodingKey::from_secret(self.secret.as_bytes()),
             &validation,
         )
-        .map_err(|e| match e.kind() {
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature => JwtError::TokenExpired,
-            _ => JwtError::TokenValidationError(e.to_string()),
+        .map_err(|e| {
+            tracing::warn!(error = %e, "token validation failed");
+            match e.kind() {
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => JwtError::TokenExpired,
+                _ => JwtError::TokenValidationError(e.to_string()),
+            }
         })?;
 
         Ok(token_data.claims)
     }
 
     #[allow(dead_code)]
+    #[tracing::instrument(skip(self, token))]
     pub fn decode_token_without_validation(&self, token: &str) -> Result<Claims, JwtError> {
         let mut validation = jsonwebtoken::Validation::default();
         validation.validate_exp = false;
