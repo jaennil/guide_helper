@@ -456,6 +456,91 @@ body {
     font-size: 12px;
 }
 
+/* Geo search */
+.geo-search {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 350px;
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+}
+
+.geo-search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.geo-search-input {
+    width: 100%;
+    padding: 10px 32px 10px 12px;
+    border: none;
+    border-radius: 5px;
+    background: black;
+    color: white;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.geo-search-input::placeholder {
+    color: #999;
+}
+
+.geo-search-clear {
+    position: absolute;
+    right: 6px;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+}
+
+.geo-search-clear:hover {
+    color: white;
+}
+
+.geo-search-results {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    background: black;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.geo-search-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #ccc;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.geo-search-item:hover,
+.geo-search-item--active {
+    background: #333;
+    color: white;
+}
+
+.geo-search-no-results,
+.geo-search-loading {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #777;
+}
+
 /* Mobile hamburger menu — hidden on desktop */
 .map-menu {
     display: none;
@@ -555,6 +640,11 @@ body {
         right: 6px;
         gap: 4px;
     }
+
+    .geo-search {
+        width: 280px;
+        top: 50px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -577,5 +667,10 @@ body {
         top: 4px;
         left: 4px;
         right: 4px;
+    }
+
+    .geo-search {
+        width: 220px;
+        top: 44px;
     }
 }

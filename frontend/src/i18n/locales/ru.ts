@@ -87,4 +87,6 @@ export const ru = {
   "stats.elevation": "Набор высоты",
   "stats.walkingTime": "Время пешком",
   "stats.loading": "Загрузка...",
+  "search.placeholder": "Поиск мест...",
+  "search.noResults": "Ничего не найдено",
 } as const;

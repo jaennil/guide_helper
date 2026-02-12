@@ -87,4 +87,6 @@ export const en = {
   "stats.elevation": "Elevation gain",
   "stats.walkingTime": "Walking time",
   "stats.loading": "Loading...",
+  "search.placeholder": "Search places...",
+  "search.noResults": "No results found",
 } as const;

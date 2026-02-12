@@ -19,6 +19,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { MapMenuButton } from "../components/MapMenuButton";
+import { GeoSearchControl } from "../components/GeoSearchControl";
 
 type RouteMode = "auto" | "manual";
 
@@ -858,6 +859,7 @@ export function MapPage() {
           attribution={currentProvider.attribution}
         />
         <MapClickHandler onMapClick={handleMapClick} />
+        <GeoSearchControl />
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
         <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
         {routePoints.map((point, index) => (
