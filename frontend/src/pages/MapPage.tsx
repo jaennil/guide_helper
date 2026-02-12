@@ -18,6 +18,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
+import { MapMenuButton } from "../components/MapMenuButton";
 
 type RouteMode = "auto" | "manual";
 
@@ -774,6 +775,30 @@ export function MapPage() {
             {t("map.logout")}
           </button>
         </div>
+        <MapMenuButton>
+          <button
+            onClick={() => photoImportRef.current?.click()}
+            className="import-photos-btn"
+          >
+            {t("map.importPhotos")}
+          </button>
+          {routePoints.length >= 2 && (
+            <button onClick={() => setShowSaveModal(true)} className="save-btn">
+              {t("map.saveRoute")}
+            </button>
+          )}
+          {routePoints.length > 0 && (
+            <button onClick={handleClearRoute} className="clear-btn">
+              {t("map.clear")}
+            </button>
+          )}
+          <button onClick={() => navigate("/profile")} className="profile-btn">
+            {user?.name || user?.email || t("map.profile")}
+          </button>
+          <button onClick={handleLogout} className="logout-btn">
+            {t("map.logout")}
+          </button>
+        </MapMenuButton>
       </div>
 
       {overlayRoutes.length > 0 && (

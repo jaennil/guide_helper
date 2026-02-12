@@ -455,3 +455,127 @@ body {
     color: #666;
     font-size: 12px;
 }
+
+/* Mobile hamburger menu — hidden on desktop */
+.map-menu {
+    display: none;
+    position: relative;
+}
+
+.map-menu-toggle {
+    background: black;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-menu-icon {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: white;
+    position: relative;
+}
+
+.map-menu-icon::before,
+.map-menu-icon::after {
+    content: "";
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: white;
+    position: absolute;
+    left: 0;
+}
+
+.map-menu-icon::before {
+    top: -6px;
+}
+
+.map-menu-icon::after {
+    top: 6px;
+}
+
+.map-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+    z-index: 1001;
+}
+
+.map-menu-dropdown button {
+    width: 100%;
+    text-align: left;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .header-actions {
+        display: none !important;
+    }
+
+    .map-menu {
+        display: block;
+    }
+
+    .mode-switcher {
+        padding: 6px 10px;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .tile-switcher {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .tile-switcher select {
+        font-size: 12px;
+    }
+
+    .map-header {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mode-switcher {
+        padding: 5px 8px;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .tile-switcher {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    .tile-switcher select {
+        font-size: 11px;
+    }
+
+    .map-header {
+        top: 4px;
+        left: 4px;
+        right: 4px;
+    }
+}
