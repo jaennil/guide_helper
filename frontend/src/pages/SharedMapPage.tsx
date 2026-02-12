@@ -12,7 +12,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import "../App.css";
 import { useParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
-import { routesApi, type PhotoData } from "../api/routes";
+import { routesApi } from "../api/routes";
 import {
   RoutingControl,
   ManualRoutes,

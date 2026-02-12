@@ -112,7 +112,7 @@ export function RoutingControl({
             !existing.toLatLng.equals(toPoint);
           if (positionsChanged) {
             console.log(`[routing] updating waypoints for segment ${key}`);
-            existing.control.setWaypoints([fromPoint, toPoint]);
+            (existing.control as any).setWaypoints([fromPoint, toPoint]);
             existing.fromLatLng = fromPoint;
             existing.toLatLng = toPoint;
           }
