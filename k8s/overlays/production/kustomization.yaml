@@ -29,16 +29,16 @@ images:
   newTag: main-f0f995a
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-d644cf5
+  newTag: main-8838dde
+- name: photo-worker
+  newName: ghcr.io/jaennil/guide-helper-photo-worker
+  newTag: latest
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
   newTag: main-c15b35a
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-f0f995a
-- name: photo-worker
-  newName: ghcr.io/jaennil/guide-helper-photo-worker
-  newTag: latest
 
 replicas:
 - count: 1
