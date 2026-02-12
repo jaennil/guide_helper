@@ -1,10 +1,4 @@
 ---
-# TODO: Generate with kubeseal:
-#   kubectl create secret generic minio-secret \
-#     --namespace=guide-helper \
-#     --from-file=MINIO_ROOT_USER=secrets/minio-user.txt \
-#     --from-file=MINIO_ROOT_PASSWORD=secrets/minio-password.txt \
-#     --dry-run=client -o yaml | kubeseal -o yaml > sealed-secrets/minio-sealed.yaml
 apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
 metadata:
@@ -12,8 +6,8 @@ metadata:
   namespace: guide-helper
 spec:
   encryptedData:
-    MINIO_ROOT_USER: REPLACE_WITH_SEALED_VALUE
-    MINIO_ROOT_PASSWORD: REPLACE_WITH_SEALED_VALUE
+    MINIO_ROOT_PASSWORD: AgBzkiGhWx7I6h352frcQved4c3t0vRgjKt0IPmATsn7EqjiJiQqQJJdgsg7iSsKPXC4ww4zpOBfGxwJTeB60ok1E0dXP/Dh5pPK8WEMRtRjfy1zFcawFw8QXZ+WNkUY9VDZZKCZXPn2yyqaBPVJFDOKFKk5pXPFcXqdnMnAkAE8RDw/ck3PgLiYNvI5A6e/XhoA5Uzho3H07/8RC0WYJRH+zLErFrJbbwHThmUBvxf9cVfo5AQoKybVEN04Nap6qQoixty1LLMY3D2ad+0MTDg3pBSnYqb6IdZLH46LH6oKOEHUXtJav5GFiWqVMR4t8tzpmjBqgn7PzRe6CaPuAP+QoG4zOs+LcnmABtDBlxmOV/HBAbHUEk7wBwXvjTv6uJXXh2EFgjpzgGADgOGUd2hFv5F7LCQR1yLLM2RQ4+e2F7Mma7AwgOozd4+hMvqWq65w85RTwT7siX1AuJmMbNqRjqx/mhRZSSN8eBkV7225vf87EoBNWYkBEnyIermHJ9Z30rH8HYUgxtwuOsWkdCrxcEIQLHrv1+VNmHA6qpdzdxL+fgE/9mirmsZ12Ozx5YTH5Rr3dBEz0K5J9FsRE3uxn38rx2QYSqDPSTQdTLhtyB47g4y3knXm8TrBenH8E3zEuV21Yx3rB1d7kv5ZmPOZeUkiEKi1WNcf4p+sSNEIoSkUGfykc3pmliAFlEgv9Y1e2qRnc4Sly9hn
+    MINIO_ROOT_USER: AgADL2R50Wbn2adyhFVFxvfleFcPt604X7uMczMedvqwJ9AhR5cuj5DeQxurMfszCc57tsJnYmRld/PyPDW8YiN8P2gc2y99CYGNS3kyd4H7VW1LBh94YglPVVomNjEVJx+sGMhSu9BoqnNRg6n3KssO3hybfETxUurV4xN94kU3PwTjEU0QR/Y0n4+PV/NnKrLFPvv6ifiHBOqQZQzrk7xdtnhneujW2dZFs3vsCQNcY1TQ+aeruKj6A3w4zlMlighYpafD78VW47w6Yn/2qaCSmg7kWjX9EgrVLha+OZ/5R4/5ucXIlQdK+zgtzesT4sfK9ml6O1GFzbPy6FIsUdTx4r38I9mMby+KeO/vNnaHSdBOl8d8KcuKQsX2h5m7zfbx20UfYcCnyPNVKB/Z+yLzC82E1CxhPc+zYgH7ov+amozYg5KgjRMfEg6rvt54wyG+zMSoujkrddOHAl6t2BCgBtlYohKe6mjpDVarCRCPIXW+V8NQtDY7cAEb453q53+XZiUPvTIastcg3/tzsfFMS4FCAa+x/KrC7cWZlMpj+ihoavmZEX2UjOlNcwth2GZZATqgJC8y4AofdQfu8cNCJrG6dp0f/ThwsdU+yv//sIVQVPWgrw61EloerBGjL3sy1FLtgmcbz9751Kuo0qgwGcuVtypo2kozRogJ22Y2Bvr7V4xv1WQ9qQklmfLxejucN/ccXSEt7IcQ
   template:
     metadata:
       name: minio-secret
