@@ -9,6 +9,7 @@ resources:
 - sealed-secrets/postgres-sealed.yaml
 - sealed-secrets/auth-sealed.yaml
 - sealed-secrets/ghcr-sealed.yaml
+- sealed-secrets/minio-sealed.yaml
 
 patches:
 - patch: |-
@@ -35,6 +36,9 @@ images:
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-f0f995a
+- name: photo-worker
+  newName: ghcr.io/jaennil/guide-helper-photo-worker
+  newTag: latest
 
 replicas:
 - count: 1
@@ -47,3 +51,5 @@ replicas:
   name: frontend
 - count: 1
   name: routes
+- count: 1
+  name: photo-worker

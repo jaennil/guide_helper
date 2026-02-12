@@ -11,6 +11,12 @@ resources:
   - redis/pvc.yaml
   - redis/deployment.yaml
   - redis/service.yaml
+  - nats/pvc.yaml
+  - nats/deployment.yaml
+  - nats/service.yaml
+  - minio/pvc.yaml
+  - minio/deployment.yaml
+  - minio/service.yaml
   - auth/configmap.yaml
   - auth/deployment.yaml
   - auth/service.yaml
@@ -27,5 +33,7 @@ resources:
   - tiles/service.yaml
   - tiles/servicemonitor.yaml
   - dashboard.yaml
+  - photo-worker/configmap.yaml
+  - photo-worker/deployment.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml

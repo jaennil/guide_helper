@@ -1,0 +1,21 @@
+---
+# TODO: Generate with kubeseal:
+#   kubectl create secret generic minio-secret \
+#     --namespace=guide-helper \
+#     --from-file=MINIO_ROOT_USER=secrets/minio-user.txt \
+#     --from-file=MINIO_ROOT_PASSWORD=secrets/minio-password.txt \
+#     --dry-run=client -o yaml | kubeseal -o yaml > sealed-secrets/minio-sealed.yaml
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: minio-secret
+  namespace: guide-helper
+spec:
+  encryptedData:
+    MINIO_ROOT_USER: REPLACE_WITH_SEALED_VALUE
+    MINIO_ROOT_PASSWORD: REPLACE_WITH_SEALED_VALUE
+  template:
+    metadata:
+      name: minio-secret
+      namespace: guide-helper
+    type: Opaque

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: photo-worker-config
+  labels:
+    app: photo-worker
+data:
+  NATS_URL: "nats://nats:4222"
+  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_BUCKET: "photos"
+  PHOTO_BASE_URL: "/photos"
+  PHOTO_MAX_WIDTH: "1920"
+  PHOTO_QUALITY: "85"
+  THUMBNAIL_WIDTH: "300"

@@ -3,6 +3,7 @@ kind: ConfigMap
 metadata:
   name: routes-config
 data:
+  NATS_URL: "nats://nats:4222"
   DATABASE_MAX_CONNECTIONS: "5"
   TELEMETRY_ENABLED: "true"
   TELEMETRY_SERVICE_NAME: "guide-helper-routes"

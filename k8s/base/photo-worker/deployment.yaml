@@ -1,33 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: routes
+  name: photo-worker
   labels:
-    app: routes
+    app: photo-worker
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: routes
+      app: photo-worker
   template:
     metadata:
       labels:
-        app: routes
+        app: photo-worker
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
       initContainers:
-      - name: wait-for-postgres
-        image: busybox:1.36
-        command:
-        - sh
-        - -c
-        - |
-          until nc -z postgres 5432; do
-            echo "Waiting for postgres..."
-            sleep 2
-          done
       - name: wait-for-nats
         image: busybox:1.36
         command:
@@ -38,12 +28,29 @@ spec:
             echo "Waiting for nats..."
             sleep 2
           done
+      - name: wait-for-minio
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          until nc -z minio 9000; do
+            echo "Waiting for minio..."
+            sleep 2
+          done
+      - name: wait-for-postgres
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          until nc -z postgres 5432; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
       containers:
-      - name: routes
-        image: routes
-        ports:
-        - containerPort: 8080
-          name: http
+      - name: photo-worker
+        image: photo-worker
         env:
         - name: POSTGRES_USER
           valueFrom:
@@ -57,30 +64,23 @@ spec:
               key: POSTGRES_PASSWORD
         - name: DATABASE_URL
           value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/routes_db?sslmode=disable"
-        - name: JWT_SECRET
+        - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: auth-secret
-              key: JWT_SECRET
+              name: minio-secret
+              key: MINIO_ROOT_USER
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secret
+              key: MINIO_ROOT_PASSWORD
         envFrom:
         - configMapRef:
-            name: routes-config
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 30
+            name: photo-worker-config
         resources:
           requests:
             memory: "128Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "512Mi"
+            cpu: "500m"
