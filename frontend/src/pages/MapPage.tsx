@@ -22,6 +22,7 @@ import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
+import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 
 type RouteMode = "auto" | "manual";
 
@@ -404,6 +405,23 @@ export function MapPage() {
       }
     }
   }, [searchParams]);
+
+  // Real-time photo processing notifications via WebSocket
+  const hasPendingPhotos = routePoints.some(p => p.photo?.status === 'pending');
+
+  usePhotoNotifications({
+    routeId: loadedRouteInfo?.id ?? '',
+    enabled: !!loadedRouteInfo && hasPendingPhotos,
+    onPhotoUpdate: (updatedPoints) => {
+      setRoutePoints(prev => prev.map((point, i) => {
+        const updated = updatedPoints[i];
+        if (updated?.photo && updated.photo.status !== 'pending') {
+          return { ...point, photo: updated.photo };
+        }
+        return point;
+      }));
+    },
+  });
 
   const loadRoute = async (routeId: string) => {
     try {
