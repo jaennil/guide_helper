@@ -5,6 +5,7 @@ mod repository;
 mod telemetry;
 mod usecase;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
@@ -13,6 +14,8 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
+use tokio::sync::{broadcast, RwLock};
+use uuid::Uuid;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
@@ -22,6 +25,7 @@ use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, tog
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
+use crate::delivery::http::v1::ws::websocket_handler;
 use crate::repository::postgres::{create_pool, PostgresCommentRepository, PostgresLikeRepository, PostgresRatingRepository, PostgresRouteRepository};
 use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::jwt::JwtService;
@@ -37,6 +41,7 @@ pub struct AppState {
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
+    pub ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>>,
 }
 
 #[tokio::main]
@@ -120,6 +125,9 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    let ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>> =
+        Arc::new(RwLock::new(HashMap::new()));
+
     let shared_state = Arc::new(AppState {
         routes_usecase,
         comments_usecase,
@@ -128,7 +136,85 @@ async fn main() -> anyhow::Result<()> {
         jwt_service,
         metrics_handle,
         nats_client,
+        ws_channels: ws_channels.clone(),
     });
+
+    // Spawn NATS subscriber for photo completion events (core NATS, not JetStream)
+    if let Some(ref client) = shared_state.nats_client {
+        let nats_client = client.clone();
+        let channels = ws_channels.clone();
+        tokio::spawn(async move {
+            tracing::info!("subscribing to photos.completed.* for WS notifications");
+            match nats_client.subscribe("photos.completed.*").await {
+                Ok(mut subscriber) => {
+                    tracing::info!("NATS subscriber for photo completions ready");
+                    use futures::StreamExt;
+                    while let Some(msg) = subscriber.next().await {
+                        let subject = msg.subject.as_str();
+                        let route_id_str = match subject.strip_prefix("photos.completed.") {
+                            Some(id) => id,
+                            None => {
+                                tracing::warn!(subject = %subject, "unexpected subject format");
+                                continue;
+                            }
+                        };
+                        let route_id = match route_id_str.parse::<Uuid>() {
+                            Ok(id) => id,
+                            Err(e) => {
+                                tracing::warn!(
+                                    route_id = %route_id_str,
+                                    error = %e,
+                                    "failed to parse route_id from NATS subject"
+                                );
+                                continue;
+                            }
+                        };
+
+                        let payload = match String::from_utf8(msg.payload.to_vec()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                tracing::warn!(
+                                    route_id = %route_id,
+                                    error = %e,
+                                    "invalid UTF-8 in NATS message payload"
+                                );
+                                continue;
+                            }
+                        };
+
+                        let channels_read = channels.read().await;
+                        if let Some(tx) = channels_read.get(&route_id) {
+                            let receiver_count = tx.receiver_count();
+                            match tx.send(payload) {
+                                Ok(_) => {
+                                    tracing::info!(
+                                        route_id = %route_id,
+                                        receivers = receiver_count,
+                                        "forwarded photo completion to WS clients"
+                                    );
+                                }
+                                Err(_) => {
+                                    tracing::debug!(
+                                        route_id = %route_id,
+                                        "no active WS receivers for route"
+                                    );
+                                }
+                            }
+                        } else {
+                            tracing::debug!(
+                                route_id = %route_id,
+                                "no WS channel for route, skipping"
+                            );
+                        }
+                    }
+                    tracing::warn!("NATS photo completion subscriber ended");
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to subscribe to photos.completed.*");
+                }
+            }
+        });
+    }
 
     // All routes require authentication
     let routes_api = Router::new()
@@ -154,6 +240,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/healthz", get(healthz))
         .route("/metrics", get(metrics))
         .route("/api/v1/shared/{token}", get(get_shared_route))
+        .route("/api/v1/routes/{route_id}/ws", get(websocket_handler))
         .route("/api/v1/routes/{route_id}/comments", get(list_comments))
         .route("/api/v1/routes/{route_id}/comments/count", get(count_comments))
         .route("/api/v1/routes/{route_id}/like", get(get_like_count))
