@@ -1,7 +1,12 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use uuid::Uuid;
 
-use crate::{domain::route::Route, repository::errors::RepositoryError, usecase::contracts::RouteRepository};
+use crate::{
+    domain::comment::Comment,
+    domain::route::Route,
+    repository::errors::RepositoryError,
+    usecase::contracts::{CommentRepository, RouteRepository},
+};
 
 pub struct PostgresRouteRepository {
     pool: PgPool,
@@ -170,6 +175,123 @@ impl RouteRepository for PostgresRouteRepository {
 
         tracing::debug!(route_id = %id, "route deleted successfully");
         Ok(())
+    }
+}
+
+pub struct PostgresCommentRepository {
+    pool: PgPool,
+}
+
+impl PostgresCommentRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl CommentRepository for PostgresCommentRepository {
+    #[tracing::instrument(skip(self, comment), fields(comment_id = %comment.id, route_id = %comment.route_id))]
+    async fn create(&self, comment: &Comment) -> Result<(), RepositoryError> {
+        tracing::debug!("creating comment");
+
+        sqlx::query(
+            r#"
+            INSERT INTO comments (id, route_id, user_id, author_name, text, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            "#,
+        )
+        .bind(comment.id)
+        .bind(comment.route_id)
+        .bind(comment.user_id)
+        .bind(&comment.author_name)
+        .bind(&comment.text)
+        .bind(comment.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(comment_id = %comment.id, "comment created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id))]
+    async fn find_by_route_id(&self, route_id: Uuid) -> Result<Vec<Comment>, RepositoryError> {
+        tracing::debug!("finding comments by route_id");
+
+        let comments = sqlx::query_as::<_, Comment>(
+            r#"
+            SELECT id, route_id, user_id, author_name, text, created_at
+            FROM comments
+            WHERE route_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(route_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %route_id, count = comments.len(), "found comments");
+        Ok(comments)
+    }
+
+    #[tracing::instrument(skip(self), fields(comment_id = %id))]
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Comment>, RepositoryError> {
+        tracing::debug!("finding comment by id");
+
+        let comment = sqlx::query_as::<_, Comment>(
+            r#"
+            SELECT id, route_id, user_id, author_name, text, created_at
+            FROM comments
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(comment)
+    }
+
+    #[tracing::instrument(skip(self), fields(comment_id = %id))]
+    async fn delete(&self, id: Uuid) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting comment");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM comments
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(comment_id = %id, "comment deleted successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id))]
+    async fn count_by_route_id(&self, route_id: Uuid) -> Result<i64, RepositoryError> {
+        tracing::debug!("counting comments by route_id");
+
+        let count: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM comments WHERE route_id = $1
+            "#,
+        )
+        .bind(route_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %route_id, count = count.0, "counted comments");
+        Ok(count.0)
     }
 }
 
