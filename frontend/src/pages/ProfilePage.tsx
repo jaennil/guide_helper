@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [importLoading, setImportLoading] = useState(false);
   const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(new Set());
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,15 +63,32 @@ export default function ProfilePage() {
       const data = await routesApi.getRoutes();
       setRoutes(data);
 
-      // Load comment counts in parallel
+      // Load comment counts, like counts, and rating aggregates in parallel
       const counts: Record<string, number> = {};
-      const results = await Promise.allSettled(
-        data.map((route) => routesApi.getCommentCount(route.id))
-      );
-      results.forEach((result, idx) => {
+      const likes: Record<string, number> = {};
+      const ratings: Record<string, { average: number; count: number }> = {};
+
+      const [commentResults, likeResults, ratingResults] = await Promise.all([
+        Promise.allSettled(data.map((route) => routesApi.getCommentCount(route.id))),
+        Promise.allSettled(data.map((route) => routesApi.getLikeCount(route.id))),
+        Promise.allSettled(data.map((route) => routesApi.getRatingAggregate(route.id))),
+      ]);
+
+      commentResults.forEach((result, idx) => {
         counts[data[idx].id] = result.status === 'fulfilled' ? result.value : 0;
       });
+      likeResults.forEach((result, idx) => {
+        likes[data[idx].id] = result.status === 'fulfilled' ? result.value.count : 0;
+      });
+      ratingResults.forEach((result, idx) => {
+        ratings[data[idx].id] = result.status === 'fulfilled'
+          ? { average: result.value.average, count: result.value.count }
+          : { average: 0, count: 0 };
+      });
+
       setCommentCounts(counts);
+      setLikeCounts(likes);
+      setRatingAggregates(ratings);
     } catch (err: any) {
       setRoutesError(err.response?.data || t('profile.loadRoutesFailed'));
     } finally {
@@ -421,6 +440,8 @@ export default function ProfilePage() {
                           {t('profile.pointsCount', { count: route.points.length })}
                           {route.points.length >= 2 && ` · ${formatDistance(totalDistance(route.points))}`}
                           {commentCounts[route.id] != null && ` · ${t('comments.count', { count: commentCounts[route.id] })}`}
+                          {likeCounts[route.id] != null && ` · ${t('likes.count', { count: likeCounts[route.id] })}`}
+                          {ratingAggregates[route.id] != null && ratingAggregates[route.id].count > 0 && ` · ${t('rating.average', { value: ratingAggregates[route.id].average.toFixed(1) })}`}
                         </p>
                         <p className="route-date">
                           {t('profile.created')} {formatDate(route.created_at)}

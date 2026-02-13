@@ -23,6 +23,7 @@ import {
 } from "./MapPage";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { CommentSection } from "../components/CommentSection";
+import { LikeRatingBar } from "../components/LikeRatingBar";
 
 type RouteMode = "auto" | "manual";
 
@@ -173,10 +174,13 @@ export function SharedMapPage() {
         />
       )}
       {routeInfo && (
-        <CommentSection
-          routeId={routeInfo.id}
-          routeOwnerId={routeInfo.user_id}
-        />
+        <>
+          <LikeRatingBar routeId={routeInfo.id} />
+          <CommentSection
+            routeId={routeInfo.id}
+            routeOwnerId={routeInfo.user_id}
+          />
+        </>
       )}
     </div>
   );

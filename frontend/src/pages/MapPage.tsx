@@ -21,6 +21,7 @@ import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
+import { LikeRatingBar } from "../components/LikeRatingBar";
 
 type RouteMode = "auto" | "manual";
 
@@ -937,10 +938,13 @@ export function MapPage() {
         />
       )}
       {loadedRouteInfo && (
-        <CommentSection
-          routeId={loadedRouteInfo.id}
-          routeOwnerId={loadedRouteInfo.user_id}
-        />
+        <>
+          <LikeRatingBar routeId={loadedRouteInfo.id} />
+          <CommentSection
+            routeId={loadedRouteInfo.id}
+            routeOwnerId={loadedRouteInfo.user_id}
+          />
+        </>
       )}
     </div>
   );
