@@ -26,6 +26,20 @@ export interface Route {
   share_token?: string;
 }
 
+export interface Comment {
+  id: string;
+  route_id: string;
+  user_id: string;
+  author_name: string;
+  text: string;
+  created_at: string;
+}
+
+export interface CreateCommentRequest {
+  text: string;
+  author_name: string;
+}
+
 export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
@@ -104,5 +118,28 @@ export const routesApi = {
   async getSharedRoute(token: string): Promise<Route> {
     const response = await axios.get(`/api/v1/shared/${token}`);
     return response.data;
+  },
+
+  async getComments(routeId: string): Promise<Comment[]> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/comments`);
+    return response.data;
+  },
+
+  async createComment(routeId: string, data: CreateCommentRequest): Promise<Comment> {
+    const response = await axios.post(`${API_BASE_URL}/${routeId}/comments`, data, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async deleteComment(commentId: string): Promise<void> {
+    await axios.delete(`/api/v1/comments/${commentId}`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  async getCommentCount(routeId: string): Promise<number> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/comments/count`);
+    return response.data.count;
   },
 };
