@@ -826,3 +826,129 @@ body {
     color: #999;
     font-size: 13px;
 }
+
+/* Like & Rating bar */
+.like-rating-bar {
+    position: absolute;
+    bottom: 0;
+    right: 370px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 8px 8px 0 0;
+    box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    pointer-events: auto;
+}
+
+.like-section {
+    display: flex;
+    align-items: center;
+}
+
+.like-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.like-btn:hover:not(:disabled) {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.like-btn.liked {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.like-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.like-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.like-count {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rating-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 2px;
+}
+
+.star-rating .star {
+    font-size: 20px;
+    cursor: pointer;
+    color: #ccc;
+    transition: color 0.15s;
+    line-height: 1;
+    user-select: none;
+}
+
+.star-rating .star.filled {
+    color: #f5a623;
+}
+
+.star-rating .star:hover {
+    color: #f5a623;
+}
+
+.star-rating.readonly .star {
+    cursor: default;
+}
+
+.star-rating.readonly .star:hover {
+    color: #ccc;
+}
+
+.star-rating.readonly .star.filled:hover {
+    color: #f5a623;
+}
+
+.rating-info {
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .like-rating-bar {
+        right: 0;
+        bottom: 50vh;
+        border-radius: 8px 0 0 8px;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .like-rating-bar {
+        bottom: 40vh;
+        padding: 6px 10px;
+    }
+}
