@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const [routesError, setRoutesError] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(new Set());
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -59,6 +60,16 @@ export default function ProfilePage() {
     try {
       const data = await routesApi.getRoutes();
       setRoutes(data);
+
+      // Load comment counts in parallel
+      const counts: Record<string, number> = {};
+      const results = await Promise.allSettled(
+        data.map((route) => routesApi.getCommentCount(route.id))
+      );
+      results.forEach((result, idx) => {
+        counts[data[idx].id] = result.status === 'fulfilled' ? result.value : 0;
+      });
+      setCommentCounts(counts);
     } catch (err: any) {
       setRoutesError(err.response?.data || t('profile.loadRoutesFailed'));
     } finally {
@@ -409,6 +420,7 @@ export default function ProfilePage() {
                         <p>
                           {t('profile.pointsCount', { count: route.points.length })}
                           {route.points.length >= 2 && ` · ${formatDistance(totalDistance(route.points))}`}
+                          {commentCounts[route.id] != null && ` · ${t('comments.count', { count: commentCounts[route.id] })}`}
                         </p>
                         <p className="route-date">
                           {t('profile.created')} {formatDate(route.created_at)}

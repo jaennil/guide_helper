@@ -22,6 +22,7 @@ import {
   type RouteSegment,
 } from "./MapPage";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
+import { CommentSection } from "../components/CommentSection";
 
 type RouteMode = "auto" | "manual";
 
@@ -39,6 +40,7 @@ export function SharedMapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
+  const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
@@ -54,6 +56,7 @@ export function SharedMapPage() {
     try {
       const route = await routesApi.getSharedRoute(shareToken);
       setRouteName(route.name);
+      setRouteInfo({ id: route.id, user_id: route.user_id });
 
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
@@ -167,6 +170,12 @@ export function SharedMapPage() {
       {routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+        />
+      )}
+      {routeInfo && (
+        <CommentSection
+          routeId={routeInfo.id}
+          routeOwnerId={routeInfo.user_id}
         />
       )}
     </div>
