@@ -10,7 +10,7 @@ use std::sync::Arc;
 use axum::{
     extract::State,
     middleware,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
@@ -18,16 +18,22 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
+use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
 use crate::delivery::http::v1::middleware::auth_middleware;
+use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
-use crate::repository::postgres::{create_pool, PostgresCommentRepository, PostgresRouteRepository};
+use crate::repository::postgres::{create_pool, PostgresCommentRepository, PostgresLikeRepository, PostgresRatingRepository, PostgresRouteRepository};
 use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::jwt::JwtService;
+use crate::usecase::likes::LikesUseCase;
+use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
 
 pub struct AppState {
     pub routes_usecase: RoutesUseCase<PostgresRouteRepository>,
     pub comments_usecase: CommentsUseCase<PostgresCommentRepository, PostgresRouteRepository>,
+    pub likes_usecase: LikesUseCase<PostgresLikeRepository, PostgresRouteRepository>,
+    pub ratings_usecase: RatingsUseCase<PostgresRatingRepository, PostgresRouteRepository>,
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
@@ -75,10 +81,16 @@ async fn main() -> anyhow::Result<()> {
 
     let route_repository = PostgresRouteRepository::new(pool.clone());
     let comment_repository = PostgresCommentRepository::new(pool.clone());
-    let route_repository_for_comments = PostgresRouteRepository::new(pool);
+    let route_repository_for_comments = PostgresRouteRepository::new(pool.clone());
+    let like_repository = PostgresLikeRepository::new(pool.clone());
+    let route_repository_for_likes = PostgresRouteRepository::new(pool.clone());
+    let rating_repository = PostgresRatingRepository::new(pool.clone());
+    let route_repository_for_ratings = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let routes_usecase = RoutesUseCase::new(route_repository);
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
+    let likes_usecase = LikesUseCase::new(like_repository, route_repository_for_likes);
+    let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);
 
     // Connect to NATS and setup JetStream
     let nats_client = match async_nats::connect(&config.nats_url).await {
@@ -111,6 +123,8 @@ async fn main() -> anyhow::Result<()> {
     let shared_state = Arc::new(AppState {
         routes_usecase,
         comments_usecase,
+        likes_usecase,
+        ratings_usecase,
         jwt_service,
         metrics_handle,
         nats_client,
@@ -127,6 +141,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/routes/{id}/share", post(enable_share).delete(disable_share))
         .route("/api/v1/routes/{route_id}/comments", post(create_comment))
         .route("/api/v1/comments/{comment_id}", delete(delete_comment))
+        .route("/api/v1/routes/{route_id}/like", post(toggle_like))
+        .route("/api/v1/routes/{route_id}/like/me", get(get_user_like_status))
+        .route("/api/v1/routes/{route_id}/rating", put(set_rating).delete(remove_rating))
+        .route("/api/v1/routes/{route_id}/rating/me", get(get_user_rating))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,
@@ -138,6 +156,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/shared/{token}", get(get_shared_route))
         .route("/api/v1/routes/{route_id}/comments", get(list_comments))
         .route("/api/v1/routes/{route_id}/comments/count", get(count_comments))
+        .route("/api/v1/routes/{route_id}/like", get(get_like_count))
+        .route("/api/v1/routes/{route_id}/rating", get(get_rating_aggregate))
         .merge(routes_api)
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state);
