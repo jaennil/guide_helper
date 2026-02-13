@@ -3,9 +3,11 @@ use uuid::Uuid;
 
 use crate::{
     domain::comment::Comment,
+    domain::like::RouteLike,
+    domain::rating::RouteRating,
     domain::route::Route,
     repository::errors::RepositoryError,
-    usecase::contracts::{CommentRepository, RouteRepository},
+    usecase::contracts::{CommentRepository, LikeRepository, RatingRepository, RouteRepository},
 };
 
 pub struct PostgresRouteRepository {
@@ -292,6 +294,220 @@ impl CommentRepository for PostgresCommentRepository {
 
         tracing::debug!(route_id = %route_id, count = count.0, "counted comments");
         Ok(count.0)
+    }
+}
+
+pub struct PostgresLikeRepository {
+    pool: PgPool,
+}
+
+impl PostgresLikeRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl LikeRepository for PostgresLikeRepository {
+    #[tracing::instrument(skip(self, like), fields(like_id = %like.id, route_id = %like.route_id, user_id = %like.user_id))]
+    async fn create(&self, like: &RouteLike) -> Result<(), RepositoryError> {
+        tracing::debug!("creating route like");
+
+        sqlx::query(
+            r#"
+            INSERT INTO route_likes (id, route_id, user_id, created_at)
+            VALUES ($1, $2, $3, $4)
+            "#,
+        )
+        .bind(like.id)
+        .bind(like.route_id)
+        .bind(like.user_id)
+        .bind(like.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(like_id = %like.id, "route like created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn delete_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting route like");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM route_likes
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!("route like deleted successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn find_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<RouteLike>, RepositoryError> {
+        tracing::debug!("finding route like by route and user");
+
+        let like = sqlx::query_as::<_, RouteLike>(
+            r#"
+            SELECT id, route_id, user_id, created_at
+            FROM route_likes
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(like)
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id))]
+    async fn count_by_route_id(&self, route_id: Uuid) -> Result<i64, RepositoryError> {
+        tracing::debug!("counting likes by route_id");
+
+        let count: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM route_likes WHERE route_id = $1
+            "#,
+        )
+        .bind(route_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %route_id, count = count.0, "counted likes");
+        Ok(count.0)
+    }
+}
+
+pub struct PostgresRatingRepository {
+    pool: PgPool,
+}
+
+impl PostgresRatingRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl RatingRepository for PostgresRatingRepository {
+    #[tracing::instrument(skip(self, rating), fields(rating_id = %rating.id, route_id = %rating.route_id, user_id = %rating.user_id, rating_value = rating.rating))]
+    async fn upsert(&self, rating: &RouteRating) -> Result<(), RepositoryError> {
+        tracing::debug!("upserting route rating");
+
+        sqlx::query(
+            r#"
+            INSERT INTO route_ratings (id, route_id, user_id, rating, created_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (route_id, user_id)
+            DO UPDATE SET rating = $4, created_at = $5
+            "#,
+        )
+        .bind(rating.id)
+        .bind(rating.route_id)
+        .bind(rating.user_id)
+        .bind(rating.rating)
+        .bind(rating.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(rating_id = %rating.id, "route rating upserted successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn delete_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting route rating");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM route_ratings
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!("route rating deleted successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn find_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<RouteRating>, RepositoryError> {
+        tracing::debug!("finding route rating by route and user");
+
+        let rating = sqlx::query_as::<_, RouteRating>(
+            r#"
+            SELECT id, route_id, user_id, rating, created_at
+            FROM route_ratings
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(rating)
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id))]
+    async fn get_aggregate(&self, route_id: Uuid) -> Result<(f64, i64), RepositoryError> {
+        tracing::debug!("getting rating aggregate");
+
+        let result: (Option<f64>, i64) = sqlx::query_as(
+            r#"
+            SELECT COALESCE(AVG(rating::float8), 0.0), COUNT(*)
+            FROM route_ratings
+            WHERE route_id = $1
+            "#,
+        )
+        .bind(route_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        let average = result.0.unwrap_or(0.0);
+        tracing::debug!(route_id = %route_id, average, count = result.1, "rating aggregate retrieved");
+        Ok((average, result.1))
     }
 }
 
