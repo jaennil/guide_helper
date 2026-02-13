@@ -106,7 +106,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::route::{Route, RoutePoint};
+    use crate::domain::route::Route;
     use crate::usecase::contracts::{MockCommentRepository, MockRouteRepository};
 
     #[tokio::test]

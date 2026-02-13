@@ -10,21 +10,24 @@ use std::sync::Arc;
 use axum::{
     extract::State,
     middleware,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
+use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
-use crate::repository::postgres::{create_pool, PostgresRouteRepository};
+use crate::repository::postgres::{create_pool, PostgresCommentRepository, PostgresRouteRepository};
+use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::jwt::JwtService;
 use crate::usecase::routes::RoutesUseCase;
 
 pub struct AppState {
     pub routes_usecase: RoutesUseCase<PostgresRouteRepository>,
+    pub comments_usecase: CommentsUseCase<PostgresCommentRepository, PostgresRouteRepository>,
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
@@ -70,9 +73,12 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&pool).await?;
     tracing::info!("database migrations applied");
 
-    let route_repository = PostgresRouteRepository::new(pool);
+    let route_repository = PostgresRouteRepository::new(pool.clone());
+    let comment_repository = PostgresCommentRepository::new(pool.clone());
+    let route_repository_for_comments = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let routes_usecase = RoutesUseCase::new(route_repository);
+    let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
 
     // Connect to NATS and setup JetStream
     let nats_client = match async_nats::connect(&config.nats_url).await {
@@ -104,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
 
     let shared_state = Arc::new(AppState {
         routes_usecase,
+        comments_usecase,
         jwt_service,
         metrics_handle,
         nats_client,
@@ -118,6 +125,8 @@ async fn main() -> anyhow::Result<()> {
             get(get_route).put(update_route).delete(delete_route),
         )
         .route("/api/v1/routes/{id}/share", post(enable_share).delete(disable_share))
+        .route("/api/v1/routes/{route_id}/comments", post(create_comment))
+        .route("/api/v1/comments/{comment_id}", delete(delete_comment))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,
@@ -127,6 +136,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/healthz", get(healthz))
         .route("/metrics", get(metrics))
         .route("/api/v1/shared/{token}", get(get_shared_route))
+        .route("/api/v1/routes/{route_id}/comments", get(list_comments))
+        .route("/api/v1/routes/{route_id}/comments/count", get(count_comments))
         .merge(routes_api)
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state);
