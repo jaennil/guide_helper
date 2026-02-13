@@ -40,6 +40,34 @@ export interface CreateCommentRequest {
   author_name: string;
 }
 
+export interface LikeCountResponse {
+  count: number;
+}
+
+export interface ToggleLikeResponse {
+  liked: boolean;
+  count: number;
+}
+
+export interface UserLikeStatusResponse {
+  liked: boolean;
+}
+
+export interface RatingAggregateResponse {
+  average: number;
+  count: number;
+}
+
+export interface UserRatingResponse {
+  rating: number | null;
+}
+
+export interface SetRatingResponse {
+  average: number;
+  count: number;
+  user_rating: number;
+}
+
 export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
@@ -141,5 +169,49 @@ export const routesApi = {
   async getCommentCount(routeId: string): Promise<number> {
     const response = await axios.get(`${API_BASE_URL}/${routeId}/comments/count`);
     return response.data.count;
+  },
+
+  async getLikeCount(routeId: string): Promise<LikeCountResponse> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/like`);
+    return response.data;
+  },
+
+  async getUserLikeStatus(routeId: string): Promise<UserLikeStatusResponse> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/like/me`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async toggleLike(routeId: string): Promise<ToggleLikeResponse> {
+    const response = await axios.post(`${API_BASE_URL}/${routeId}/like`, {}, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async getRatingAggregate(routeId: string): Promise<RatingAggregateResponse> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/rating`);
+    return response.data;
+  },
+
+  async getUserRating(routeId: string): Promise<UserRatingResponse> {
+    const response = await axios.get(`${API_BASE_URL}/${routeId}/rating/me`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async setRating(routeId: string, rating: number): Promise<SetRatingResponse> {
+    const response = await axios.put(`${API_BASE_URL}/${routeId}/rating`, { rating }, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async removeRating(routeId: string): Promise<void> {
+    await axios.delete(`${API_BASE_URL}/${routeId}/rating`, {
+      headers: getAuthHeader(),
+    });
   },
 };
