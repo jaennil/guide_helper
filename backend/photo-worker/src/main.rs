@@ -63,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
         .context("failed to connect to NATS")?;
     tracing::info!(nats_url = %config.nats_url, "connected to NATS");
 
+    let nats_publisher = nats_client.clone();
     let jetstream = async_nats::jetstream::new(nats_client);
 
     // Create consumer for photo processing
@@ -102,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
             match msg_result {
                 Ok(msg) => {
                     if let Err(e) =
-                        process_message(&msg, &pool, &s3_client, &config).await
+                        process_message(&msg, &pool, &s3_client, &config, &nats_publisher).await
                     {
                         tracing::error!(error = %e, "failed to process message");
                         // Message will be redelivered by NATS
@@ -126,6 +127,7 @@ async fn process_message(
     pool: &PgPool,
     s3_client: &S3Client,
     config: &AppConfig,
+    nats_publisher: &async_nats::Client,
 ) -> anyhow::Result<()> {
     let task: PhotoProcessTask =
         serde_json::from_slice(&msg.payload).context("failed to deserialize task")?;
@@ -312,10 +314,42 @@ async fn process_message(
 
     sqlx::query("UPDATE routes SET points = $2, updated_at = NOW() WHERE id = $1")
         .bind(task.route_id)
-        .bind(points_json)
+        .bind(&points_json)
         .execute(pool)
         .await
         .context("failed to update route in database")?;
+
+    // Publish completion event via core NATS for real-time WS notifications
+    let subject = format!("photos.completed.{}", task.route_id);
+    let payload = serde_json::json!({
+        "type": "photo_update",
+        "route_id": task.route_id.to_string(),
+        "points": points_json,
+    });
+    match serde_json::to_vec(&payload) {
+        Ok(bytes) => {
+            if let Err(e) = nats_publisher.publish(subject.clone(), bytes.into()).await {
+                tracing::warn!(
+                    route_id = %task.route_id,
+                    error = %e,
+                    "failed to publish photo completion event"
+                );
+            } else {
+                tracing::info!(
+                    route_id = %task.route_id,
+                    subject = %subject,
+                    "published photo completion event"
+                );
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                route_id = %task.route_id,
+                error = %e,
+                "failed to serialize photo completion payload"
+            );
+        }
+    }
 
     tracing::info!(
         route_id = %task.route_id,
