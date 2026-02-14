@@ -7,6 +7,7 @@ import { profileApi } from '../api/profile';
 import { routesApi } from '../api/routes';
 import type { Route } from '../api/routes';
 import { totalDistance, formatDistance } from '../utils/geo';
+import { exportAsGpx, exportAsKml } from '../utils/exportRoute';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -477,6 +478,18 @@ export default function ProfilePage() {
                             {t('profile.share')}
                           </button>
                         )}
+                        <button
+                          onClick={() => exportAsGpx(route.name, route.points)}
+                          className="btn-secondary"
+                        >
+                          {t('export.gpx')}
+                        </button>
+                        <button
+                          onClick={() => exportAsKml(route.name, route.points)}
+                          className="btn-secondary"
+                        >
+                          {t('export.kml')}
+                        </button>
                         <button
                           onClick={() => handleDeleteRoute(route.id)}
                           className="btn-danger"

@@ -24,6 +24,7 @@ import {
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
+import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 
 type RouteMode = "auto" | "manual";
 
@@ -129,6 +130,22 @@ export function SharedMapPage() {
             ))}
           </select>
         </div>
+        {routePoints.length >= 2 && (
+          <div className="header-actions">
+            <button
+              onClick={() => exportAsGpx(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+              className="btn-secondary"
+            >
+              {t("export.gpx")}
+            </button>
+            <button
+              onClick={() => exportAsKml(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+              className="btn-secondary"
+            >
+              {t("export.kml")}
+            </button>
+          </div>
+        )}
       </div>
 
       <MapContainer

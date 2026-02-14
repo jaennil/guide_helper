@@ -23,6 +23,7 @@ import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
+import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 
 type RouteMode = "auto" | "manual";
 
@@ -381,7 +382,7 @@ export function MapPage() {
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
-  const [loadedRouteInfo, setLoadedRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
+  const [loadedRouteInfo, setLoadedRouteInfo] = useState<{ id: string; user_id: string; name: string } | null>(null);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -426,7 +427,7 @@ export function MapPage() {
   const loadRoute = async (routeId: string) => {
     try {
       const route = await routesApi.getRoute(routeId);
-      setLoadedRouteInfo({ id: route.id, user_id: route.user_id });
+      setLoadedRouteInfo({ id: route.id, user_id: route.user_id, name: route.name });
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
@@ -786,6 +787,22 @@ export function MapPage() {
               {t("map.saveRoute")}
             </button>
           )}
+          {loadedRouteInfo && routePoints.length >= 2 && (
+            <>
+              <button
+                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.gpx")}
+              </button>
+              <button
+                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.kml")}
+              </button>
+            </>
+          )}
           {routePoints.length > 0 && (
             <button onClick={handleClearRoute} className="clear-btn">
               {t("map.clear")}
@@ -809,6 +826,22 @@ export function MapPage() {
             <button onClick={() => setShowSaveModal(true)} className="save-btn">
               {t("map.saveRoute")}
             </button>
+          )}
+          {loadedRouteInfo && routePoints.length >= 2 && (
+            <>
+              <button
+                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.gpx")}
+              </button>
+              <button
+                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.kml")}
+              </button>
+            </>
           )}
           {routePoints.length > 0 && (
             <button onClick={handleClearRoute} className="clear-btn">
