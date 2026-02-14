@@ -111,4 +111,6 @@ export const ru = {
   "rating.removeRating": "Убрать оценку",
   "rating.setFailed": "Не удалось поставить оценку",
   "rating.removeFailed": "Не удалось убрать оценку",
+  "export.gpx": "GPX",
+  "export.kml": "KML",
 } as const;

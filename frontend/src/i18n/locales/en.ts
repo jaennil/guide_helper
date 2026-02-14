@@ -111,4 +111,6 @@ export const en = {
   "rating.removeRating": "Remove rating",
   "rating.setFailed": "Failed to set rating",
   "rating.removeFailed": "Failed to remove rating",
+  "export.gpx": "GPX",
+  "export.kml": "KML",
 } as const;
