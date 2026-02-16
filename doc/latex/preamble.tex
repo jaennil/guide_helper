@@ -25,6 +25,7 @@
 \onehalfspacing
 
 % --- Абзацный отступ 1.25 см ---
+\usepackage{indentfirst}
 \setlength{\parindent}{1.25cm}
 
 % --- Нумерация страниц внизу по центру ---
@@ -62,12 +63,13 @@
 
 % --- Содержание ---
 \usepackage{tocloft}
-\renewcommand{\cfttoctitlefont}{\hfill\bfseries\large}
+\renewcommand{\cfttoctitlefont}{\hfill\bfseries\large\MakeUppercase}
 \renewcommand{\cftaftertoctitle}{\hfill}
 \renewcommand{\cftchapfont}{\normalfont}
 \renewcommand{\cftchappagefont}{\normalfont}
 \renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
 \setlength{\cftbeforechapskip}{0pt}
+\setcounter{tocdepth}{1} % только главы и секции (1, 1.1), без 1.1.1
 
 % --- Рисунки и таблицы ---
 \usepackage{graphicx}
@@ -77,6 +79,10 @@
   labelsep=endash,
   justification=centering,
   font=small
+}
+\captionsetup[table]{
+  justification=raggedleft,
+  singlelinecheck=false
 }
 
 % Нумерация рисунков и таблиц в пределах главы
