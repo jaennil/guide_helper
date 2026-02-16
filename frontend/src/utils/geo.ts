@@ -88,6 +88,26 @@ export function estimateWalkingTime(
   return baseMinutes + climbMinutes;
 }
 
+export type DifficultyLevel = "easy" | "moderate" | "hard";
+
+/**
+ * Classify route difficulty based on distance and elevation gain.
+ * Distance score: <10km=1, 10-20km=2, >=20km=3
+ * Elevation score: <500m=1, 500-1000m=2, >=1000m=3
+ * Total <=2 → easy, 3-4 → moderate, >=5 → hard
+ */
+export function classifyDifficulty(
+  distanceKm: number,
+  elevationGainM: number
+): DifficultyLevel {
+  const distScore = distanceKm < 10 ? 1 : distanceKm < 20 ? 2 : 3;
+  const elevScore = elevationGainM < 500 ? 1 : elevationGainM < 1000 ? 2 : 3;
+  const total = distScore + elevScore;
+  if (total <= 2) return "easy";
+  if (total <= 4) return "moderate";
+  return "hard";
+}
+
 /** Format distance: "1.2 km" or "850 m" */
 export function formatDistance(km: number): string {
   if (km < 1) {

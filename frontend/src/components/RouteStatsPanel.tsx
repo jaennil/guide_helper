@@ -5,14 +5,22 @@ import {
   fetchElevations,
   elevationGain,
   estimateWalkingTime,
+  classifyDifficulty,
   formatDistance,
   formatDuration,
   type GeoPoint,
+  type DifficultyLevel,
 } from "../utils/geo";
 
 interface RouteStatsPanelProps {
   points: GeoPoint[];
 }
+
+const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
+  easy: "#4caf50",
+  moderate: "#ff9800",
+  hard: "#f44336",
+};
 
 export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
   const { t } = useLanguage();
@@ -58,8 +66,22 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
   const walkingTime =
     elevation !== null ? estimateWalkingTime(distance, elevation) : null;
 
+  const difficulty =
+    elevation !== null ? classifyDifficulty(distance, elevation) : null;
+
   return (
     <div className="route-stats-panel">
+      {difficulty && (
+        <div className="route-stat-item">
+          <span className="route-stat-label">{t("stats.difficulty")}</span>
+          <span
+            className="route-difficulty-badge"
+            style={{ backgroundColor: DIFFICULTY_COLORS[difficulty] }}
+          >
+            {t(`stats.difficulty.${difficulty}`)}
+          </span>
+        </div>
+      )}
       <div className="route-stat-item">
         <span className="route-stat-label">{t("stats.distance")}</span>
         <span className="route-stat-value">{formatDistance(distance)}</span>
