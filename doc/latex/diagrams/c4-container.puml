@@ -1,0 +1,46 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контейнеров системы Guide Helper
+
+Person(user, "Пользователь", "Гид, путешественник")
+
+System_Boundary(system, "Guide Helper") {
+  Container(frontend, "Frontend", "React 19, TypeScript,\nLeaflet", "SPA с интерактивными\nкартами, PWA")
+
+  Container(auth, "Auth Service", "Rust, Axum", "Аутентификация,\nJWT, Argon2")
+  Container(routes, "Routes Service", "Rust, Axum", "Управление маршрутами,\nREST API, WebSocket")
+  Container(photoworker, "Photo Worker", "Rust", "Компрессия фото,\nгенерация миниатюр")
+  Container(cache, "Cache Service", "Go, Gin", "Кэширование тайлов\nкарт в Redis")
+  Container(tiles, "Tiles Service", "Go, Gin", "Проксирование тайлов\nOpenStreetMap")
+
+  ContainerDb(postgres, "PostgreSQL 16", "SQL", "auth_db, routes_db")
+  ContainerDb(redis, "Redis 7", "Key-Value", "Кэш тайлов карт")
+  ContainerQueue(nats, "NATS JetStream", "Message Broker", "Очередь обработки\nфотографий")
+  ContainerDb(minio, "MinIO", "S3 API", "Хранилище фотографий")
+}
+
+System_Ext(osm, "OpenStreetMap", "Тайлы карт")
+System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
+
+Rel(user, frontend, "Использует", "HTTPS")
+Rel(frontend, auth, "Аутентификация", "REST API")
+Rel(frontend, routes, "CRUD маршрутов", "REST API / WebSocket")
+Rel(frontend, tiles, "Тайлы карт", "HTTPS")
+
+Rel(auth, postgres, "Читает/пишет", "SQL")
+Rel(routes, postgres, "Читает/пишет", "SQL")
+Rel(routes, nats, "Публикует задачи", "NATS")
+Rel(photoworker, nats, "Потребляет задачи", "NATS")
+Rel(photoworker, minio, "Загружает фото", "S3 API")
+Rel(photoworker, postgres, "Обновляет статус", "SQL")
+
+Rel(tiles, cache, "Кэширование", "HTTP")
+Rel(cache, redis, "Читает/пишет", "Redis Protocol")
+Rel(tiles, osm, "Проксирует", "HTTPS")
+
+Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
+
+@enduml

@@ -1,0 +1,140 @@
+% Преамбула: настройки по ГОСТ 7.32-2017
+% Компилятор: XeLaTeX
+
+\documentclass[14pt,a4paper]{extreport}
+
+% --- Шрифты (XeLaTeX) ---
+\usepackage{fontspec}
+\setmainfont{Liberation Serif} % метрически совместим с Times New Roman
+\setsansfont{Liberation Sans}
+\setmonofont{Liberation Mono}
+
+% --- Язык ---
+\usepackage[russian]{babel}
+
+% --- Геометрия страницы (ГОСТ 7.32: 30/15/20/20 мм) ---
+\usepackage[
+  left=30mm,
+  right=15mm,
+  top=20mm,
+  bottom=20mm
+]{geometry}
+
+% --- Межстрочный интервал 1.5 ---
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Абзацный отступ 1.25 см ---
+\setlength{\parindent}{1.25cm}
+
+% --- Нумерация страниц внизу по центру ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% --- Заголовки (ГОСТ) ---
+\usepackage{titlesec}
+
+% Глава: ПРОПИСНЫМИ, по центру, жирным
+\titleformat{\chapter}[block]
+  {\normalfont\bfseries\large\centering}
+  {\thechapter\quad}
+  {0pt}
+  {\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-20pt}{12pt}
+
+% Параграф: жирным, с абзацного отступа
+\titleformat{\section}
+  {\normalfont\bfseries\normalsize}
+  {\thesection\quad}
+  {0pt}
+  {}
+\titlespacing*{\section}{\parindent}{12pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\normalsize}
+  {\thesubsection\quad}
+  {0pt}
+  {}
+\titlespacing*{\subsection}{\parindent}{12pt}{6pt}
+
+% --- Содержание ---
+\usepackage{tocloft}
+\renewcommand{\cfttoctitlefont}{\hfill\bfseries\large}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftchapfont}{\normalfont}
+\renewcommand{\cftchappagefont}{\normalfont}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftbeforechapskip}{0pt}
+
+% --- Рисунки и таблицы ---
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{
+  labelsep=endash,
+  justification=centering,
+  font=small
+}
+
+% Нумерация рисунков и таблиц в пределах главы
+\usepackage{chngcntr}
+\counterwithin{figure}{chapter}
+\counterwithin{table}{chapter}
+
+% --- Таблицы ---
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+
+% --- Листинги кода ---
+\usepackage{listings}
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  tabsize=2,
+  inputencoding=utf8,
+  extendedchars=true
+}
+
+% --- Математика ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- Гиперссылки ---
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue,
+  hidelinks
+}
+
+% --- Библиография (ГОСТ 7.1) ---
+\usepackage[
+  backend=biber,
+  style=gost-numeric,
+  sorting=none,
+  language=auto,
+  autolang=other
+]{biblatex}
+\addbibresource{references.bib}
+
+% --- Приложения ---
+\usepackage[title]{appendix}
+
+% --- Перечисления ---
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=\parindent}
+
+% --- Подавление сирот в заголовках ---
+\widowpenalty=10000
+\clubpenalty=10000

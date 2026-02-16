@@ -1,0 +1,25 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контекста системы Guide Helper
+
+Person(user, "Пользователь", "Гид, путешественник,\nорганизатор походов")
+Person(admin, "Администратор", "Управление контентом\nи пользователями")
+
+System(guidehelper, "Guide Helper", "Информационная система\nдля создания туристических\nмаршрутов с геопривязкой\nфотографий")
+
+System_Ext(osm, "OpenStreetMap\nTile API", "Картографические тайлы")
+System_Ext(openmeteo, "Open-Meteo API", "Данные высот\nи прогноз погоды")
+System_Ext(nominatim, "Nominatim", "Геокодирование")
+System_Ext(ollama, "Ollama\n(llama3.2-vision)", "Локальная LLM\nдля AI-функций")
+
+Rel(user, guidehelper, "Создаёт маршруты,\nзагружает фото,\nделится ссылками", "HTTPS")
+Rel(admin, guidehelper, "Модерация контента,\nуправление пользователями", "HTTPS")
+Rel(guidehelper, osm, "Запрашивает\nкартографические тайлы", "HTTPS")
+Rel(guidehelper, openmeteo, "Запрашивает высоты\nи прогноз погоды", "HTTPS")
+Rel(guidehelper, nominatim, "Поиск местоположений\nпо названию", "HTTPS")
+Rel(guidehelper, ollama, "Генерация описаний\nмаршрутов по фото", "HTTP")
+
+@enduml

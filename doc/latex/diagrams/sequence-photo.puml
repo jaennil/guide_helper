@@ -1,0 +1,47 @@
+@startuml sequence-photo
+
+title Диаграмма последовательности: обработка фотографий
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Пользователь" as User
+participant "Frontend\n(React)" as FE
+participant "Routes\nService" as Routes
+database "PostgreSQL" as DB
+queue "NATS\nJetStream" as NATS
+participant "Photo\nWorker" as PW
+database "MinIO\n(S3)" as S3
+
+User -> FE : Загружает фотографию
+activate FE
+FE -> FE : Извлекает GPS\nиз EXIF (exifr)
+FE -> Routes : POST /routes/{id}/points\n(base64 фото + координаты)
+activate Routes
+Routes -> DB : INSERT точка маршрута\n(status = "pending")
+Routes -> NATS : Publish: photo.process\n{route_id, point_id, photo_data}
+Routes --> FE : 201 Created\n(point_id, status: pending)
+deactivate Routes
+
+FE --> User : Отображает точку\nна карте (статус: загрузка)
+deactivate FE
+
+NATS -> PW : Consume: photo.process
+activate PW
+PW -> PW : Декодирование\nизображения
+PW -> PW : Масштабирование\n(max 1920px, Lanczos3)
+PW -> PW : Генерация миниатюры\n(300px)
+PW -> PW : Кодирование JPEG\n(quality=85%)
+PW -> S3 : PUT original.jpg
+PW -> S3 : PUT thumbnail.jpg
+S3 --> PW : URLs файлов
+PW -> DB : UPDATE точка:\nURLs + status = "done"
+PW -> NATS : ACK
+deactivate PW
+
+Routes -> FE : WebSocket:\nphoto_processed\n{point_id, urls}
+activate FE
+FE --> User : Обновляет фото\nна карте
+deactivate FE
+
+@enduml

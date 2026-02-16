@@ -1,0 +1,81 @@
+@startuml er-diagram
+
+title ER-диаграмма базы данных Guide Helper
+
+skinparam linetype ortho
+
+entity "users\n(auth_db)" as users {
+  * **id** : UUID <<PK>>
+  --
+  * email : TEXT <<UNIQUE>>
+  * password_hash : TEXT
+    name : TEXT
+    avatar_url : TEXT
+  * created_at : TIMESTAMPTZ
+  * updated_at : TIMESTAMPTZ
+    deleted_at : TIMESTAMPTZ
+}
+
+entity "routes\n(routes_db)" as routes {
+  * **id** : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * name : TEXT
+  * points : JSONB
+    share_token : UUID <<UNIQUE>>
+  * created_at : TIMESTAMPTZ
+  * updated_at : TIMESTAMPTZ
+}
+
+entity "comments" as comments {
+  * **id** : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+  * author_name : TEXT
+  * text : TEXT
+  * created_at : TIMESTAMPTZ
+}
+
+entity "route_likes" as likes {
+  * **id** : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+  * created_at : TIMESTAMPTZ
+  ..
+  <<UNIQUE>> (route_id, user_id)
+}
+
+entity "route_ratings" as ratings {
+  * **id** : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+  * rating : SMALLINT [1..5]
+  * created_at : TIMESTAMPTZ
+  ..
+  <<UNIQUE>> (route_id, user_id)
+}
+
+note as points_json
+  **Структура points (JSONB)**
+  [{
+    id: UUID,
+    position: [lat, lng],
+    photo: {
+      original: String,
+      thumbnail_url: String?,
+      status: "pending"|"done"
+    }?
+  }, ...]
+end note
+
+routes .. points_json
+
+users ||--o{ routes : "создаёт"
+routes ||--o{ comments : "имеет"
+routes ||--o{ likes : "получает"
+routes ||--o{ ratings : "оценивается"
+
+@enduml
