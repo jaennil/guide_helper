@@ -1,8 +1,7 @@
 @startuml c4-container
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-LAYOUT_WITH_LEGEND()
-
+hide stereotype
 title Диаграмма контейнеров системы Guide Helper
 
 Person(user, "Пользователь", "Гид, путешественник")
@@ -42,5 +41,13 @@ Rel(cache, redis, "Читает/пишет", "Redis Protocol")
 Rel(tiles, osm, "Проксирует", "HTTPS")
 
 Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
+
+legend right
+  |<#08427B> <color:white>Человек</color> |
+  |<#438DD5> <color:white>Контейнер</color> |
+  |<#85BBF0> <color:black>Хранилище данных</color> |
+  |<#999999> Внешняя система |
+  |  Граница системы  |
+endlegend
 
 @enduml

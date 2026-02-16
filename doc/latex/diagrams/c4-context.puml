@@ -1,8 +1,7 @@
 @startuml c4-context
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
-LAYOUT_WITH_LEGEND()
-
+hide stereotype
 title Диаграмма контекста системы Guide Helper
 
 Person(user, "Пользователь", "Гид, путешественник,\nорганизатор походов")
@@ -21,5 +20,11 @@ Rel(guidehelper, osm, "Запрашивает\nкартографические 
 Rel(guidehelper, openmeteo, "Запрашивает высоты\nи прогноз погоды", "HTTPS")
 Rel(guidehelper, nominatim, "Поиск местоположений\nпо названию", "HTTPS")
 Rel(guidehelper, ollama, "Генерация описаний\nмаршрутов по фото", "HTTP")
+
+legend right
+  |<#438DD5> <color:white>Система</color> |
+  |<#08427B> <color:white>Человек</color> |
+  |<#999999> Внешняя система |
+endlegend
 
 @enduml
