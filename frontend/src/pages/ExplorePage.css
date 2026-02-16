@@ -1,0 +1,154 @@
+.explore-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.explore-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.explore-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.explore-content {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.explore-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.explore-search {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  outline: none;
+}
+
+.explore-search:focus {
+  border-color: #4CAF50;
+}
+
+.explore-sort {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  min-width: 160px;
+}
+
+.explore-sort:focus {
+  border-color: #4CAF50;
+}
+
+.explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.explore-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.explore-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.explore-card-name {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explore-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.explore-card-date {
+  color: #999;
+}
+
+.explore-card-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.explore-card-likes {
+  color: #e74c3c;
+}
+
+.explore-card-rating {
+  color: #f5a623;
+}
+
+.explore-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+
+.explore-loading {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+
+.explore-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+@media (max-width: 600px) {
+  .explore-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .explore-controls {
+    flex-direction: column;
+  }
+
+  .explore-sort {
+    min-width: unset;
+  }
+
+  .explore-grid {
+    grid-template-columns: 1fr;
+  }
+}

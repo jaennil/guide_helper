@@ -810,6 +810,9 @@ export function MapPage() {
               {t("map.clear")}
             </button>
           )}
+          <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
+            {t("explore.catalog")}
+          </button>
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
           </button>
@@ -850,6 +853,9 @@ export function MapPage() {
               {t("map.clear")}
             </button>
           )}
+          <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
+            {t("explore.catalog")}
+          </button>
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
           </button>

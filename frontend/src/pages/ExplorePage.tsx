@@ -1,0 +1,171 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
+import { routesApi } from '../api/routes';
+import type { ExploreRoute } from '../api/routes';
+import './ExplorePage.css';
+
+type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
+
+const PAGE_SIZE = 20;
+
+export default function ExplorePage() {
+  const { t, dateLocale } = useLanguage();
+  const navigate = useNavigate();
+
+  const [routes, setRoutes] = useState<ExploreRoute[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortOption>('newest');
+  const [offset, setOffset] = useState(0);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const fetchRoutes = useCallback(async (searchValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await routesApi.exploreRoutes({
+        search: searchValue || undefined,
+        sort: sortValue,
+        limit: PAGE_SIZE,
+        offset: offsetValue,
+      });
+      if (append) {
+        setRoutes(prev => [...prev, ...data.routes]);
+      } else {
+        setRoutes(data.routes);
+      }
+      setTotal(data.total);
+    } catch (err: any) {
+      setError(err.response?.data || t('explore.loadFailed'));
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
+    }
+  }, [t]);
+
+  // Initial load and sort change
+  useEffect(() => {
+    setOffset(0);
+    fetchRoutes(search, sort, 0, false);
+  }, [sort]);
+
+  // Search with debounce
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setOffset(0);
+      fetchRoutes(value, sort, 0, false);
+    }, 400);
+  };
+
+  const handleLoadMore = () => {
+    const newOffset = offset + PAGE_SIZE;
+    setOffset(newOffset);
+    fetchRoutes(search, sort, newOffset, true);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(dateLocale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const hasMore = routes.length < total;
+
+  return (
+    <div className="explore-page">
+      <header className="explore-header">
+        <h1>{t('explore.title')}</h1>
+        <div className="header-actions">
+          <button onClick={() => navigate('/map')} className="btn-secondary">
+            {t('explore.backToMap')}
+          </button>
+        </div>
+      </header>
+
+      <div className="explore-content">
+        <div className="explore-controls">
+          <input
+            type="text"
+            className="explore-search"
+            placeholder={t('explore.searchPlaceholder')}
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          <select
+            className="explore-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+          >
+            <option value="newest">{t('explore.sortNewest')}</option>
+            <option value="oldest">{t('explore.sortOldest')}</option>
+            <option value="popular">{t('explore.sortPopular')}</option>
+            <option value="top_rated">{t('explore.sortTopRated')}</option>
+          </select>
+        </div>
+
+        {error && <div className="error-message">{error}</div>}
+
+        {!initialLoad && routes.length === 0 && !loading && (
+          <div className="explore-empty">
+            <p>{t('explore.noRoutes')}</p>
+          </div>
+        )}
+
+        {routes.length > 0 && (
+          <>
+            <div className="explore-grid">
+              {routes.map((route) => (
+                <div
+                  key={route.id}
+                  className="explore-card"
+                  onClick={() => navigate(`/shared/${route.share_token}`)}
+                >
+                  <h3 className="explore-card-name">{route.name}</h3>
+                  <div className="explore-card-meta">
+                    <span>{t('explore.pointsCount', { count: route.points_count })}</span>
+                    <span className="explore-card-date">{formatDate(route.created_at)}</span>
+                  </div>
+                  <div className="explore-card-stats">
+                    <span className="explore-card-likes">
+                      &#9825; {route.likes_count}
+                    </span>
+                    {route.ratings_count > 0 && (
+                      <span className="explore-card-rating">
+                        &#9733; {route.avg_rating.toFixed(1)} ({route.ratings_count})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="explore-load-more">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  className="btn-primary"
+                >
+                  {loading ? t('common.loading') : t('explore.loadMore')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {initialLoad && loading && (
+          <div className="explore-loading">{t('common.loading')}</div>
+        )}
+      </div>
+    </div>
+  );
+}

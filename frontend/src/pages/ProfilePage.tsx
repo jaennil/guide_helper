@@ -251,6 +251,9 @@ export default function ProfilePage() {
       <header className="profile-header">
         <h1>{t('profile.title')}</h1>
         <div className="header-actions">
+          <button onClick={() => navigate('/explore')} className="btn-secondary">
+            {t('explore.catalog')}
+          </button>
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('profile.backToMap')}
           </button>

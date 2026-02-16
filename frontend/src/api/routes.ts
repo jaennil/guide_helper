@@ -68,6 +68,29 @@ export interface SetRatingResponse {
   user_rating: number;
 }
 
+export interface ExploreRoute {
+  id: string;
+  name: string;
+  points_count: number;
+  created_at: string;
+  share_token: string;
+  likes_count: number;
+  avg_rating: number;
+  ratings_count: number;
+}
+
+export interface ExploreResponse {
+  routes: ExploreRoute[];
+  total: number;
+}
+
+export interface ExploreParams {
+  search?: string;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
@@ -141,6 +164,11 @@ export const routesApi = {
     await axios.delete(`${API_BASE_URL}/${id}/share`, {
       headers: getAuthHeader(),
     });
+  },
+
+  async exploreRoutes(params: ExploreParams = {}): Promise<ExploreResponse> {
+    const response = await axios.get(`${API_BASE_URL}/explore`, { params });
+    return response.data;
   },
 
   async getSharedRoute(token: string): Promise<Route> {
