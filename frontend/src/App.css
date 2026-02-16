@@ -268,6 +268,77 @@ body {
     background: #138496;
 }
 
+/* Historical map controls */
+.historical-controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    font-family: Arial, sans-serif;
+    pointer-events: auto;
+    min-width: 320px;
+}
+
+.historical-year-display {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.historical-slider {
+    width: 100%;
+    cursor: pointer;
+    accent-color: #f5a623;
+    height: 6px;
+}
+
+.historical-year-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+    margin-bottom: 8px;
+}
+
+.historical-opacity-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #ccc;
+}
+
+.historical-opacity-slider {
+    flex: 1;
+    cursor: pointer;
+    accent-color: #ccc;
+}
+
+.active-toggle {
+    background-color: #f5a623 !important;
+    color: #000 !important;
+    border-color: #f5a623 !important;
+}
+
+@media (max-width: 768px) {
+    .historical-controls {
+        min-width: unset;
+        width: calc(100% - 24px);
+        left: 12px;
+        transform: none;
+        bottom: 12px;
+    }
+}
+
 /* Explore nav button on map header */
 .explore-nav-btn {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);

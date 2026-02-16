@@ -130,4 +130,6 @@ export const en = {
   "explore.loadMore": "Load more",
   "explore.loadFailed": "Failed to load routes",
   "explore.catalog": "Catalog",
+  "historical.toggle": "Historical",
+  "historical.opacity": "Opacity",
 } as const;

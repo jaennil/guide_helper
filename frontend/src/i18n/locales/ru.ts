@@ -130,4 +130,6 @@ export const ru = {
   "explore.loadMore": "Загрузить ещё",
   "explore.loadFailed": "Не удалось загрузить маршруты",
   "explore.catalog": "Каталог",
+  "historical.toggle": "Историческая",
+  "historical.opacity": "Прозрачность",
 } as const;

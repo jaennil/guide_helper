@@ -24,6 +24,7 @@ import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
+import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
 
 type RouteMode = "auto" | "manual";
 
@@ -383,6 +384,9 @@ export function MapPage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
   const [loadedRouteInfo, setLoadedRouteInfo] = useState<{ id: string; user_id: string; name: string } | null>(null);
+  const [historicalMode, setHistoricalMode] = useState(false);
+  const [historicalYear, setHistoricalYear] = useState(1900);
+  const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -810,6 +814,12 @@ export function MapPage() {
               {t("map.clear")}
             </button>
           )}
+          <button
+            onClick={() => setHistoricalMode(!historicalMode)}
+            className={`btn-secondary explore-nav-btn${historicalMode ? " active-toggle" : ""}`}
+          >
+            {t("historical.toggle")}
+          </button>
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
           </button>
@@ -853,6 +863,12 @@ export function MapPage() {
               {t("map.clear")}
             </button>
           )}
+          <button
+            onClick={() => setHistoricalMode(!historicalMode)}
+            className={`btn-secondary explore-nav-btn${historicalMode ? " active-toggle" : ""}`}
+          >
+            {t("historical.toggle")}
+          </button>
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
           </button>
@@ -876,6 +892,39 @@ export function MapPage() {
               <span className="overlay-legend-name">{route.name}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {historicalMode && (
+        <div className="historical-controls">
+          <div className="historical-year-display">{historicalYear}</div>
+          <input
+            type="range"
+            min={1700}
+            max={2025}
+            step={1}
+            value={historicalYear}
+            onChange={(e) => setHistoricalYear(Number(e.target.value))}
+            className="historical-slider"
+          />
+          <div className="historical-year-labels">
+            <span>1700</span>
+            <span>1800</span>
+            <span>1900</span>
+            <span>2000</span>
+          </div>
+          <div className="historical-opacity-row">
+            <span>{t("historical.opacity")}</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(historicalOpacity * 100)}
+              onChange={(e) => setHistoricalOpacity(Number(e.target.value) / 100)}
+              className="historical-opacity-slider"
+            />
+          </div>
         </div>
       )}
 
@@ -923,6 +972,9 @@ export function MapPage() {
         />
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
+        {historicalMode && (
+          <HistoricalMapOverlay year={historicalYear} opacity={historicalOpacity} />
+        )}
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
         <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
         {routePoints.map((point, index) => (
