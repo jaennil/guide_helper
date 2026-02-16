@@ -536,11 +536,13 @@ export function MapPage() {
   };
 
   const handleClearRoute = () => {
-    if (routePoints.length > 0 && !confirm(t("map.clearAllPoints"))) {
+    if ((routePoints.length > 0 || overlayRoutes.length > 0) && !confirm(t("map.clearAllPoints"))) {
       return;
     }
     setRoutePoints([]);
     setRouteSegments([]);
+    setOverlayRoutes([]);
+    setLoadedRouteInfo(null);
     pointIdRef.current = 0;
   };
 
@@ -782,7 +784,7 @@ export function MapPage() {
             onChange={handleImportPhotos}
             style={{ display: "none" }}
           />
-          {routePoints.length >= 2 && (
+          {routePoints.length >= 2 && !loadedRouteInfo && (
             <button onClick={() => setShowSaveModal(true)} className="save-btn">
               {t("map.saveRoute")}
             </button>
@@ -803,7 +805,7 @@ export function MapPage() {
               </button>
             </>
           )}
-          {routePoints.length > 0 && (
+          {(routePoints.length > 0 || overlayRoutes.length > 0) && (
             <button onClick={handleClearRoute} className="clear-btn">
               {t("map.clear")}
             </button>
@@ -822,7 +824,7 @@ export function MapPage() {
           >
             {t("map.importPhotos")}
           </button>
-          {routePoints.length >= 2 && (
+          {routePoints.length >= 2 && !loadedRouteInfo && (
             <button onClick={() => setShowSaveModal(true)} className="save-btn">
               {t("map.saveRoute")}
             </button>
@@ -843,7 +845,7 @@ export function MapPage() {
               </button>
             </>
           )}
-          {routePoints.length > 0 && (
+          {(routePoints.length > 0 || overlayRoutes.length > 0) && (
             <button onClick={handleClearRoute} className="clear-btn">
               {t("map.clear")}
             </button>
