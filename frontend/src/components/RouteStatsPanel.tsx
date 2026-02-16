@@ -11,6 +11,7 @@ import {
   type GeoPoint,
   type DifficultyLevel,
 } from "../utils/geo";
+import { ElevationChart } from "./ElevationChart";
 
 interface RouteStatsPanelProps {
   points: GeoPoint[];
@@ -24,14 +25,14 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
 
 export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
   const { t } = useLanguage();
-  const [elevation, setElevation] = useState<number | null>(null);
+  const [elevations, setElevations] = useState<number[] | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const distance = totalDistance(points);
 
   useEffect(() => {
-    setElevation(null);
+    setElevations(null);
 
     if (points.length < 2) return;
 
@@ -42,13 +43,12 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
     debounceRef.current = setTimeout(async () => {
       setElevationLoading(true);
       try {
-        const elevations = await fetchElevations(points);
-        const gain = elevationGain(elevations);
-        setElevation(gain);
-        console.log(`[stats] elevation gain: ${gain.toFixed(0)}m`);
+        const elev = await fetchElevations(points);
+        setElevations(elev);
+        console.log(`[stats] elevation gain: ${elevationGain(elev).toFixed(0)}m`);
       } catch (err) {
         console.error("[stats] failed to fetch elevations:", err);
-        setElevation(null);
+        setElevations(null);
       } finally {
         setElevationLoading(false);
       }
@@ -63,11 +63,11 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
 
   if (points.length < 2) return null;
 
+  const gain = elevations !== null ? elevationGain(elevations) : null;
   const walkingTime =
-    elevation !== null ? estimateWalkingTime(distance, elevation) : null;
-
+    gain !== null ? estimateWalkingTime(distance, gain) : null;
   const difficulty =
-    elevation !== null ? classifyDifficulty(distance, elevation) : null;
+    gain !== null ? classifyDifficulty(distance, gain) : null;
 
   return (
     <div className="route-stats-panel">
@@ -91,8 +91,8 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
         <span className="route-stat-value">
           {elevationLoading
             ? t("stats.loading")
-            : elevation !== null
-              ? `${Math.round(elevation)} m`
+            : gain !== null
+              ? `${Math.round(gain)} m`
               : "—"}
         </span>
       </div>
@@ -106,6 +106,9 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
               : "—"}
         </span>
       </div>
+      {elevations !== null && elevations.length >= 2 && (
+        <ElevationChart points={points} elevations={elevations} />
+      )}
     </div>
   );
 }

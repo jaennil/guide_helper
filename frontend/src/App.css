@@ -465,6 +465,36 @@ body {
     text-transform: uppercase;
 }
 
+/* Elevation chart */
+.elevation-chart {
+    margin-top: 6px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 4px;
+}
+
+.elevation-chart-title {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.elevation-chart-svg {
+    width: 100%;
+    height: auto;
+    cursor: crosshair;
+}
+
+.elevation-chart-label {
+    font-size: 7px;
+    fill: #999;
+}
+
+.elevation-chart-tooltip {
+    font-size: 8px;
+    font-weight: bold;
+    fill: #333;
+}
+
 /* Geo search */
 .geo-search {
     position: absolute;

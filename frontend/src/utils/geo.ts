@@ -108,6 +108,23 @@ export function classifyDifficulty(
   return "hard";
 }
 
+/** Cumulative distances from start for each point, in km */
+export function cumulativeDistances(points: GeoPoint[]): number[] {
+  const result = [0];
+  for (let i = 1; i < points.length; i++) {
+    result.push(
+      result[i - 1] +
+        haversineDistance(
+          points[i - 1].lat,
+          points[i - 1].lng,
+          points[i].lat,
+          points[i].lng
+        )
+    );
+  }
+  return result;
+}
+
 /** Format distance: "1.2 km" or "850 m" */
 export function formatDistance(km: number): string {
   if (km < 1) {

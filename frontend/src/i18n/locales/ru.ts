@@ -90,6 +90,7 @@ export const ru = {
   "stats.difficulty.easy": "Лёгкий",
   "stats.difficulty.moderate": "Средний",
   "stats.difficulty.hard": "Сложный",
+  "stats.elevationProfile": "Профиль высот",
   "stats.loading": "Загрузка...",
   "search.placeholder": "Поиск мест...",
   "search.noResults": "Ничего не найдено",

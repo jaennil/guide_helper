@@ -90,6 +90,7 @@ export const en = {
   "stats.difficulty.easy": "Easy",
   "stats.difficulty.moderate": "Moderate",
   "stats.difficulty.hard": "Hard",
+  "stats.elevationProfile": "Elevation profile",
   "stats.loading": "Loading...",
   "search.placeholder": "Search places...",
   "search.noResults": "No results found",
