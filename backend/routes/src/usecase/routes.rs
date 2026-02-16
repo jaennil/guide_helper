@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Error};
 use uuid::Uuid;
 
-use crate::domain::route::{Route, RoutePoint};
+use crate::domain::route::{ExploreRouteRow, Route, RoutePoint};
 use crate::usecase::contracts::RouteRepository;
 
 pub struct RoutesUseCase<R>
@@ -158,6 +158,36 @@ where
 
         tracing::debug!(route_id = %route.id, "shared route retrieved successfully");
         Ok(route)
+    }
+
+    #[tracing::instrument(skip(self), fields(?search, %sort, %limit, %offset))]
+    pub async fn explore_routes(
+        &self,
+        search: Option<&str>,
+        sort: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<ExploreRouteRow>, i64), Error> {
+        tracing::debug!("exploring shared routes");
+
+        let order_clause = match sort {
+            "oldest" => "r.created_at ASC",
+            "popular" => "likes_count DESC, r.created_at DESC",
+            "top_rated" => "avg_rating DESC, ratings_count DESC, r.created_at DESC",
+            _ => "r.created_at DESC", // "newest" default
+        };
+
+        let routes = self
+            .route_repository
+            .explore_shared(search, order_clause, limit, offset)
+            .await?;
+        let total = self
+            .route_repository
+            .count_explore_shared(search)
+            .await?;
+
+        tracing::debug!(count = routes.len(), total, "explored shared routes");
+        Ok((routes, total))
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]

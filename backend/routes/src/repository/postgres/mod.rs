@@ -5,7 +5,7 @@ use crate::{
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::rating::RouteRating,
-    domain::route::Route,
+    domain::route::{ExploreRouteRow, Route},
     repository::errors::RepositoryError,
     usecase::contracts::{CommentRepository, LikeRepository, RatingRepository, RouteRepository},
 };
@@ -177,6 +177,67 @@ impl RouteRepository for PostgresRouteRepository {
 
         tracing::debug!(route_id = %id, "route deleted successfully");
         Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(?search, %order_clause, %limit, %offset))]
+    async fn explore_shared(
+        &self,
+        search: Option<&str>,
+        order_clause: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ExploreRouteRow>, RepositoryError> {
+        tracing::debug!("exploring shared routes");
+
+        let query = format!(
+            r#"
+            SELECT r.id, r.name,
+                   jsonb_array_length(r.points) AS points_count,
+                   r.created_at, r.share_token,
+                   COALESCE(l.likes_count, 0) AS likes_count,
+                   COALESCE(rt.avg_rating, 0.0) AS avg_rating,
+                   COALESCE(rt.ratings_count, 0) AS ratings_count
+            FROM routes r
+            LEFT JOIN (SELECT route_id, COUNT(*) AS likes_count FROM route_likes GROUP BY route_id) l ON l.route_id = r.id
+            LEFT JOIN (SELECT route_id, AVG(rating::float8) AS avg_rating, COUNT(*) AS ratings_count FROM route_ratings GROUP BY route_id) rt ON rt.route_id = r.id
+            WHERE r.share_token IS NOT NULL
+              AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
+            ORDER BY {}
+            LIMIT $2 OFFSET $3
+            "#,
+            order_clause
+        );
+
+        let rows = sqlx::query_as::<_, ExploreRouteRow>(&query)
+            .bind(search)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = rows.len(), "explored shared routes");
+        Ok(rows)
+    }
+
+    #[tracing::instrument(skip(self), fields(?search))]
+    async fn count_explore_shared(&self, search: Option<&str>) -> Result<i64, RepositoryError> {
+        tracing::debug!("counting explore shared routes");
+
+        let count: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM routes
+            WHERE share_token IS NOT NULL
+              AND ($1::text IS NULL OR name ILIKE '%' || $1 || '%')
+            "#,
+        )
+        .bind(search)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = count.0, "counted explore shared routes");
+        Ok(count.0)
     }
 }
 

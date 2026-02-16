@@ -24,7 +24,7 @@ use crate::delivery::http::v1::comments::{count_comments, create_comment, delete
 use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
-use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
+use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
 use crate::delivery::http::v1::ws::websocket_handler;
 use crate::repository::postgres::{create_pool, PostgresCommentRepository, PostgresLikeRepository, PostgresRatingRepository, PostgresRouteRepository};
 use crate::usecase::comments::CommentsUseCase;
@@ -239,6 +239,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .route("/healthz", get(healthz))
         .route("/metrics", get(metrics))
+        .route("/api/v1/routes/explore", get(explore_routes))
         .route("/api/v1/shared/{token}", get(get_shared_route))
         .route("/api/v1/routes/{route_id}/ws", get(websocket_handler))
         .route("/api/v1/routes/{route_id}/comments", get(list_comments))

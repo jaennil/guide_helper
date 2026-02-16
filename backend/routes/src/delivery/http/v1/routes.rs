@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Extension, Json,
@@ -449,6 +449,77 @@ pub async fn get_shared_route(
         Err(e) => {
             tracing::warn!(%token, error = %e, "shared route not found");
             Err((StatusCode::NOT_FOUND, "Shared route not found".to_string()))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExploreQuery {
+    pub search: Option<String>,
+    pub sort: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct ExploreRouteResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub points_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub share_token: String,
+    pub likes_count: i64,
+    pub avg_rating: f64,
+    pub ratings_count: i64,
+}
+
+#[derive(Serialize)]
+pub struct ExploreResponse {
+    pub routes: Vec<ExploreRouteResponse>,
+    pub total: i64,
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn explore_routes(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ExploreQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let search = params.search.as_deref().filter(|s| !s.is_empty());
+    let sort = params.sort.as_deref().unwrap_or("newest");
+    let limit = params.limit.unwrap_or(20).min(50).max(1);
+    let offset = params.offset.unwrap_or(0).max(0);
+
+    tracing::debug!(?search, %sort, %limit, %offset, "handling explore routes request");
+
+    match state
+        .routes_usecase
+        .explore_routes(search, sort, limit, offset)
+        .await
+    {
+        Ok((rows, total)) => {
+            let routes: Vec<ExploreRouteResponse> = rows
+                .into_iter()
+                .map(|r| ExploreRouteResponse {
+                    id: r.id,
+                    name: r.name,
+                    points_count: r.points_count,
+                    created_at: r.created_at,
+                    share_token: r.share_token.to_string(),
+                    likes_count: r.likes_count,
+                    avg_rating: r.avg_rating,
+                    ratings_count: r.ratings_count,
+                })
+                .collect();
+
+            tracing::debug!(count = routes.len(), total, "explore routes listed");
+            Ok((StatusCode::OK, Json(ExploreResponse { routes, total })))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "failed to explore routes");
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to explore routes: {}", e),
+            ))
         }
     }
 }

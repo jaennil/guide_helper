@@ -4,7 +4,7 @@ use crate::{
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::rating::RouteRating,
-    domain::route::Route,
+    domain::route::{ExploreRouteRow, Route},
     repository::errors::RepositoryError,
 };
 
@@ -17,6 +17,14 @@ pub trait RouteRepository: Send + Sync {
     async fn delete(&self, id: Uuid) -> Result<(), RepositoryError>;
     async fn set_share_token(&self, id: Uuid, token: Option<Uuid>) -> Result<(), RepositoryError>;
     async fn find_by_share_token(&self, token: Uuid) -> Result<Option<Route>, RepositoryError>;
+    async fn explore_shared(
+        &self,
+        search: Option<&str>,
+        order_clause: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ExploreRouteRow>, RepositoryError>;
+    async fn count_explore_shared(&self, search: Option<&str>) -> Result<i64, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
