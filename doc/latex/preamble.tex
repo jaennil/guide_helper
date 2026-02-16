@@ -40,8 +40,8 @@
 
 % Глава: ПРОПИСНЫМИ, по центру, жирным
 \titleformat{\chapter}[block]
-  {\normalfont\bfseries\large\centering}
-  {\thechapter\quad}
+  {\normalfont\bfseries\normalsize\centering}
+  {\thechapter\ }
   {0pt}
   {\MakeUppercase}
 \titlespacing*{\chapter}{0pt}{-20pt}{12pt}
@@ -49,21 +49,21 @@
 % Параграф: жирным, с абзацного отступа
 \titleformat{\section}
   {\normalfont\bfseries\normalsize}
-  {\thesection\quad}
+  {\thesection\ }
   {0pt}
   {}
-\titlespacing*{\section}{\parindent}{12pt}{6pt}
+\titlespacing*{\section}{\parindent}{21pt}{6pt}
 
 \titleformat{\subsection}
   {\normalfont\bfseries\normalsize}
-  {\thesubsection\quad}
+  {\thesubsection\ }
   {0pt}
   {}
 \titlespacing*{\subsection}{\parindent}{12pt}{6pt}
 
 % --- Содержание ---
 \usepackage{tocloft}
-\renewcommand{\cfttoctitlefont}{\hfill\bfseries\large\MakeUppercase}
+\renewcommand{\cfttoctitlefont}{\hfill\bfseries\normalsize\MakeUppercase}
 \renewcommand{\cftaftertoctitle}{\hfill}
 \renewcommand{\cftchapfont}{\normalfont}
 \renewcommand{\cftchappagefont}{\normalfont}
@@ -75,10 +75,12 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{caption}
+\DeclareCaptionLabelSeparator{emdash}{ --- }
 \captionsetup{
-  labelsep=endash,
+  labelsep=emdash,
   justification=centering,
-  font={normalsize,onehalfspacing}
+  font={normalsize,onehalfspacing},
+  figurename=Рисунок
 }
 \captionsetup[table]{
   justification=raggedleft,
@@ -144,3 +146,6 @@
 % --- Подавление сирот в заголовках ---
 \widowpenalty=10000
 \clubpenalty=10000
+
+% --- Допуск переноса строк (как в Word — агрессивное растягивание пробелов) ---
+\sloppy
