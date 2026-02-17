@@ -25,6 +25,7 @@ import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
+import { WeatherPanel } from "../components/WeatherPanel";
 
 type RouteMode = "auto" | "manual";
 
@@ -196,6 +197,11 @@ export function SharedMapPage() {
       </MapContainer>
       {routePoints.length >= 2 && (
         <RouteStatsPanel
+          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+        />
+      )}
+      {routePoints.length >= 2 && (
+        <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />
       )}

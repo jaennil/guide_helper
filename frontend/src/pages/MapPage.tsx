@@ -25,6 +25,7 @@ import { LikeRatingBar } from "../components/LikeRatingBar";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
+import { WeatherPanel } from "../components/WeatherPanel";
 
 type RouteMode = "auto" | "manual";
 
@@ -1071,6 +1072,11 @@ export function MapPage() {
       </MapContainer>
       {routePoints.length >= 2 && (
         <RouteStatsPanel
+          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+        />
+      )}
+      {routePoints.length >= 2 && (
+        <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />
       )}
