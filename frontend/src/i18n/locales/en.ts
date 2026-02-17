@@ -154,4 +154,7 @@ export const en = {
   "weather.rain": "Rain",
   "weather.snow": "Snow",
   "weather.thunderstorm": "Thunderstorm",
+  "theme.toggle": "Toggle theme",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
 } as const;

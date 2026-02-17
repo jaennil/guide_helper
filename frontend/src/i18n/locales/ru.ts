@@ -154,4 +154,7 @@ export const ru = {
   "weather.rain": "Дождь",
   "weather.snow": "Снег",
   "weather.thunderstorm": "Гроза",
+  "theme.toggle": "Сменить тему",
+  "theme.light": "Светлая",
+  "theme.dark": "Тёмная",
 } as const;
