@@ -19,12 +19,17 @@ pub trait RouteRepository: Send + Sync {
     async fn find_by_share_token(&self, token: Uuid) -> Result<Option<Route>, RepositoryError>;
     async fn explore_shared(
         &self,
-        search: Option<&str>,
+        search: Option<String>,
+        tag: Option<String>,
         order_clause: &str,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ExploreRouteRow>, RepositoryError>;
-    async fn count_explore_shared(&self, search: Option<&str>) -> Result<i64, RepositoryError>;
+    async fn count_explore_shared(
+        &self,
+        search: Option<String>,
+        tag: Option<String>,
+    ) -> Result<i64, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]

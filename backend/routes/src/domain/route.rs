@@ -66,6 +66,7 @@ pub struct Route {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub share_token: Option<Uuid>,
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -78,10 +79,11 @@ pub struct ExploreRouteRow {
     pub likes_count: i64,
     pub avg_rating: f64,
     pub ratings_count: i64,
+    pub tags: Vec<String>,
 }
 
 impl Route {
-    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>) -> Self {
+    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, tags: Vec<String>) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -91,15 +93,19 @@ impl Route {
             created_at: now,
             updated_at: now,
             share_token: None,
+            tags,
         }
     }
 
-    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>) {
+    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, tags: Option<Vec<String>>) {
         if let Some(n) = name {
             self.name = n;
         }
         if let Some(p) = points {
             self.points = p;
+        }
+        if let Some(t) = tags {
+            self.tags = t;
         }
         self.updated_at = Utc::now();
     }
@@ -133,12 +139,13 @@ mod tests {
             },
         ];
 
-        let route = Route::new(user_id, "Test Route".to_string(), points.clone());
+        let route = Route::new(user_id, "Test Route".to_string(), points.clone(), vec![]);
 
         assert_eq!(route.user_id, user_id);
         assert_eq!(route.name, "Test Route");
         assert_eq!(route.points.len(), 2);
         assert_eq!(route.created_at, route.updated_at);
+        assert!(route.tags.is_empty());
     }
 
     #[test]
@@ -151,7 +158,7 @@ mod tests {
             segment_mode: None,
             photo: None,
         }];
-        let mut route = Route::new(user_id, "Original".to_string(), points);
+        let mut route = Route::new(user_id, "Original".to_string(), points, vec![]);
         let original_updated_at = route.updated_at;
 
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -172,7 +179,7 @@ mod tests {
                 photo: None,
             },
         ];
-        route.update(Some("Updated".to_string()), Some(new_points));
+        route.update(Some("Updated".to_string()), Some(new_points), None);
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);

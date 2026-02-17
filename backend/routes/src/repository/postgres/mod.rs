@@ -27,8 +27,8 @@ impl RouteRepository for PostgresRouteRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO routes (id, user_id, name, points, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, tags)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#
         )
         .bind(route.id)
@@ -37,6 +37,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.created_at)
         .bind(route.updated_at)
+        .bind(&route.tags)
         .execute(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -51,7 +52,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let route = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token
+            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
             FROM routes
             WHERE id = $1
             "#
@@ -70,7 +71,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let routes = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token
+            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
             FROM routes
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -92,7 +93,7 @@ impl RouteRepository for PostgresRouteRepository {
         let result = sqlx::query(
             r#"
             UPDATE routes
-            SET name = $2, points = $3, updated_at = $4
+            SET name = $2, points = $3, updated_at = $4, tags = $5
             WHERE id = $1
             "#
         )
@@ -100,6 +101,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(&route.name)
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.updated_at)
+        .bind(&route.tags)
         .execute(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -143,7 +145,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let route = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token
+            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
             FROM routes
             WHERE share_token = $1
             "#
@@ -179,10 +181,11 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self), fields(?search, %order_clause, %limit, %offset))]
+    #[tracing::instrument(skip(self), fields(?search, ?tag, %order_clause, %limit, %offset))]
     async fn explore_shared(
         &self,
-        search: Option<&str>,
+        search: Option<String>,
+        tag: Option<String>,
         order_clause: &str,
         limit: i64,
         offset: i64,
@@ -196,20 +199,23 @@ impl RouteRepository for PostgresRouteRepository {
                    r.created_at, r.share_token,
                    COALESCE(l.likes_count, 0) AS likes_count,
                    COALESCE(rt.avg_rating, 0.0) AS avg_rating,
-                   COALESCE(rt.ratings_count, 0) AS ratings_count
+                   COALESCE(rt.ratings_count, 0) AS ratings_count,
+                   r.tags
             FROM routes r
             LEFT JOIN (SELECT route_id, COUNT(*) AS likes_count FROM route_likes GROUP BY route_id) l ON l.route_id = r.id
             LEFT JOIN (SELECT route_id, AVG(rating::float8) AS avg_rating, COUNT(*) AS ratings_count FROM route_ratings GROUP BY route_id) rt ON rt.route_id = r.id
             WHERE r.share_token IS NOT NULL
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
+              AND ($2::text IS NULL OR r.tags @> ARRAY[$2])
             ORDER BY {}
-            LIMIT $2 OFFSET $3
+            LIMIT $3 OFFSET $4
             "#,
             order_clause
         );
 
         let rows = sqlx::query_as::<_, ExploreRouteRow>(&query)
-            .bind(search)
+            .bind(search.as_deref())
+            .bind(tag.as_deref())
             .bind(limit)
             .bind(offset)
             .fetch_all(&self.pool)
@@ -220,8 +226,8 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(rows)
     }
 
-    #[tracing::instrument(skip(self), fields(?search))]
-    async fn count_explore_shared(&self, search: Option<&str>) -> Result<i64, RepositoryError> {
+    #[tracing::instrument(skip(self), fields(?search, ?tag))]
+    async fn count_explore_shared(&self, search: Option<String>, tag: Option<String>) -> Result<i64, RepositoryError> {
         tracing::debug!("counting explore shared routes");
 
         let count: (i64,) = sqlx::query_as(
@@ -229,9 +235,11 @@ impl RouteRepository for PostgresRouteRepository {
             SELECT COUNT(*) FROM routes
             WHERE share_token IS NOT NULL
               AND ($1::text IS NULL OR name ILIKE '%' || $1 || '%')
+              AND ($2::text IS NULL OR tags @> ARRAY[$2])
             "#,
         )
-        .bind(search)
+        .bind(search.as_deref())
+        .bind(tag.as_deref())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
