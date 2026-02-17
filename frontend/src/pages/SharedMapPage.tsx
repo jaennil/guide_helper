@@ -27,6 +27,7 @@ import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
+import { RoutePlayback } from "../components/RoutePlayback";
 
 type RouteMode = "auto" | "manual";
 
@@ -50,6 +51,7 @@ export function SharedMapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
+  const [playbackActive, setPlaybackActive] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -157,6 +159,12 @@ export function SharedMapPage() {
               >
                 {t("export.kml")}
               </button>
+              <button
+                onClick={() => setPlaybackActive(true)}
+                className="btn-secondary"
+              >
+                {t("playback.button")}
+              </button>
             </>
           )}
           <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
@@ -201,13 +209,20 @@ export function SharedMapPage() {
             </Popup>
           </Marker>
         ))}
+        {playbackActive && routePoints.length >= 2 && (
+          <RoutePlayback
+            points={routePoints}
+            segments={routeSegments}
+            onClose={() => setPlaybackActive(false)}
+          />
+        )}
       </MapContainer>
-      {routePoints.length >= 2 && (
+      {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />
       )}
-      {routePoints.length >= 2 && (
+      {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />

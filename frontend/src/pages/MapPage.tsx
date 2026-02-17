@@ -27,6 +27,7 @@ import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
 import { WeatherPanel } from "../components/WeatherPanel";
+import { RoutePlayback } from "../components/RoutePlayback";
 
 type RouteMode = "auto" | "manual";
 
@@ -390,6 +391,7 @@ export function MapPage() {
   const [historicalMode, setHistoricalMode] = useState(false);
   const [historicalYear, setHistoricalYear] = useState(1900);
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
+  const [playbackActive, setPlaybackActive] = useState(false);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -823,6 +825,14 @@ export function MapPage() {
               </button>
             </>
           )}
+          {routePoints.length >= 2 && (
+            <button
+              onClick={() => setPlaybackActive(true)}
+              className="btn-secondary"
+            >
+              {t("playback.button")}
+            </button>
+          )}
           {(routePoints.length > 0 || overlayRoutes.length > 0) && (
             <button onClick={handleClearRoute} className="clear-btn">
               {t("map.clear")}
@@ -874,6 +884,14 @@ export function MapPage() {
                 {t("export.kml")}
               </button>
             </>
+          )}
+          {routePoints.length >= 2 && (
+            <button
+              onClick={() => setPlaybackActive(true)}
+              className="btn-secondary"
+            >
+              {t("playback.button")}
+            </button>
           )}
           {(routePoints.length > 0 || overlayRoutes.length > 0) && (
             <button onClick={handleClearRoute} className="clear-btn">
@@ -1077,13 +1095,20 @@ export function MapPage() {
             </React.Fragment>
           );
         })}
+        {playbackActive && routePoints.length >= 2 && (
+          <RoutePlayback
+            points={routePoints}
+            segments={routeSegments}
+            onClose={() => setPlaybackActive(false)}
+          />
+        )}
       </MapContainer>
-      {routePoints.length >= 2 && (
+      {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />
       )}
-      {routePoints.length >= 2 && (
+      {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
         />
