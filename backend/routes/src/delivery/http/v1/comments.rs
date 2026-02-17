@@ -127,7 +127,7 @@ pub async fn delete_comment(
 
     match state
         .comments_usecase
-        .delete_comment(comment_id, user.user_id)
+        .delete_comment(comment_id, user.user_id, &user.role)
         .await
     {
         Ok(()) => {

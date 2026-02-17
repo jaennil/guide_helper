@@ -241,7 +241,7 @@ pub async fn delete_route(
 
     match state
         .routes_usecase
-        .delete_route(user.user_id, route_id)
+        .delete_route(user.user_id, route_id, &user.role)
         .await
     {
         Ok(()) => {

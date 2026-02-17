@@ -58,8 +58,8 @@ where
         Ok(comments)
     }
 
-    #[tracing::instrument(skip(self), fields(comment_id = %comment_id, user_id = %user_id))]
-    pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid) -> Result<(), Error> {
+    #[tracing::instrument(skip(self), fields(comment_id = %comment_id, user_id = %user_id, %role))]
+    pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, role: &str) -> Result<(), Error> {
         tracing::debug!("deleting comment");
 
         let comment = self
@@ -68,8 +68,11 @@ where
             .await?
             .ok_or_else(|| anyhow!("Comment not found"))?;
 
-        // Check authorization: comment author OR route owner can delete
-        if comment.user_id != user_id {
+        // Admin and moderator can delete any comment
+        let is_privileged = role == "admin" || role == "moderator";
+
+        // Check authorization: comment author, route owner, or admin/moderator can delete
+        if comment.user_id != user_id && !is_privileged {
             let route = self
                 .route_repository
                 .find_by_id(comment.route_id)
@@ -84,6 +87,10 @@ where
                 );
                 return Err(anyhow!("Not authorized to delete this comment"));
             }
+        }
+
+        if is_privileged && comment.user_id != user_id {
+            tracing::info!(%role, %comment_id, "privileged comment deletion");
         }
 
         self.comment_repository.delete(comment_id).await?;
@@ -206,7 +213,7 @@ mod tests {
             .returning(|_| Ok(()));
 
         let usecase = CommentsUseCase::new(mock_comment_repo, mock_route_repo);
-        let result = usecase.delete_comment(comment_id, user_id).await;
+        let result = usecase.delete_comment(comment_id, user_id, "user").await;
 
         assert!(result.is_ok());
     }
@@ -261,7 +268,7 @@ mod tests {
             .returning(|_| Ok(()));
 
         let usecase = CommentsUseCase::new(mock_comment_repo, mock_route_repo);
-        let result = usecase.delete_comment(comment_id, route_owner_id).await;
+        let result = usecase.delete_comment(comment_id, route_owner_id, "user").await;
 
         assert!(result.is_ok());
     }
@@ -309,7 +316,7 @@ mod tests {
             .returning(move |_| Ok(Some(route_clone.clone())));
 
         let usecase = CommentsUseCase::new(mock_comment_repo, mock_route_repo);
-        let result = usecase.delete_comment(comment_id, random_user_id).await;
+        let result = usecase.delete_comment(comment_id, random_user_id, "user").await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Not authorized"));

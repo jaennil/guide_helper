@@ -193,8 +193,8 @@ where
         Ok((routes, total))
     }
 
-    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid) -> Result<(), Error> {
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id, %role))]
+    pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid, role: &str) -> Result<(), Error> {
         tracing::debug!("deleting route");
 
         let route = self
@@ -203,10 +203,15 @@ where
             .await?
             .ok_or_else(|| anyhow!("Route not found"))?;
 
-        // Check that route belongs to user
-        if route.user_id != user_id {
+        // Admin and moderator can delete any route
+        let is_privileged = role == "admin" || role == "moderator";
+        if route.user_id != user_id && !is_privileged {
             tracing::warn!("unauthorized route delete attempt");
             return Err(anyhow!("Route not found"));
+        }
+
+        if is_privileged && route.user_id != user_id {
+            tracing::info!(%role, %route_id, owner_id = %route.user_id, "privileged route deletion");
         }
 
         self.route_repository.delete(route_id).await?;
@@ -354,7 +359,7 @@ mod tests {
             .returning(|_| Ok(()));
 
         let usecase = RoutesUseCase::new(mock_repo);
-        let result = usecase.delete_route(user_id, route_id).await;
+        let result = usecase.delete_route(user_id, route_id, "user").await;
 
         assert!(result.is_ok());
     }
