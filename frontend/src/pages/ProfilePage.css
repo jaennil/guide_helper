@@ -1,6 +1,6 @@
 .profile-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--bg-page);
 }
 
 .profile-header {
@@ -8,14 +8,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: #fff;
+  background-color: var(--bg-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .profile-header h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .header-actions {
@@ -31,7 +31,7 @@
 
 .profile-tabs {
   display: flex;
-  background-color: #fff;
+  background-color: var(--bg-primary);
   border-radius: 8px 8px 0 0;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -41,15 +41,15 @@
   flex: 1;
   padding: 1rem;
   border: none;
-  background-color: #fff;
+  background-color: var(--bg-primary);
   cursor: pointer;
   font-size: 1rem;
-  color: #666;
+  color: var(--text-light);
   transition: background-color 0.2s, color 0.2s;
 }
 
 .tab:hover {
-  background-color: #f0f0f0;
+  background-color: var(--bg-hover);
 }
 
 .tab.active {
@@ -58,7 +58,7 @@
 }
 
 .tab-content {
-  background-color: #fff;
+  background-color: var(--bg-primary);
   padding: 2rem;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -72,16 +72,18 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .form-group input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
   box-sizing: border-box;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .form-group input:focus {
@@ -90,8 +92,20 @@
 }
 
 .form-group input:disabled {
-  background-color: #f5f5f5;
-  color: #666;
+  background-color: var(--bg-page);
+  color: var(--text-light);
+}
+
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
 }
 
 .btn-primary {
@@ -110,15 +124,15 @@
 }
 
 .btn-primary:disabled {
-  background-color: #ccc;
+  background-color: var(--border-dark);
   cursor: not-allowed;
 }
 
 .btn-secondary {
   padding: 0.75rem 1.5rem;
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #ddd;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
@@ -126,7 +140,7 @@
 }
 
 .btn-secondary:hover {
-  background-color: #f0f0f0;
+  background-color: var(--bg-hover);
 }
 
 .btn-danger {
@@ -162,16 +176,16 @@
 
 .error-message {
   padding: 0.75rem;
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--error-bg);
+  color: var(--error-text);
   border-radius: 4px;
   margin-bottom: 1rem;
 }
 
 .success-message {
   padding: 0.75rem;
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--tag-bg);
+  color: var(--tag-text);
   border-radius: 4px;
   margin-bottom: 1rem;
 }
@@ -180,7 +194,7 @@
 .routes-tab h2 {
   margin-top: 0;
   margin-bottom: 1.5rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .routes-header {
@@ -200,15 +214,15 @@
 }
 
 .btn-secondary:disabled {
-  background-color: #f5f5f5;
-  color: #999;
+  background-color: var(--bg-page);
+  color: var(--text-dim);
   cursor: not-allowed;
 }
 
 .loading {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: var(--text-light);
 }
 
 .no-routes {
@@ -217,7 +231,7 @@
 }
 
 .no-routes p {
-  color: #666;
+  color: var(--text-light);
   margin-bottom: 1rem;
 }
 
@@ -232,25 +246,25 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-card);
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-light);
 }
 
 .route-info h3 {
   margin: 0 0 0.5rem 0;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .route-info p {
   margin: 0;
-  color: #666;
+  color: var(--text-light);
   font-size: 0.9rem;
 }
 
 .route-date {
   font-size: 0.8rem !important;
-  color: #999 !important;
+  color: var(--text-dim) !important;
 }
 
 .route-checkbox {

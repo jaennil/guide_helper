@@ -49,7 +49,7 @@ body {
     background: black;
     padding: 10px 15px;
     border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     display: flex;
     gap: 15px;
     font-family: Arial, sans-serif;
@@ -72,7 +72,7 @@ body {
     background: black;
     padding: 10px 15px;
     border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     font-family: Arial, sans-serif;
     font-size: 14px;
 }
@@ -100,7 +100,7 @@ body {
 
 .point-popup-coords {
     font-size: 12px;
-    color: #666;
+    color: var(--text-light);
     margin-bottom: 12px;
 }
 
@@ -142,7 +142,7 @@ body {
 }
 
 .remove-photo-btn {
-    background-color: #ff4444;
+    background-color: var(--color-danger);
     color: white;
 }
 
@@ -173,7 +173,7 @@ body {
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px var(--color-shadow);
     background: white;
     display: flex;
     align-items: center;
@@ -188,14 +188,14 @@ body {
 
 /* Logout button */
 .logout-btn {
-    background: #dc3545;
+    background: var(--color-danger);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
 }
 
 .logout-btn:hover {
@@ -209,7 +209,7 @@ body {
     align-items: center;
     height: 100vh;
     font-size: 1.5rem;
-    color: #667eea;
+    color: var(--color-brand);
 }
 
 /* Header actions */
@@ -220,14 +220,14 @@ body {
 }
 
 .save-btn {
-    background: #28a745;
+    background: var(--color-success);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
 }
 
 .save-btn:hover {
@@ -235,14 +235,14 @@ body {
 }
 
 .clear-btn {
-    background: #ffc107;
+    background: var(--color-warning);
     color: #212529;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
 }
 
 .clear-btn:hover {
@@ -250,14 +250,14 @@ body {
 }
 
 .profile-btn {
-    background: #17a2b8;
+    background: var(--color-info);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -296,7 +296,7 @@ body {
 .historical-slider {
     width: 100%;
     cursor: pointer;
-    accent-color: #f5a623;
+    accent-color: var(--color-rating);
     height: 6px;
 }
 
@@ -324,9 +324,9 @@ body {
 }
 
 .active-toggle {
-    background-color: #f5a623 !important;
+    background-color: var(--color-rating) !important;
     color: #000 !important;
-    border-color: #f5a623 !important;
+    border-color: var(--color-rating) !important;
 }
 
 @media (max-width: 768px) {
@@ -341,7 +341,7 @@ body {
 
 /* Explore nav button on map header */
 .explore-nav-btn {
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
 }
 
 /* Import photos button */
@@ -353,7 +353,7 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
 }
 
 .import-photos-btn:hover {
@@ -367,7 +367,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -375,17 +375,17 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg-primary);
     padding: 2rem;
     border-radius: 8px;
     min-width: 300px;
     max-width: 90%;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 20px var(--color-shadow);
 }
 
 .modal-content h2 {
     margin: 0 0 1.5rem 0;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .modal-form {
@@ -396,18 +396,20 @@ body {
 
 .modal-form input {
     padding: 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 1rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .modal-form input:focus {
     outline: none;
-    border-color: #28a745;
+    border-color: var(--color-success);
 }
 
 .modal-error {
-    color: #dc3545;
+    color: var(--color-danger);
     font-size: 0.875rem;
 }
 
@@ -432,7 +434,7 @@ body {
 }
 
 .modal-save {
-    background: #28a745;
+    background: var(--color-success);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
@@ -458,7 +460,7 @@ body {
 
 .tag-selector label {
     font-size: 0.875rem;
-    color: #555;
+    color: var(--text-muted);
 }
 
 .tag-selector-buttons {
@@ -469,24 +471,24 @@ body {
 
 .tag-button {
     padding: 0.4rem 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: #f5f5f5;
-    color: #555;
+    background: var(--bg-page);
+    color: var(--text-muted);
     font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .tag-button:hover {
-    border-color: #28a745;
-    color: #28a745;
+    border-color: var(--color-success);
+    color: var(--color-success);
 }
 
 .tag-button.active {
-    background: #28a745;
+    background: var(--color-success);
     color: white;
-    border-color: #28a745;
+    border-color: var(--color-success);
 }
 
 /* Route tag badges (shared across pages) */
@@ -501,8 +503,8 @@ body {
     display: inline-block;
     padding: 0.15rem 0.5rem;
     border-radius: 10px;
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: var(--tag-bg);
+    color: var(--tag-text);
     font-size: 0.75rem;
     white-space: nowrap;
 }
@@ -513,7 +515,7 @@ body {
     bottom: 30px;
     left: 10px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--bg-panel);
     padding: 10px 14px;
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -542,7 +544,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #333;
+    color: var(--text-primary);
 }
 
 /* Overlay marker reset */
@@ -562,7 +564,7 @@ body {
     bottom: 30px;
     left: 10px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--bg-panel);
     padding: 10px 14px;
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -582,11 +584,11 @@ body {
 
 .route-stat-value {
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .route-stat-label {
-    color: #666;
+    color: var(--text-light);
     font-size: 12px;
 }
 
@@ -602,13 +604,13 @@ body {
 /* Elevation chart */
 .elevation-chart {
     margin-top: 6px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--border-separator);
     padding-top: 4px;
 }
 
 .elevation-chart-title {
     font-size: 11px;
-    color: #666;
+    color: var(--text-light);
     margin-bottom: 2px;
 }
 
@@ -620,13 +622,13 @@ body {
 
 .elevation-chart-label {
     font-size: 7px;
-    fill: #999;
+    fill: var(--text-dim);
 }
 
 .elevation-chart-tooltip {
     font-size: 8px;
     font-weight: bold;
-    fill: #333;
+    fill: var(--text-primary);
 }
 
 /* Geo search */
@@ -655,7 +657,7 @@ body {
     color: white;
     font-size: 14px;
     font-family: Arial, sans-serif;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     outline: none;
     box-sizing: border-box;
 }
@@ -686,7 +688,7 @@ body {
     padding: 0;
     background: black;
     border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     max-height: 240px;
     overflow-y: auto;
 }
@@ -725,7 +727,7 @@ body {
     border: none;
     padding: 10px 12px;
     border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 5px var(--color-shadow);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -764,7 +766,7 @@ body {
     top: 100%;
     right: 0;
     margin-top: 6px;
-    background: white;
+    background: var(--bg-primary);
     border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     padding: 6px;
@@ -861,7 +863,7 @@ body {
     width: 360px;
     max-height: 50vh;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.97);
+    background: var(--bg-panel);
     border-radius: 8px 0 0 0;
     box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.15);
     display: flex;
@@ -873,14 +875,14 @@ body {
 
 .comment-section-header {
     padding: 12px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
 }
 
 .comment-section-header h3 {
     margin: 0;
     font-size: 15px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .comment-list {
@@ -893,13 +895,13 @@ body {
 .comment-empty {
     padding: 16px 0;
     text-align: center;
-    color: #999;
+    color: var(--text-dim);
     font-size: 13px;
 }
 
 .comment-item {
-    background: #fff;
-    border: 1px solid #eee;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 8px;
@@ -915,17 +917,17 @@ body {
 .comment-author {
     font-weight: bold;
     font-size: 13px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .comment-date {
     font-size: 11px;
-    color: #999;
+    color: var(--text-dim);
 }
 
 .comment-text {
     font-size: 14px;
-    color: #444;
+    color: var(--text-secondary);
     line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
@@ -934,7 +936,7 @@ body {
 .comment-delete-btn {
     background: none;
     border: none;
-    color: #dc3545;
+    color: var(--color-danger);
     font-size: 12px;
     cursor: pointer;
     padding: 4px 0 0;
@@ -946,20 +948,22 @@ body {
 
 .comment-form {
     padding: 10px 16px 12px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-light);
     flex-shrink: 0;
 }
 
 .comment-form textarea {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 13px;
     font-family: Arial, sans-serif;
     resize: none;
     outline: none;
     box-sizing: border-box;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .comment-form textarea:focus {
@@ -967,7 +971,7 @@ body {
 }
 
 .comment-error {
-    color: #dc3545;
+    color: var(--color-danger);
     font-size: 12px;
     margin-top: 4px;
 }
@@ -994,9 +998,9 @@ body {
 
 .comment-login-hint {
     padding: 12px 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-light);
     text-align: center;
-    color: #999;
+    color: var(--text-dim);
     font-size: 13px;
 }
 
@@ -1006,7 +1010,7 @@ body {
     bottom: 0;
     right: 370px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.97);
+    background: var(--bg-panel);
     border-radius: 8px 8px 0 0;
     box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.15);
     display: flex;
@@ -1028,23 +1032,23 @@ body {
     align-items: center;
     gap: 6px;
     background: none;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 6px 14px;
     cursor: pointer;
     font-size: 14px;
-    color: #555;
+    color: var(--text-muted);
     transition: all 0.2s;
 }
 
 .like-btn:hover:not(:disabled) {
-    border-color: #e74c3c;
-    color: #e74c3c;
+    border-color: var(--color-like);
+    color: var(--color-like);
 }
 
 .like-btn.liked {
-    border-color: #e74c3c;
-    color: #e74c3c;
+    border-color: var(--color-like);
+    color: var(--color-like);
 }
 
 .like-btn:disabled {
@@ -1076,18 +1080,18 @@ body {
 .star-rating .star {
     font-size: 20px;
     cursor: pointer;
-    color: #ccc;
+    color: var(--border-dark);
     transition: color 0.15s;
     line-height: 1;
     user-select: none;
 }
 
 .star-rating .star.filled {
-    color: #f5a623;
+    color: var(--color-rating);
 }
 
 .star-rating .star:hover {
-    color: #f5a623;
+    color: var(--color-rating);
 }
 
 .star-rating.readonly .star {
@@ -1095,11 +1099,11 @@ body {
 }
 
 .star-rating.readonly .star:hover {
-    color: #ccc;
+    color: var(--border-dark);
 }
 
 .star-rating.readonly .star.filled:hover {
-    color: #f5a623;
+    color: var(--color-rating);
 }
 
 .rating-info {
@@ -1132,7 +1136,7 @@ body {
     top: 80px;
     left: 10px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--bg-panel);
     padding: 10px 14px;
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -1146,7 +1150,7 @@ body {
 .weather-title {
     font-weight: bold;
     font-size: 13px;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 6px;
 }
 
@@ -1171,28 +1175,28 @@ body {
 .weather-temp {
     font-size: 18px;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .weather-desc {
     font-size: 12px;
-    color: #666;
+    color: var(--text-light);
 }
 
 .weather-details {
     display: flex;
     gap: 10px;
     font-size: 11px;
-    color: #666;
+    color: var(--text-light);
     margin-bottom: 6px;
     padding-bottom: 6px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border-separator);
 }
 
 .weather-forecast-title {
     font-size: 11px;
     font-weight: bold;
-    color: #666;
+    color: var(--text-light);
     margin-bottom: 4px;
 }
 
@@ -1206,7 +1210,7 @@ body {
 
 .weather-forecast-date {
     flex: 1;
-    color: #555;
+    color: var(--text-muted);
     font-size: 11px;
 }
 
@@ -1216,7 +1220,7 @@ body {
 
 .weather-forecast-temps {
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
     font-size: 12px;
     white-space: nowrap;
 }
@@ -1239,4 +1243,50 @@ body {
     .weather-temp {
         font-size: 16px;
     }
+}
+
+/* Theme toggle button */
+.theme-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--text-primary);
+    transition: background-color 0.2s;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-hover);
+}
+
+/* Leaflet dark mode overrides */
+[data-theme="dark"] .leaflet-popup-content-wrapper {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .leaflet-popup-tip {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .leaflet-control-zoom a {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .leaflet-control-zoom a:hover {
+    background: var(--bg-hover);
+}
+
+[data-theme="dark"] .leaflet-control-attribution {
+    background: var(--bg-panel);
+    color: var(--text-dim);
+}
+
+[data-theme="dark"] .leaflet-control-attribution a {
+    color: var(--color-brand);
 }

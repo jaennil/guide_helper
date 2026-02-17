@@ -1,6 +1,6 @@
 .explore-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--bg-page);
 }
 
 .explore-header {
@@ -8,14 +8,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: #fff;
+  background-color: var(--bg-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .explore-header h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .explore-content {
@@ -33,10 +33,12 @@
 .explore-search {
   flex: 1;
   padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
   outline: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .explore-search:focus {
@@ -45,10 +47,11 @@
 
 .explore-sort {
   padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
-  background: #fff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
   outline: none;
   min-width: 160px;
@@ -60,10 +63,11 @@
 
 .explore-tag-filter {
   padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
-  background: #fff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
   outline: none;
   min-width: 140px;
@@ -80,8 +84,8 @@
 }
 
 .explore-card {
-  background: #fff;
-  border: 1px solid #eee;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 1.25rem;
   cursor: pointer;
@@ -96,7 +100,7 @@
 .explore-card-name {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
-  color: #333;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -107,39 +111,39 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-light);
   margin-bottom: 0.75rem;
 }
 
 .explore-card-date {
-  color: #999;
+  color: var(--text-dim);
 }
 
 .explore-card-stats {
   display: flex;
   gap: 1rem;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-muted);
 }
 
 .explore-card-likes {
-  color: #e74c3c;
+  color: var(--color-like);
 }
 
 .explore-card-rating {
-  color: #f5a623;
+  color: var(--color-rating);
 }
 
 .explore-empty {
   text-align: center;
   padding: 3rem 1rem;
-  color: #666;
+  color: var(--text-light);
 }
 
 .explore-loading {
   text-align: center;
   padding: 3rem 1rem;
-  color: #666;
+  color: var(--text-light);
 }
 
 .explore-load-more {
