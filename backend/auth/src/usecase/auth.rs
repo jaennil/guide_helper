@@ -96,9 +96,10 @@ where
         }
 
         // Generate tokens
-        let access_token = self.jwt_service.generate_access_token(user.id, user.email.clone())
+        let role_str = user.role.to_string();
+        let access_token = self.jwt_service.generate_access_token(user.id, user.email.clone(), &role_str)
             .map_err(|e| anyhow!("Failed to generate access token: {}", e))?;
-        let refresh_token = self.jwt_service.generate_refresh_token(user.id, user.email.clone())
+        let refresh_token = self.jwt_service.generate_refresh_token(user.id, user.email.clone(), &role_str)
             .map_err(|e| anyhow!("Failed to generate refresh token: {}", e))?;
 
         Ok(crate::delivery::contracts::LoginResult {
@@ -131,8 +132,9 @@ where
             return Err(anyhow!("User account is deleted"));
         }
 
-        // Generate new access token
-        let new_access_token = self.jwt_service.generate_access_token(user.id, user.email)
+        // Generate new access token with current role from DB
+        let role_str = user.role.to_string();
+        let new_access_token = self.jwt_service.generate_access_token(user.id, user.email, &role_str)
             .map_err(|e| anyhow!("Failed to generate access token: {}", e))?;
 
         Ok(new_access_token)
@@ -563,7 +565,7 @@ mod tests {
         // Create a JWT service to generate a valid token
         let jwt_service = JwtService::new("test_secret".to_string(), 15, 7);
         let valid_refresh_token = jwt_service
-            .generate_refresh_token(user_id, email.clone())
+            .generate_refresh_token(user_id, email.clone(), "user")
             .unwrap();
 
         // Setup mock to expect find_by_id call

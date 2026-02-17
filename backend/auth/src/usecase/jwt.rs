@@ -20,6 +20,7 @@ pub enum JwtError {
 pub struct Claims {
     pub sub: String,      // Subject (user id)
     pub email: String,    // User email
+    pub role: String,     // User role
     pub exp: i64,         // Expiration time
     pub iat: i64,         // Issued at
     pub token_type: TokenType,
@@ -47,20 +48,21 @@ impl JwtService {
         }
     }
 
-    #[tracing::instrument(skip(self, email), fields(user_id = %user_id))]
-    pub fn generate_access_token(&self, user_id: Uuid, email: String) -> Result<String, JwtError> {
-        self.generate_token(user_id, email, TokenType::Access, self.access_token_duration)
+    #[tracing::instrument(skip(self, email, role), fields(user_id = %user_id))]
+    pub fn generate_access_token(&self, user_id: Uuid, email: String, role: &str) -> Result<String, JwtError> {
+        self.generate_token(user_id, email, role, TokenType::Access, self.access_token_duration)
     }
 
-    #[tracing::instrument(skip(self, email), fields(user_id = %user_id))]
-    pub fn generate_refresh_token(&self, user_id: Uuid, email: String) -> Result<String, JwtError> {
-        self.generate_token(user_id, email, TokenType::Refresh, self.refresh_token_duration)
+    #[tracing::instrument(skip(self, email, role), fields(user_id = %user_id))]
+    pub fn generate_refresh_token(&self, user_id: Uuid, email: String, role: &str) -> Result<String, JwtError> {
+        self.generate_token(user_id, email, role, TokenType::Refresh, self.refresh_token_duration)
     }
 
     fn generate_token(
         &self,
         user_id: Uuid,
         email: String,
+        role: &str,
         token_type: TokenType,
         duration: Duration,
     ) -> Result<String, JwtError> {
@@ -71,6 +73,7 @@ impl JwtService {
         let claims = Claims {
             sub: user_id.to_string(),
             email,
+            role: role.to_string(),
             exp,
             iat,
             token_type,
@@ -145,7 +148,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let result = service.generate_access_token(user_id, email.clone());
+        let result = service.generate_access_token(user_id, email.clone(), "user");
 
         assert!(result.is_ok());
         let token = result.unwrap();
@@ -159,7 +162,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let result = service.generate_refresh_token(user_id, email.clone());
+        let result = service.generate_refresh_token(user_id, email.clone(), "user");
 
         assert!(result.is_ok());
         let token = result.unwrap();
@@ -173,8 +176,8 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let access_token = service.generate_access_token(user_id, email.clone()).unwrap();
-        let refresh_token = service.generate_refresh_token(user_id, email.clone()).unwrap();
+        let access_token = service.generate_access_token(user_id, email.clone(), "user").unwrap();
+        let refresh_token = service.generate_refresh_token(user_id, email.clone(), "user").unwrap();
 
         assert_ne!(access_token, refresh_token);
     }
@@ -185,13 +188,14 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service.generate_access_token(user_id, email.clone()).unwrap();
+        let token = service.generate_access_token(user_id, email.clone(), "user").unwrap();
         let result = service.validate_token(&token);
 
         assert!(result.is_ok());
         let claims = result.unwrap();
         assert_eq!(claims.sub, user_id.to_string());
         assert_eq!(claims.email, email);
+        assert_eq!(claims.role, "user");
         assert_eq!(claims.token_type, TokenType::Access);
     }
 
@@ -201,13 +205,14 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service.generate_refresh_token(user_id, email.clone()).unwrap();
+        let token = service.generate_refresh_token(user_id, email.clone(), "admin").unwrap();
         let result = service.validate_token(&token);
 
         assert!(result.is_ok());
         let claims = result.unwrap();
         assert_eq!(claims.sub, user_id.to_string());
         assert_eq!(claims.email, email);
+        assert_eq!(claims.role, "admin");
         assert_eq!(claims.token_type, TokenType::Refresh);
     }
 
@@ -229,7 +234,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service1.generate_access_token(user_id, email).unwrap();
+        let token = service1.generate_access_token(user_id, email, "user").unwrap();
         let result = service2.validate_token(&token);
 
         assert!(result.is_err());
@@ -241,7 +246,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service.generate_access_token(user_id, email).unwrap();
+        let token = service.generate_access_token(user_id, email, "user").unwrap();
         let claims = service.validate_token(&token).unwrap();
 
         assert!(claims.exp > Utc::now().timestamp());
@@ -254,7 +259,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service.generate_access_token(user_id, email).unwrap();
+        let token = service.generate_access_token(user_id, email, "user").unwrap();
         let claims = service.validate_token(&token).unwrap();
 
         let expected_exp = Utc::now() + Duration::minutes(15);
@@ -269,7 +274,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = service.generate_refresh_token(user_id, email).unwrap();
+        let token = service.generate_refresh_token(user_id, email, "user").unwrap();
         let claims = service.validate_token(&token).unwrap();
 
         let expected_exp = Utc::now() + Duration::days(7);
@@ -284,7 +289,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "".to_string();
 
-        let result = service.generate_access_token(user_id, email);
+        let result = service.generate_access_token(user_id, email, "user");
 
         assert!(result.is_ok());
     }
@@ -296,8 +301,8 @@ mod tests {
         let user_id2 = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token1 = service.generate_access_token(user_id1, email.clone()).unwrap();
-        let token2 = service.generate_access_token(user_id2, email.clone()).unwrap();
+        let token1 = service.generate_access_token(user_id1, email.clone(), "user").unwrap();
+        let token2 = service.generate_access_token(user_id2, email.clone(), "user").unwrap();
 
         assert_ne!(token1, token2);
     }
