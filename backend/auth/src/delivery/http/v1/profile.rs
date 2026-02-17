@@ -16,6 +16,7 @@ pub struct ProfileResponse {
     pub email: String,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+    pub role: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -51,6 +52,7 @@ pub async fn get_profile(
                     email: user_data.email,
                     name: user_data.name,
                     avatar_url: user_data.avatar_url,
+                    role: user_data.role.to_string(),
                     created_at: user_data.created_at,
                 }),
             ))
@@ -91,6 +93,7 @@ pub async fn update_profile(
                     email: user_data.email,
                     name: user_data.name,
                     avatar_url: user_data.avatar_url,
+                    role: user_data.role.to_string(),
                     created_at: user_data.created_at,
                 }),
             ))
@@ -220,6 +223,7 @@ mod tests {
             email: "test@example.com".to_string(),
             name: Some("Test User".to_string()),
             avatar_url: Some("https://example.com/avatar.png".to_string()),
+            role: "user".to_string(),
             created_at: Utc::now(),
         };
 
@@ -228,5 +232,6 @@ mod tests {
         let json_str = json.unwrap();
         assert!(json_str.contains("test@example.com"));
         assert!(json_str.contains("Test User"));
+        assert!(json_str.contains("\"role\":\"user\""));
     }
 }

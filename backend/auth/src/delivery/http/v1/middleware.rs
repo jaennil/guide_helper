@@ -14,6 +14,7 @@ use crate::{usecase::jwt::TokenType, AppState};
 pub struct AuthenticatedUser {
     pub user_id: Uuid,
     pub email: String,
+    pub role: String,
 }
 
 #[tracing::instrument(skip_all)]
@@ -68,6 +69,7 @@ pub async fn auth_middleware(
     let authenticated_user = AuthenticatedUser {
         user_id,
         email: claims.email,
+        role: claims.role,
     };
 
     tracing::debug!(?authenticated_user, "user authenticated successfully");
@@ -85,11 +87,13 @@ mod tests {
         let user = AuthenticatedUser {
             user_id: Uuid::new_v4(),
             email: "test@example.com".to_string(),
+            role: "user".to_string(),
         };
 
         let cloned = user.clone();
         assert_eq!(user.user_id, cloned.user_id);
         assert_eq!(user.email, cloned.email);
+        assert_eq!(user.role, cloned.role);
     }
 
     #[test]
@@ -97,10 +101,12 @@ mod tests {
         let user = AuthenticatedUser {
             user_id: Uuid::new_v4(),
             email: "test@example.com".to_string(),
+            role: "admin".to_string(),
         };
 
         let debug_str = format!("{:?}", user);
         assert!(debug_str.contains("AuthenticatedUser"));
         assert!(debug_str.contains("test@example.com"));
+        assert!(debug_str.contains("admin"));
     }
 }
