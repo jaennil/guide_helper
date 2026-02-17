@@ -1,12 +1,29 @@
 use crate::{domain::user::User, repository::errors::RepositoryError};
 use uuid::Uuid;
 
+pub struct UserRow {
+    pub id: Uuid,
+    pub email: String,
+    pub name: Option<String>,
+    pub role: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub struct RoleCount {
+    pub role: String,
+    pub count: i64,
+}
+
 #[cfg_attr(test, mockall::automock)]
 pub trait UserRepository: Send + Sync {
     async fn create(&self, user: &User) -> Result<(), RepositoryError>;
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, RepositoryError>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, RepositoryError>;
     async fn update(&self, user: &User) -> Result<(), RepositoryError>;
+    async fn find_all_users(&self, limit: i64, offset: i64, search: Option<String>) -> Result<Vec<UserRow>, RepositoryError>;
+    async fn count_users(&self, search: Option<String>) -> Result<i64, RepositoryError>;
+    async fn count_users_by_role(&self) -> Result<Vec<RoleCount>, RepositoryError>;
+    async fn update_role(&self, user_id: Uuid, role: &str) -> Result<(), RepositoryError>;
 }
 
 #[cfg(test)]

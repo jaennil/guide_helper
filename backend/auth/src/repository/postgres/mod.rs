@@ -1,6 +1,6 @@
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 
-use crate::{domain::user::User, repository::errors::RepositoryError, usecase::contracts::UserRepository};
+use crate::{domain::user::User, repository::errors::RepositoryError, usecase::contracts::{RoleCount, UserRepository, UserRow}};
 
 pub struct PostgresUserRepository {
     pool: PgPool,
@@ -91,6 +91,115 @@ impl UserRepository for PostgresUserRepository {
         .execute(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(%limit, %offset))]
+    async fn find_all_users(&self, limit: i64, offset: i64, search: Option<String>) -> Result<Vec<UserRow>, RepositoryError> {
+        let rows = if let Some(ref q) = search {
+            let pattern = format!("%{}%", q);
+            sqlx::query(
+                r#"
+                SELECT id, email, name, role, created_at
+                FROM users
+                WHERE deleted_at IS NULL AND (email ILIKE $1 OR name ILIKE $1)
+                ORDER BY created_at DESC
+                LIMIT $2 OFFSET $3
+                "#
+            )
+            .bind(&pattern)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            sqlx::query(
+                r#"
+                SELECT id, email, name, role, created_at
+                FROM users
+                WHERE deleted_at IS NULL
+                ORDER BY created_at DESC
+                LIMIT $1 OFFSET $2
+                "#
+            )
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await
+        }
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        let users = rows
+            .iter()
+            .map(|row| UserRow {
+                id: row.get("id"),
+                email: row.get("email"),
+                name: row.get("name"),
+                role: row.get("role"),
+                created_at: row.get("created_at"),
+            })
+            .collect();
+
+        Ok(users)
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn count_users(&self, search: Option<String>) -> Result<i64, RepositoryError> {
+        let count: i64 = if let Some(ref q) = search {
+            let pattern = format!("%{}%", q);
+            sqlx::query_scalar(
+                r#"SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND (email ILIKE $1 OR name ILIKE $1)"#
+            )
+            .bind(&pattern)
+            .fetch_one(&self.pool)
+            .await
+        } else {
+            sqlx::query_scalar(
+                r#"SELECT COUNT(*) FROM users WHERE deleted_at IS NULL"#
+            )
+            .fetch_one(&self.pool)
+            .await
+        }
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(count)
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn count_users_by_role(&self) -> Result<Vec<RoleCount>, RepositoryError> {
+        let rows = sqlx::query(
+            r#"SELECT role, COUNT(*) as count FROM users WHERE deleted_at IS NULL GROUP BY role"#
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        let counts = rows
+            .iter()
+            .map(|row| RoleCount {
+                role: row.get("role"),
+                count: row.get("count"),
+            })
+            .collect();
+
+        Ok(counts)
+    }
+
+    #[tracing::instrument(skip(self), fields(%user_id, %role))]
+    async fn update_role(&self, user_id: uuid::Uuid, role: &str) -> Result<(), RepositoryError> {
+        let result = sqlx::query(
+            r#"UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL"#
+        )
+        .bind(user_id)
+        .bind(role)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::DatabaseError("User not found".to_string()));
+        }
 
         Ok(())
     }

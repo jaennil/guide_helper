@@ -11,6 +11,7 @@ use axum::{extract::State, middleware, routing::{get, post, put}, Router};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
+use crate::delivery::http::v1::admin::{list_users, update_user_role, get_stats};
 use crate::delivery::http::v1::auth::{register, login, refresh_token};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::profile::{get_profile, update_profile, change_password};
@@ -77,6 +78,9 @@ async fn main() -> anyhow::Result<()> {
     let protected_routes = Router::new()
         .route("/api/v1/auth/me", get(get_profile).put(update_profile))
         .route("/api/v1/auth/password", put(change_password))
+        .route("/api/v1/admin/users", get(list_users))
+        .route("/api/v1/admin/users/{id}/role", put(update_user_role))
+        .route("/api/v1/admin/stats", get(get_stats))
         .layer(middleware::from_fn_with_state(shared_state.clone(), auth_middleware));
 
     let router = Router::new()

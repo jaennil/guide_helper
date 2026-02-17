@@ -38,6 +38,10 @@ where
             jwt_service,
         }
     }
+
+    pub fn user_repository(&self) -> &R {
+        &self.user_repository
+    }
 }
 
 impl<R> contracts::AuthUseCase for AuthUseCase<R>
