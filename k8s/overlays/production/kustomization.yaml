@@ -23,19 +23,19 @@ patches:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-e8f1902
+  newTag: main-add58c4
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
   newTag: main-e8f1902
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-22813fc
+  newTag: main-add58c4
 - name: photo-worker
   newName: ghcr.io/jaennil/guide-helper-photo-worker
   newTag: main-d34a87c
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-22813fc
+  newTag: main-add58c4
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-e8f1902
