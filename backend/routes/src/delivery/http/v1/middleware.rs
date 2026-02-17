@@ -14,6 +14,7 @@ use crate::{usecase::jwt::TokenType, AppState};
 pub struct AuthenticatedUser {
     pub user_id: Uuid,
     pub email: String,
+    pub role: String,
 }
 
 #[tracing::instrument(skip_all)]
@@ -68,6 +69,7 @@ pub async fn auth_middleware(
     let authenticated_user = AuthenticatedUser {
         user_id,
         email: claims.email,
+        role: claims.role,
     };
 
     tracing::debug!(?authenticated_user, "user authenticated successfully");

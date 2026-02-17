@@ -15,9 +15,15 @@ pub enum JwtError {
 pub struct Claims {
     pub sub: String,      // Subject (user id)
     pub email: String,    // User email
+    #[serde(default = "default_role")]
+    pub role: String,     // User role (backward compat: defaults to "user")
     pub exp: i64,         // Expiration time
     pub iat: i64,         // Issued at
     pub token_type: TokenType,
+}
+
+fn default_role() -> String {
+    "user".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
