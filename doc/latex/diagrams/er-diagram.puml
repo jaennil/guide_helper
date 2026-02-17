@@ -22,6 +22,7 @@ entity "routes\n(routes_db)" as routes {
   * user_id : UUID <<FK>>
   * name : TEXT
   * points : JSONB
+  * tags : TEXT[]
     share_token : UUID <<UNIQUE>>
   * created_at : TIMESTAMPTZ
   * updated_at : TIMESTAMPTZ
@@ -57,21 +58,6 @@ entity "route_ratings" as ratings {
   ..
   <<UNIQUE>> (route_id, user_id)
 }
-
-note as points_json
-  **Структура points (JSONB)**
-  [{
-    id: UUID,
-    position: [lat, lng],
-    photo: {
-      original: String,
-      thumbnail_url: String?,
-      status: "pending"|"done"
-    }?
-  }, ...]
-end note
-
-routes .. points_json
 
 users ||--o{ routes : "создаёт"
 routes ||--o{ comments : "имеет"
