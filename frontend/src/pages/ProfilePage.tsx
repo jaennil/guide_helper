@@ -253,6 +253,11 @@ export default function ProfilePage() {
       <header className="profile-header">
         <h1>{t('profile.title')}</h1>
         <div className="header-actions">
+          {user?.role === 'admin' && (
+            <button onClick={() => navigate('/admin')} className="btn-secondary">
+              {t('admin.title')}
+            </button>
+          )}
           <button onClick={() => navigate('/explore')} className="btn-secondary">
             {t('explore.catalog')}
           </button>
@@ -297,6 +302,11 @@ export default function ProfilePage() {
                 <div className="form-group">
                   <label>{t('profile.email')}</label>
                   <input type="email" value={user?.email || ''} disabled />
+                </div>
+
+                <div className="form-group">
+                  <label>{t('profile.role')}</label>
+                  <input type="text" value={user?.role ? t(`admin.roles.${user.role}` as any) : ''} disabled />
                 </div>
 
                 <div className="form-group">

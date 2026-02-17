@@ -8,6 +8,8 @@ import ProfilePage from './pages/ProfilePage';
 import ExplorePage from './pages/ExplorePage';
 import { SharedMapPage } from './pages/SharedMapPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
+import AdminPage from './pages/AdminPage';
 import './App.css';
 
 function App() {
@@ -32,6 +34,14 @@ function App() {
               <ProtectedRoute>
                 <ProfilePage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedAdminRoute>
+                <AdminPage />
+              </ProtectedAdminRoute>
             }
           />
           <Route path="/explore" element={<ExplorePage />} />
