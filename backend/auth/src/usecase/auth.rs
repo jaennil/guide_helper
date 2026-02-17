@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error};
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::domain::user::User;
+use crate::domain::user::{Role, User};
 use crate::{domain, usecase::contracts::UserRepository};
 use crate::delivery::contracts;
 use crate::usecase::password::{hash_password, verify_password};
@@ -64,6 +64,7 @@ where
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -318,6 +319,7 @@ mod tests {
             password_hash: hash_password("somepassword").unwrap(),
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -354,6 +356,7 @@ mod tests {
             password_hash: password_hash.clone(),
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -395,6 +398,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -451,6 +455,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: Some(Utc::now()),
@@ -507,6 +512,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -547,6 +553,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -625,6 +632,7 @@ mod tests {
             password_hash: "hash".to_string(),
             name: Some("Test User".to_string()),
             avatar_url: Some("https://example.com/avatar.png".to_string()),
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -676,6 +684,7 @@ mod tests {
             password_hash: "hash".to_string(),
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -722,6 +731,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
@@ -764,6 +774,7 @@ mod tests {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,

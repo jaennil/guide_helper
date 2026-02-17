@@ -1,5 +1,39 @@
+use std::fmt;
+use std::str::FromStr;
+
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum Role {
+    User,
+    Moderator,
+    Admin,
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Role::User => write!(f, "user"),
+            Role::Moderator => write!(f, "moderator"),
+            Role::Admin => write!(f, "admin"),
+        }
+    }
+}
+
+impl FromStr for Role {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "user" => Ok(Role::User),
+            "moderator" => Ok(Role::Moderator),
+            "admin" => Ok(Role::Admin),
+            _ => Err(format!("unknown role: {}", s)),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct User {
@@ -8,6 +42,7 @@ pub struct User {
     pub password_hash: String,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+    pub role: Role,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
@@ -22,6 +57,7 @@ impl User {
             password_hash,
             name: None,
             avatar_url: None,
+            role: Role::User,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -105,6 +141,7 @@ mod tests {
             password_hash: "secure_hash".to_string(),
             name: Some("Test User".to_string()),
             avatar_url: Some("https://example.com/avatar.png".to_string()),
+            role: Role::User,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -140,5 +177,26 @@ mod tests {
 
         assert_eq!(user.password_hash, "new_hash");
         assert!(user.updated_at > original_updated_at);
+    }
+
+    #[test]
+    fn test_role_display() {
+        assert_eq!(Role::User.to_string(), "user");
+        assert_eq!(Role::Moderator.to_string(), "moderator");
+        assert_eq!(Role::Admin.to_string(), "admin");
+    }
+
+    #[test]
+    fn test_role_from_str() {
+        assert_eq!(Role::from_str("user").unwrap(), Role::User);
+        assert_eq!(Role::from_str("moderator").unwrap(), Role::Moderator);
+        assert_eq!(Role::from_str("admin").unwrap(), Role::Admin);
+        assert!(Role::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn test_new_user_has_user_role() {
+        let user = User::new("test@example.com".to_string(), "hash".to_string());
+        assert_eq!(user.role, Role::User);
     }
 }
