@@ -18,18 +18,22 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [tag, setTag] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [offset, setOffset] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  const AVAILABLE_TAGS = ['hiking', 'cycling', 'historical', 'nature', 'urban'] as const;
+
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const fetchRoutes = useCallback(async (searchValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
+  const fetchRoutes = useCallback(async (searchValue: string, tagValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
     setLoading(true);
     setError('');
     try {
       const data = await routesApi.exploreRoutes({
         search: searchValue || undefined,
+        tag: tagValue || undefined,
         sort: sortValue,
         limit: PAGE_SIZE,
         offset: offsetValue,
@@ -48,11 +52,11 @@ export default function ExplorePage() {
     }
   }, [t]);
 
-  // Initial load and sort change
+  // Initial load, sort, and tag change
   useEffect(() => {
     setOffset(0);
-    fetchRoutes(search, sort, 0, false);
-  }, [sort]);
+    fetchRoutes(search, tag, sort, 0, false);
+  }, [sort, tag]);
 
   // Search with debounce
   const handleSearchChange = (value: string) => {
@@ -60,14 +64,14 @@ export default function ExplorePage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setOffset(0);
-      fetchRoutes(value, sort, 0, false);
+      fetchRoutes(value, tag, sort, 0, false);
     }, 400);
   };
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE;
     setOffset(newOffset);
-    fetchRoutes(search, sort, newOffset, true);
+    fetchRoutes(search, tag, sort, newOffset, true);
   };
 
   const formatDate = (dateString: string) => {
@@ -100,6 +104,18 @@ export default function ExplorePage() {
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
+          <select
+            className="explore-tag-filter"
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+          >
+            <option value="">{t('explore.allTags')}</option>
+            {AVAILABLE_TAGS.map((t_tag) => (
+              <option key={t_tag} value={t_tag}>
+                {t(`tags.${t_tag}` as any)}
+              </option>
+            ))}
+          </select>
           <select
             className="explore-sort"
             value={sort}
@@ -144,6 +160,13 @@ export default function ExplorePage() {
                       </span>
                     )}
                   </div>
+                  {route.tags.length > 0 && (
+                    <div className="route-tags">
+                      {route.tags.map((tag) => (
+                        <span key={tag} className="route-tag">{t(`tags.${tag}` as any)}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

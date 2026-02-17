@@ -449,6 +449,64 @@ body {
     cursor: not-allowed;
 }
 
+/* Tag selector in save modal */
+.tag-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tag-selector label {
+    font-size: 0.875rem;
+    color: #555;
+}
+
+.tag-selector-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tag-button {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    background: #f5f5f5;
+    color: #555;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-button:hover {
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.tag-button.active {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+/* Route tag badges (shared across pages) */
+.route-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+}
+
+.route-tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 /* Overlay legend */
 .overlay-legend {
     position: absolute;

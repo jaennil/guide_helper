@@ -24,6 +24,7 @@ export interface Route {
   created_at: string;
   updated_at: string;
   share_token?: string;
+  tags: string[];
 }
 
 export interface Comment {
@@ -77,6 +78,7 @@ export interface ExploreRoute {
   likes_count: number;
   avg_rating: number;
   ratings_count: number;
+  tags: string[];
 }
 
 export interface ExploreResponse {
@@ -86,6 +88,7 @@ export interface ExploreResponse {
 
 export interface ExploreParams {
   search?: string;
+  tag?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -94,6 +97,7 @@ export interface ExploreParams {
 export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
+  tags: string[];
 }
 
 export interface UpdateRouteRequest {

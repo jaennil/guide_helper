@@ -440,6 +440,13 @@ export default function ProfilePage() {
                       />
                       <div className="route-info">
                         <h3>{route.name}</h3>
+                        {route.tags.length > 0 && (
+                          <div className="route-tags">
+                            {route.tags.map((tag) => (
+                              <span key={tag} className="route-tag">{t(`tags.${tag}` as any)}</span>
+                            ))}
+                          </div>
+                        )}
                         <p>
                           {t('profile.pointsCount', { count: route.points.length })}
                           {route.points.length >= 2 && ` · ${formatDistance(totalDistance(route.points))}`}

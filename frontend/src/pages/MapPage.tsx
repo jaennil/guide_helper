@@ -380,6 +380,7 @@ export function MapPage() {
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
@@ -389,6 +390,14 @@ export function MapPage() {
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
+
+  const AVAILABLE_TAGS = ['hiking', 'cycling', 'historical', 'nature', 'urban'] as const;
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : prev.length < 5 ? [...prev, tag] : prev
+    );
+  };
 
   const { logout, user } = useAuth();
   const { t } = useLanguage();
@@ -528,9 +537,11 @@ export function MapPage() {
       await routesApi.createRoute({
         name: routeName.trim(),
         points: pointsToSave,
+        tags: selectedTags,
       });
       setShowSaveModal(false);
       setRouteName("");
+      setSelectedTags([]);
       alert(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
@@ -940,6 +951,21 @@ export function MapPage() {
                 onChange={(e) => setRouteName(e.target.value)}
                 autoFocus
               />
+              <div className="tag-selector">
+                <label>{t("map.selectTags")}</label>
+                <div className="tag-selector-buttons">
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`tag-button${selectedTags.includes(tag) ? " active" : ""}`}
+                      onClick={() => toggleTag(tag)}
+                    >
+                      {t(`tags.${tag}` as any)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {saveError && <div className="modal-error">{saveError}</div>}
               <div className="modal-actions">
                 <button
