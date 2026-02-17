@@ -20,6 +20,7 @@ use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
+use crate::delivery::http::v1::admin::get_routes_stats;
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
 use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
 use crate::delivery::http::v1::middleware::auth_middleware;
@@ -231,6 +232,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/routes/{route_id}/like/me", get(get_user_like_status))
         .route("/api/v1/routes/{route_id}/rating", put(set_rating).delete(remove_rating))
         .route("/api/v1/routes/{route_id}/rating/me", get(get_user_rating))
+        .route("/api/v1/admin/routes/stats", get(get_routes_stats))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,

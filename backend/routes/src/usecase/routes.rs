@@ -19,6 +19,10 @@ where
         Self { route_repository }
     }
 
+    pub fn route_repository(&self) -> &R {
+        &self.route_repository
+    }
+
     #[tracing::instrument(skip(self, points), fields(user_id = %user_id, name = %name, point_count = points.len()))]
     pub async fn create_route(
         &self,

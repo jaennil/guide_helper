@@ -25,6 +25,10 @@ where
         }
     }
 
+    pub fn comment_repository(&self) -> &C {
+        &self.comment_repository
+    }
+
     #[tracing::instrument(skip(self, author_name, text), fields(route_id = %route_id, user_id = %user_id))]
     pub async fn create_comment(
         &self,

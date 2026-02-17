@@ -247,6 +247,17 @@ impl RouteRepository for PostgresRouteRepository {
         tracing::debug!(count = count.0, "counted explore shared routes");
         Ok(count.0)
     }
+
+    #[tracing::instrument(skip(self))]
+    async fn count_all(&self) -> Result<i64, RepositoryError> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM routes")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = count.0, "counted all routes");
+        Ok(count.0)
+    }
 }
 
 pub struct PostgresCommentRepository {
@@ -362,6 +373,17 @@ impl CommentRepository for PostgresCommentRepository {
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         tracing::debug!(route_id = %route_id, count = count.0, "counted comments");
+        Ok(count.0)
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn count_all(&self) -> Result<i64, RepositoryError> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM comments")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = count.0, "counted all comments");
         Ok(count.0)
     }
 }

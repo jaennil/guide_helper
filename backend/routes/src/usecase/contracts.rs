@@ -30,6 +30,7 @@ pub trait RouteRepository: Send + Sync {
         search: Option<String>,
         tag: Option<String>,
     ) -> Result<i64, RepositoryError>;
+    async fn count_all(&self) -> Result<i64, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -39,6 +40,7 @@ pub trait CommentRepository: Send + Sync {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Comment>, RepositoryError>;
     async fn delete(&self, id: Uuid) -> Result<(), RepositoryError>;
     async fn count_by_route_id(&self, route_id: Uuid) -> Result<i64, RepositoryError>;
+    async fn count_all(&self) -> Result<i64, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
