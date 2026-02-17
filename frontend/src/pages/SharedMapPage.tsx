@@ -12,6 +12,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import "../App.css";
 import { useParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
 import { routesApi } from "../api/routes";
 import {
   RoutingControl,
@@ -39,6 +40,7 @@ const TILE_PROVIDERS = [
 export function SharedMapPage() {
   const { token } = useParams<{ token: string }>();
   const { t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
 
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -140,22 +142,27 @@ export function SharedMapPage() {
             ))}
           </select>
         </div>
-        {routePoints.length >= 2 && (
-          <div className="header-actions">
-            <button
-              onClick={() => exportAsGpx(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
-              className="btn-secondary"
-            >
-              {t("export.gpx")}
-            </button>
-            <button
-              onClick={() => exportAsKml(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
-              className="btn-secondary"
-            >
-              {t("export.kml")}
-            </button>
-          </div>
-        )}
+        <div className="header-actions">
+          {routePoints.length >= 2 && (
+            <>
+              <button
+                onClick={() => exportAsGpx(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.gpx")}
+              </button>
+              <button
+                onClick={() => exportAsKml(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                className="btn-secondary"
+              >
+                {t("export.kml")}
+              </button>
+            </>
+          )}
+          <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
+            {theme === "light" ? "\u263D" : "\u2600"}
+          </button>
+        </div>
       </div>
 
       <MapContainer

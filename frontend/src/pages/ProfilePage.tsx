@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import type { Locale } from '../i18n';
 import { profileApi } from '../api/profile';
 import { routesApi } from '../api/routes';
@@ -15,6 +16,7 @@ type TabType = 'profile' | 'security' | 'routes';
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
   const { t, locale, setLocale, dateLocale } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
 
@@ -256,6 +258,9 @@ export default function ProfilePage() {
           </button>
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('profile.backToMap')}
+          </button>
+          <button onClick={toggleTheme} className="theme-toggle-btn" title={t('theme.toggle')}>
+            {theme === 'light' ? '\u263D' : '\u2600'}
           </button>
           <button onClick={handleLogout} className="btn-logout">
             {t('profile.logout')}

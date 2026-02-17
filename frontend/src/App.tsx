@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
 import { Auth } from './pages/Auth';
@@ -12,6 +13,7 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <LanguageProvider>
       <AuthProvider>
         <Routes>
@@ -38,6 +40,7 @@ function App() {
         </Routes>
       </AuthProvider>
       </LanguageProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

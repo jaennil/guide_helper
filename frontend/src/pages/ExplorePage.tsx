@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import './ExplorePage.css';
@@ -11,6 +12,7 @@ const PAGE_SIZE = 20;
 
 export default function ExplorePage() {
   const { t, dateLocale } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [routes, setRoutes] = useState<ExploreRoute[]>([]);
@@ -91,6 +93,9 @@ export default function ExplorePage() {
         <div className="header-actions">
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('explore.backToMap')}
+          </button>
+          <button onClick={toggleTheme} className="theme-toggle-btn" title={t('theme.toggle')}>
+            {theme === 'light' ? '\u263D' : '\u2600'}
           </button>
         </div>
       </header>

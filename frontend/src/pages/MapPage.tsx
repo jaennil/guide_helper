@@ -15,6 +15,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import "../App.css";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
@@ -289,7 +290,7 @@ function createColoredMarkerIcon(color: string, photo?: PhotoData): L.DivIcon {
   }
   return L.divIcon({
     className: "overlay-marker",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid var(--bg-primary);box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
     popupAnchor: [0, -10],
@@ -402,6 +403,7 @@ export function MapPage() {
 
   const { logout, user } = useAuth();
   const { t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -838,6 +840,9 @@ export function MapPage() {
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
           </button>
+          <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
+            {theme === "light" ? "\u263D" : "\u2600"}
+          </button>
           <button onClick={handleLogout} className="logout-btn">
             {t("map.logout")}
           </button>
@@ -886,6 +891,9 @@ export function MapPage() {
           </button>
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
+          </button>
+          <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
+            {theme === "light" ? "\u263D" : "\u2600"}
           </button>
           <button onClick={handleLogout} className="logout-btn">
             {t("map.logout")}

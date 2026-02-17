@@ -101,7 +101,7 @@ export function ElevationChart({ points, elevations }: ElevationChartProps) {
             y1={toY(v)}
             x2={CHART_WIDTH - PADDING.right}
             y2={toY(v)}
-            stroke="#e0e0e0"
+            stroke="var(--border-separator)"
             strokeWidth={0.5}
           />
         ))}
@@ -146,7 +146,7 @@ export function ElevationChart({ points, elevations }: ElevationChartProps) {
               y1={PADDING.top}
               x2={toX(distances[hoverIndex])}
               y2={PADDING.top + innerH}
-              stroke="#666"
+              stroke="var(--text-light)"
               strokeWidth={0.5}
               strokeDasharray="2,2"
             />
@@ -155,7 +155,7 @@ export function ElevationChart({ points, elevations }: ElevationChartProps) {
               cy={toY(elevations[hoverIndex])}
               r={3}
               fill="#4caf50"
-              stroke="#fff"
+              stroke="var(--bg-primary)"
               strokeWidth={1}
             />
             <text
