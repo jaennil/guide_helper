@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
-const API_BASE_URL = '/api/v1/auth';
+const AUTH_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export interface AuthResponse {
   access_token: string;
@@ -15,7 +16,7 @@ export interface RefreshResponse {
 
 export const authApi = {
   async register(email: string, password: string): Promise<AuthResponse> {
-    const response = await axios.post(`${API_BASE_URL}/register`, {
+    const response = await axios.post(`${AUTH_URL}/register`, {
       email,
       password,
     });
@@ -23,7 +24,7 @@ export const authApi = {
   },
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await axios.post(`${API_BASE_URL}/login`, {
+    const response = await axios.post(`${AUTH_URL}/login`, {
       email,
       password,
     });
@@ -31,7 +32,7 @@ export const authApi = {
   },
 
   async refreshToken(refreshToken: string): Promise<RefreshResponse> {
-    const response = await axios.post(`${API_BASE_URL}/refresh`, {
+    const response = await axios.post(`${AUTH_URL}/refresh`, {
       refresh_token: refreshToken,
     });
     return response.data;

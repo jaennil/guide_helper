@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
-const API_BASE_URL = '/api/v1/auth';
+const AUTH_URL = `${API_BASE_URL}/api/v1/auth`;
 
 export interface UserProfile {
   id: string;
@@ -27,21 +28,21 @@ const getAuthHeader = () => {
 
 export const profileApi = {
   async getProfile(): Promise<UserProfile> {
-    const response = await axios.get(`${API_BASE_URL}/me`, {
+    const response = await axios.get(`${AUTH_URL}/me`, {
       headers: getAuthHeader(),
     });
     return response.data;
   },
 
   async updateProfile(data: UpdateProfileRequest): Promise<UserProfile> {
-    const response = await axios.put(`${API_BASE_URL}/me`, data, {
+    const response = await axios.put(`${AUTH_URL}/me`, data, {
       headers: getAuthHeader(),
     });
     return response.data;
   },
 
   async changePassword(data: ChangePasswordRequest): Promise<void> {
-    await axios.put(`${API_BASE_URL}/password`, data, {
+    await axios.put(`${AUTH_URL}/password`, data, {
       headers: getAuthHeader(),
     });
   },

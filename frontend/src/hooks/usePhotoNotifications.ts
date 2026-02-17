@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../api/config';
 
 interface PhotoNotificationOptions {
   routeId: string;
@@ -28,8 +29,14 @@ export function usePhotoNotifications({ routeId, enabled, onPhotoUpdate }: Photo
     const connect = () => {
       if (!mounted) return;
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const url = `${protocol}//${window.location.host}/api/v1/routes/${routeId}/ws?token=${encodeURIComponent(token)}`;
+      let url: string;
+      if (API_BASE_URL) {
+        const wsBase = API_BASE_URL.replace(/^http/, 'ws');
+        url = `${wsBase}/api/v1/routes/${routeId}/ws?token=${encodeURIComponent(token)}`;
+      } else {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        url = `${protocol}//${window.location.host}/api/v1/routes/${routeId}/ws?token=${encodeURIComponent(token)}`;
+      }
       console.log('[ws] connecting to', url);
 
       const ws = new WebSocket(url);
