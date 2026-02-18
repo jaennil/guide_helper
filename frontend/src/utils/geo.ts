@@ -92,18 +92,18 @@ export type DifficultyLevel = "easy" | "moderate" | "hard";
 
 /**
  * Classify route difficulty based on distance and elevation gain.
- * Distance score: <10km=1, 10-20km=2, >=20km=3
- * Elevation score: <500m=1, 500-1000m=2, >=1000m=3
- * Total <=2 → easy, 3-4 → moderate, >=5 → hard
+ * Distance score: <5km=1, 5-15km=2, >=15km=3
+ * Elevation score: <300m=1, 300-800m=2, >=800m=3
+ * Total <=3 → easy, 4 → moderate, >=5 → hard
  */
 export function classifyDifficulty(
   distanceKm: number,
   elevationGainM: number
 ): DifficultyLevel {
-  const distScore = distanceKm < 10 ? 1 : distanceKm < 20 ? 2 : 3;
-  const elevScore = elevationGainM < 500 ? 1 : elevationGainM < 1000 ? 2 : 3;
+  const distScore = distanceKm < 5 ? 1 : distanceKm < 15 ? 2 : 3;
+  const elevScore = elevationGainM < 300 ? 1 : elevationGainM < 800 ? 2 : 3;
   const total = distScore + elevScore;
-  if (total <= 2) return "easy";
+  if (total <= 3) return "easy";
   if (total <= 4) return "moderate";
   return "hard";
 }
