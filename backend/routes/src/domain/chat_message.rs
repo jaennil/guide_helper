@@ -20,6 +20,7 @@ pub struct ConversationSummary {
     pub message_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub title: String,
 }
 
 impl ChatMessage {

@@ -33,6 +33,7 @@ pub struct ConversationSummaryResponse {
     pub message_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub title: String,
 }
 
 #[derive(Serialize)]
@@ -240,6 +241,7 @@ pub async fn list_conversations(
             message_count: c.message_count,
             created_at: c.created_at,
             updated_at: c.updated_at,
+            title: c.title,
         })
         .collect();
 
@@ -271,6 +273,32 @@ pub async fn delete_conversation(
         })?;
 
     tracing::info!("conversation deleted");
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id, conversation_id = %conversation_id, message_id = %message_id))]
+pub async fn delete_message(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((conversation_id, message_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::info!("deleting message");
+
+    let _ = conversation_id; // included in path for REST convention
+
+    state
+        .chat_usecase
+        .delete_message(user.user_id, message_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to delete message");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to delete message: {}", e),
+            )
+        })?;
+
+    tracing::info!("message deleted");
     Ok(StatusCode::NO_CONTENT)
 }
 

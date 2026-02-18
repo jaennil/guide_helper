@@ -505,6 +505,22 @@ where
         Ok(count)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, message_id = %message_id))]
+    pub async fn delete_message(
+        &self,
+        user_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), Error> {
+        tracing::info!("deleting message");
+
+        self.chat_repo
+            .delete_message(user_id, message_id)
+            .await?;
+
+        tracing::info!("message deleted");
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id))]
     pub async fn delete_conversation(
         &self,
@@ -1108,6 +1124,7 @@ mod tests {
             message_count: 2,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            title: "hello".to_string(),
         };
 
         mock_chat

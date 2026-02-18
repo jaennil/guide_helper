@@ -1027,16 +1027,34 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
         let rows = sqlx::query_as::<_, ConversationSummary>(
             r#"
             SELECT
-                conversation_id,
-                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_message,
-                COUNT(*)::bigint AS message_count,
-                MIN(created_at) AS created_at,
-                MAX(created_at) AS updated_at
-            FROM chat_messages
-            WHERE user_id = $1
-            GROUP BY conversation_id
-            ORDER BY MAX(created_at) DESC
-            LIMIT $2 OFFSET $3
+                c.conversation_id,
+                COALESCE(last_msg.content, '') AS last_message,
+                c.message_count,
+                c.created_at,
+                c.updated_at,
+                COALESCE(title_msg.content, '') AS title
+            FROM (
+                SELECT
+                    conversation_id,
+                    COUNT(*)::bigint AS message_count,
+                    MIN(created_at) AS created_at,
+                    MAX(created_at) AS updated_at
+                FROM chat_messages
+                WHERE user_id = $1
+                GROUP BY conversation_id
+                ORDER BY MAX(created_at) DESC
+                LIMIT $2 OFFSET $3
+            ) c
+            LEFT JOIN LATERAL (
+                SELECT content FROM chat_messages
+                WHERE conversation_id = c.conversation_id AND user_id = $1
+                ORDER BY created_at DESC LIMIT 1
+            ) last_msg ON true
+            LEFT JOIN LATERAL (
+                SELECT LEFT(content, 100) AS content FROM chat_messages
+                WHERE conversation_id = c.conversation_id AND user_id = $1 AND role = 'user'
+                ORDER BY created_at ASC LIMIT 1
+            ) title_msg ON true
             "#,
         )
         .bind(user_id)
@@ -1075,6 +1093,31 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
         }
 
         tracing::debug!(rows_deleted = result.rows_affected(), "conversation deleted");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, message_id = %message_id))]
+    async fn delete_message(
+        &self,
+        user_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting chat message");
+
+        let result = sqlx::query(
+            "DELETE FROM chat_messages WHERE id = $1 AND user_id = $2",
+        )
+        .bind(message_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(message_id = %message_id, "chat message deleted");
         Ok(())
     }
 
