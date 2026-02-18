@@ -8,6 +8,8 @@ use crate::usecase::ollama::{
     OllamaChatRequest, OllamaClient, OllamaMessage, OllamaTool, OllamaToolFunction,
 };
 
+const DEFAULT_NOMINATIM_URL: &str = "https://nominatim.openstreetmap.org";
+
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
 You help users find routes, plan trips, search the route catalog, and answer questions about places.
 Always respond in the same language the user writes in.
@@ -60,6 +62,8 @@ where
     chat_repo: CM,
     route_repo: R,
     ollama: Option<OllamaClient>,
+    http_client: reqwest::Client,
+    nominatim_url: String,
 }
 
 impl<CM, R> ChatUseCase<CM, R>
@@ -68,11 +72,24 @@ where
     R: RouteRepository,
 {
     pub fn new(chat_repo: CM, route_repo: R, ollama: Option<OllamaClient>) -> Self {
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .expect("failed to create reqwest client for ChatUseCase");
+
         Self {
             chat_repo,
             route_repo,
             ollama,
+            http_client,
+            nominatim_url: DEFAULT_NOMINATIM_URL.to_string(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn with_nominatim_url(mut self, url: String) -> Self {
+        self.nominatim_url = url;
+        self
     }
 
     pub fn is_available(&self) -> bool {
@@ -206,6 +223,8 @@ where
         name: &str,
         args: &std::collections::HashMap<String, serde_json::Value>,
     ) -> (String, Vec<ChatAction>) {
+        metrics::counter!("chat_tool_calls_total", "tool" => name.to_string()).increment(1);
+
         match name {
             "geocode" => self.tool_geocode(args).await,
             "search_routes" => self.tool_search_routes(args).await,
@@ -228,17 +247,14 @@ where
 
         tracing::info!(%query, "executing geocode tool");
 
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .unwrap();
-
         let url = format!(
-            "https://nominatim.openstreetmap.org/search?q={}&format=json&limit=1",
+            "{}/search?q={}&format=json&limit=1",
+            self.nominatim_url,
             urlencoding::encode(query)
         );
 
-        match client
+        match self
+            .http_client
             .get(&url)
             .header("User-Agent", "GuideHelper/1.0")
             .send()

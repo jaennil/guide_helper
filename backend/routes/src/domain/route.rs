@@ -82,6 +82,17 @@ pub struct ExploreRouteRow {
     pub tags: Vec<String>,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AdminRouteRow {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub points_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub share_token: Option<Uuid>,
+    pub tags: Vec<String>,
+}
+
 impl Route {
     pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, tags: Vec<String>) -> Self {
         let now = Utc::now();

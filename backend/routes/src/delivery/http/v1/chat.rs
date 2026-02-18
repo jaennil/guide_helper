@@ -55,13 +55,18 @@ pub async fn send_chat_message(
         "processing chat message"
     );
 
+    metrics::counter!("chat_messages_total", "role" => "user").increment(1);
+
     if !state.chat_usecase.is_available() {
         tracing::warn!("chat request received but Ollama is not available");
+        metrics::counter!("chat_unavailable_total").increment(1);
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             "AI assistant is currently unavailable".to_string(),
         ));
     }
+
+    let start = std::time::Instant::now();
 
     let result = state
         .chat_usecase
@@ -69,15 +74,21 @@ pub async fn send_chat_message(
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "chat message processing failed");
+            metrics::counter!("chat_errors_total").increment(1);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Chat error: {}", e),
             )
         })?;
 
+    let elapsed = start.elapsed().as_secs_f64();
+    metrics::histogram!("chat_response_duration_seconds").record(elapsed);
+    metrics::counter!("chat_messages_total", "role" => "assistant").increment(1);
+
     tracing::info!(
         response_id = %result.id,
         actions_count = result.actions.len(),
+        elapsed_secs = elapsed,
         "chat message processed successfully"
     );
 
