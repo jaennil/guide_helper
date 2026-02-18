@@ -33,10 +33,14 @@ resources:
   - tiles/service.yaml
   - tiles/servicemonitor.yaml
   - dashboard.yaml
-  - ollama/configmap.yaml
-  - ollama/pvc.yaml
-  - ollama/deployment.yaml
-  - ollama/service.yaml
+  # ollama excluded from base — deploy separately on a node with
+  # sufficient resources or external GPU server. The routes service
+  # handles ollama being absent gracefully (returns 503 for /api/v1/chat).
+  # To enable: uncomment the lines below.
+  # - ollama/configmap.yaml
+  # - ollama/pvc.yaml
+  # - ollama/deployment.yaml
+  # - ollama/service.yaml
   - photo-worker/configmap.yaml
   - photo-worker/deployment.yaml
   - frontend/deployment.yaml
