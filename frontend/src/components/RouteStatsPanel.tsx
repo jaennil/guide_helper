@@ -10,8 +10,10 @@ import {
   formatDuration,
   type GeoPoint,
   type DifficultyLevel,
+  type DifficultyThresholds,
 } from "../utils/geo";
 import { ElevationChart } from "./ElevationChart";
+import { settingsApi, DEFAULT_DIFFICULTY_THRESHOLDS } from "../api/settings";
 
 interface RouteStatsPanelProps {
   points: GeoPoint[];
@@ -23,11 +25,29 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   hard: "#f44336",
 };
 
+let cachedThresholds: DifficultyThresholds | null = null;
+
 export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
   const { t } = useLanguage();
   const [elevations, setElevations] = useState<number[] | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
+  const [thresholds, setThresholds] = useState<DifficultyThresholds>(
+    cachedThresholds ?? DEFAULT_DIFFICULTY_THRESHOLDS
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (cachedThresholds) return;
+    settingsApi.getDifficultyThresholds()
+      .then((data) => {
+        cachedThresholds = data;
+        setThresholds(data);
+        console.log("[stats] difficulty thresholds loaded from server");
+      })
+      .catch((err) => {
+        console.warn("[stats] failed to load difficulty thresholds, using defaults:", err);
+      });
+  }, []);
 
   const distance = totalDistance(points);
 
@@ -67,7 +87,7 @@ export function RouteStatsPanel({ points }: RouteStatsPanelProps) {
   const walkingTime =
     gain !== null ? estimateWalkingTime(distance, gain) : null;
   const difficulty =
-    gain !== null ? classifyDifficulty(distance, gain) : null;
+    gain !== null ? classifyDifficulty(distance, gain, thresholds) : null;
 
   return (
     <div className="route-stats-panel">

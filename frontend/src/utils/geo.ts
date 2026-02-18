@@ -90,21 +90,42 @@ export function estimateWalkingTime(
 
 export type DifficultyLevel = "easy" | "moderate" | "hard";
 
+export interface DifficultyThresholds {
+  distance_easy_max_km: number;
+  distance_moderate_max_km: number;
+  elevation_easy_max_m: number;
+  elevation_moderate_max_m: number;
+  score_easy_max: number;
+  score_moderate_max: number;
+}
+
+const DEFAULT_THRESHOLDS: DifficultyThresholds = {
+  distance_easy_max_km: 5,
+  distance_moderate_max_km: 15,
+  elevation_easy_max_m: 300,
+  elevation_moderate_max_m: 800,
+  score_easy_max: 3,
+  score_moderate_max: 4,
+};
+
 /**
  * Classify route difficulty based on distance and elevation gain.
- * Distance score: <5km=1, 5-15km=2, >=15km=3
- * Elevation score: <300m=1, 300-800m=2, >=800m=3
- * Total <=3 → easy, 4 → moderate, >=5 → hard
+ * Uses configurable thresholds with sensible defaults.
  */
 export function classifyDifficulty(
   distanceKm: number,
-  elevationGainM: number
+  elevationGainM: number,
+  thresholds: DifficultyThresholds = DEFAULT_THRESHOLDS
 ): DifficultyLevel {
-  const distScore = distanceKm < 5 ? 1 : distanceKm < 15 ? 2 : 3;
-  const elevScore = elevationGainM < 300 ? 1 : elevationGainM < 800 ? 2 : 3;
+  const distScore =
+    distanceKm < thresholds.distance_easy_max_km ? 1 :
+    distanceKm < thresholds.distance_moderate_max_km ? 2 : 3;
+  const elevScore =
+    elevationGainM < thresholds.elevation_easy_max_m ? 1 :
+    elevationGainM < thresholds.elevation_moderate_max_m ? 2 : 3;
   const total = distScore + elevScore;
-  if (total <= 3) return "easy";
-  if (total <= 4) return "moderate";
+  if (total <= thresholds.score_easy_max) return "easy";
+  if (total <= thresholds.score_moderate_max) return "moderate";
   return "hard";
 }
 
