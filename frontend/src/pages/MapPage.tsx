@@ -29,6 +29,7 @@ import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
+import { NotificationBell } from "../components/NotificationBell";
 
 type RouteMode = "auto" | "manual";
 
@@ -853,6 +854,7 @@ export function MapPage() {
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
           </button>
+          <NotificationBell />
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
           </button>

@@ -9,6 +9,7 @@ import { routesApi } from '../api/routes';
 import type { Route } from '../api/routes';
 import { totalDistance, formatDistance } from '../utils/geo';
 import { exportAsGpx, exportAsKml } from '../utils/exportRoute';
+import { NotificationBell } from '../components/NotificationBell';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -264,6 +265,7 @@ export default function ProfilePage() {
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('profile.backToMap')}
           </button>
+          <NotificationBell />
           <button onClick={toggleTheme} className="theme-toggle-btn" title={t('theme.toggle')}>
             {theme === 'light' ? '\u263D' : '\u2600'}
           </button>
