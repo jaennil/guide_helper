@@ -32,8 +32,8 @@ import { RoutePlayback } from "../components/RoutePlayback";
 type RouteMode = "auto" | "manual";
 
 const TILE_PROVIDERS = [
-  { id: "osm", name: "OpenStreetMap", url: "/api/v1/tile/{z}/{x}/{y}", attribution: "&copy; OpenStreetMap" },
   { id: "yandex", name: "Yandex", url: "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU", attribution: "&copy; Yandex" },
+  { id: "osm", name: "OpenStreetMap", url: "/api/v1/tile/{z}/{x}/{y}", attribution: "&copy; OpenStreetMap" },
   { id: "2gis", name: "2GIS", url: "https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1", attribution: "&copy; 2GIS" },
   { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
 ];
@@ -380,7 +380,7 @@ export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeMode, setRouteMode] = useState<RouteMode>("auto");
-  const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "osm");
+  const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
