@@ -1,10 +1,12 @@
 pub mod categories;
+pub mod chat;
 pub mod comments;
 pub mod contracts;
 pub mod geojson_import;
 pub mod jwt;
 pub mod likes;
 pub mod notifications;
+pub mod ollama;
 pub mod photo_tasks;
 pub mod ratings;
 pub mod routes;

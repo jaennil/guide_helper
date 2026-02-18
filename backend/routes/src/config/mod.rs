@@ -18,10 +18,22 @@ pub struct AppConfig {
     pub telemetry_otlp_endpoint: String,
     #[serde(default = "default_nats_url")]
     pub nats_url: String,
+    #[serde(default = "default_ollama_url")]
+    pub ollama_url: String,
+    #[serde(default = "default_ollama_model")]
+    pub ollama_model: String,
 }
 
 fn default_nats_url() -> String {
     "nats://localhost:4222".to_string()
+}
+
+fn default_ollama_url() -> String {
+    "http://ollama:11434".to_string()
+}
+
+fn default_ollama_model() -> String {
+    "llama3.2".to_string()
 }
 
 fn default_telemetry_service_name() -> String {
