@@ -11,6 +11,65 @@ interface NominatimResult {
   boundingbox: [string, string, string, string];
 }
 
+/** Convert latitude/longitude to slippy map tile coordinates at a given zoom */
+function latLngToTile(lat: number, lng: number, zoom: number): { x: number; y: number } {
+  const n = Math.pow(2, zoom);
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
+  );
+  return { x, y };
+}
+
+/** Get the tile URL template from the map's active TileLayer */
+function getTileUrlTemplate(map: L.Map): string | null {
+  let url: string | null = null;
+  map.eachLayer((layer) => {
+    if ((layer as any)._url && !url) {
+      url = (layer as any)._url;
+    }
+  });
+  return url;
+}
+
+/** Prefetch tiles for a given bounds so they're cached by the time flyToBounds finishes */
+function prefetchTiles(map: L.Map, bounds: L.LatLngBounds, maxZoom: number) {
+  const urlTemplate = getTileUrlTemplate(map);
+  if (!urlTemplate) {
+    console.log("[geo-search] no tile URL template found, skipping prefetch");
+    return;
+  }
+
+  const zoom = Math.min(map.getBoundsZoom(bounds, false, L.point(20, 20)), maxZoom);
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  const minTile = latLngToTile(ne.lat, sw.lng, zoom);
+  const maxTile = latLngToTile(sw.lat, ne.lng, zoom);
+
+  const urls: string[] = [];
+  for (let x = minTile.x; x <= maxTile.x; x++) {
+    for (let y = minTile.y; y <= maxTile.y; y++) {
+      const url = urlTemplate
+        .replace("{z}", String(zoom))
+        .replace("{x}", String(x))
+        .replace("{y}", String(y))
+        .replace("{s}", "a");
+      urls.push(url);
+    }
+  }
+
+  // Cap at 30 tiles to avoid flooding the network
+  const toLoad = urls.slice(0, 30);
+  console.log(`[geo-search] prefetching ${toLoad.length} tiles at zoom ${zoom}`);
+
+  toLoad.forEach((url) => {
+    const img = new Image();
+    img.src = url;
+  });
+}
+
 export function GeoSearchControl() {
   const map = useMap();
   const { t, locale } = useLanguage();
@@ -113,6 +172,10 @@ export function GeoSearchControl() {
       L.latLng(south, west),
       L.latLng(north, east)
     );
+
+    // Prefetch tiles for the destination area so they're cached when the camera arrives
+    prefetchTiles(map, bounds, 17);
+
     console.log(`[geo-search] flying to: ${result.display_name}`);
     map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 17 });
     setQuery(result.display_name);
