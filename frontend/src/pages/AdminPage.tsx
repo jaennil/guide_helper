@@ -4,9 +4,11 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { adminApi } from '../api/admin';
 import type { AdminUser, AuthStatsResponse, RoutesStatsResponse } from '../api/admin';
+import { settingsApi, DEFAULT_DIFFICULTY_THRESHOLDS } from '../api/settings';
+import type { DifficultyThresholds } from '../api/settings';
 import './AdminPage.css';
 
-type AdminTab = 'dashboard' | 'users';
+type AdminTab = 'dashboard' | 'users' | 'settings';
 
 const PAGE_SIZE = 20;
 
@@ -29,6 +31,13 @@ export default function AdminPage() {
   const [usersSearch, setUsersSearch] = useState('');
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
+
+  // Settings state
+  const [thresholds, setThresholds] = useState<DifficultyThresholds>(DEFAULT_DIFFICULTY_THRESHOLDS);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSuccess, setSettingsSuccess] = useState('');
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -67,6 +76,21 @@ export default function AdminPage() {
     }
   }, [usersPage, usersSearch, t]);
 
+  const loadSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    setSettingsError('');
+    setSettingsSuccess('');
+    try {
+      const data = await settingsApi.getDifficultyThresholds();
+      setThresholds(data);
+    } catch (err: any) {
+      console.error('Failed to load settings:', err);
+      setSettingsError(err.response?.data || t('admin.loadFailed'));
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     if (activeTab === 'dashboard') {
       loadStats();
@@ -78,6 +102,12 @@ export default function AdminPage() {
       loadUsers();
     }
   }, [activeTab, loadUsers]);
+
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      loadSettings();
+    }
+  }, [activeTab, loadSettings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
@@ -97,6 +127,26 @@ export default function AdminPage() {
     if (e.key === 'Enter') {
       setUsersPage(0);
       loadUsers();
+    }
+  };
+
+  const handleThresholdChange = (field: keyof DifficultyThresholds, value: string) => {
+    setThresholds(prev => ({ ...prev, [field]: Number(value) }));
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsError('');
+    setSettingsSuccess('');
+    try {
+      await settingsApi.updateDifficultyThresholds(thresholds);
+      setSettingsSuccess(t('admin.settings.saved'));
+      console.log('[admin] difficulty thresholds saved');
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      setSettingsError(err.response?.data || t('admin.settings.saveFailed'));
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -138,6 +188,12 @@ export default function AdminPage() {
             onClick={() => setActiveTab('users')}
           >
             {t('admin.users')}
+          </button>
+          <button
+            className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            {t('admin.settings')}
           </button>
         </nav>
 
@@ -251,6 +307,86 @@ export default function AdminPage() {
 
               {!usersLoading && users.length === 0 && !usersError && (
                 <p>{t('admin.noUsers')}</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div>
+              <h2 className="settings-section-title">{t('admin.settings.difficultyThresholds')}</h2>
+              {settingsLoading && <div className="loading">{t('common.loading')}</div>}
+              {settingsError && <div className="error-message">{settingsError}</div>}
+              {settingsSuccess && <div className="success-message">{settingsSuccess}</div>}
+              {!settingsLoading && (
+                <div className="settings-form">
+                  <div className="settings-field">
+                    <label>{t('admin.settings.distanceEasyMax')}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={thresholds.distance_easy_max_km}
+                      onChange={(e) => handleThresholdChange('distance_easy_max_km', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>{t('admin.settings.distanceModerateMax')}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={thresholds.distance_moderate_max_km}
+                      onChange={(e) => handleThresholdChange('distance_moderate_max_km', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>{t('admin.settings.elevationEasyMax')}</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={thresholds.elevation_easy_max_m}
+                      onChange={(e) => handleThresholdChange('elevation_easy_max_m', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>{t('admin.settings.elevationModerateMax')}</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={thresholds.elevation_moderate_max_m}
+                      onChange={(e) => handleThresholdChange('elevation_moderate_max_m', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>{t('admin.settings.scoreEasyMax')}</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={thresholds.score_easy_max}
+                      onChange={(e) => handleThresholdChange('score_easy_max', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>{t('admin.settings.scoreModerateMax')}</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={thresholds.score_moderate_max}
+                      onChange={(e) => handleThresholdChange('score_moderate_max', e.target.value)}
+                    />
+                  </div>
+                  <button
+                    className="btn-primary settings-save-btn"
+                    onClick={handleSaveSettings}
+                    disabled={settingsSaving}
+                  >
+                    {settingsSaving ? t('admin.settings.saving') : t('admin.settings.save')}
+                  </button>
+                </div>
               )}
             </div>
           )}
