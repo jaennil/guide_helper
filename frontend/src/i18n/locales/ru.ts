@@ -246,4 +246,9 @@ export const ru = {
   "chat.showOnMap": "Показать на карте",
   "chat.viewRoute": "Открыть маршрут",
   "chat.newConversation": "Новый чат",
+  "chat.history": "История",
+  "chat.deleteConversation": "Удалить",
+  "chat.noConversations": "Нет диалогов",
+  "chat.copied": "Скопировано!",
+  "chat.backToChat": "Назад",
 } as const;

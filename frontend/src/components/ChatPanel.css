@@ -59,6 +59,7 @@
 }
 
 .chat-message {
+  position: relative;
   max-width: 85%;
   padding: 10px 14px;
   border-radius: 12px;
@@ -239,6 +240,135 @@
 .chat-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.chat-message-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.chat-message:hover .chat-message-copy {
+  opacity: 1;
+}
+
+.chat-message-copy:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chat-message-markdown {
+  white-space: normal;
+}
+
+.chat-message-markdown p {
+  margin: 0 0 8px 0;
+}
+
+.chat-message-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-markdown code {
+  background: var(--bg-primary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.chat-message-markdown pre {
+  background: var(--bg-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.chat-message-markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.chat-message-markdown ul,
+.chat-message-markdown ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.chat-conversations-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.chat-conversation-item:hover {
+  border-color: var(--accent-color, #3b82f6);
+}
+
+.chat-conversation-item-content {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.chat-conversation-item-message {
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-conversation-item-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.chat-conversation-delete {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--error-color, #dc2626);
+  transition: all 0.15s ease;
+}
+
+.chat-conversation-delete:hover {
+  background: var(--error-bg, #fef2f2);
+}
+
+.chat-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 24px 16px;
+  font-size: 14px;
 }
 
 @media (max-width: 640px) {

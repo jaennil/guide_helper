@@ -246,4 +246,9 @@ export const en = {
   "chat.showOnMap": "Show on map",
   "chat.viewRoute": "View route",
   "chat.newConversation": "New chat",
+  "chat.history": "History",
+  "chat.deleteConversation": "Delete",
+  "chat.noConversations": "No conversations yet",
+  "chat.copied": "Copied!",
+  "chat.backToChat": "Back",
 } as const;

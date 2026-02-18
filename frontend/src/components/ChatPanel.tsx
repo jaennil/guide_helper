@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { chatApi, type ChatAction, type ChatPoint, type ChatRouteRef } from '../api/chat';
+import ReactMarkdown from 'react-markdown';
+import { chatApi, type ChatAction, type ChatPoint, type ChatRouteRef, type ConversationSummary } from '../api/chat';
 import { useLanguage } from '../context/LanguageContext';
 import './ChatPanel.css';
 
@@ -23,6 +24,10 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useLanguage();
@@ -32,10 +37,10 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
   }, [messages, loading]);
 
   useEffect(() => {
-    if (isOpen && textareaRef.current) {
+    if (isOpen && textareaRef.current && !showHistory) {
       textareaRef.current.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, showHistory]);
 
   if (!isOpen) return null;
 
@@ -98,11 +103,120 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     onShowRoutes(ids);
   };
 
+  const handleCopy = async (msgId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // clipboard API may not be available
+    }
+  };
+
+  const handleShowHistory = async () => {
+    setShowHistory(true);
+    setLoadingHistory(true);
+    try {
+      const convs = await chatApi.listConversations();
+      setConversations(convs);
+    } catch {
+      setConversations([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleLoadConversation = async (convId: string) => {
+    setShowHistory(false);
+    setLoadingHistory(true);
+    try {
+      const history = await chatApi.getHistory(convId);
+      const msgs: DisplayMessage[] = history.map((m) => ({
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        actions: m.actions || undefined,
+      }));
+      setMessages(msgs);
+      setConversationId(convId);
+      setError('');
+    } catch {
+      setError(t('chat.error'));
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteConversation = async (convId: string) => {
+    try {
+      await chatApi.deleteConversation(convId);
+      setConversations((prev) => prev.filter((c) => c.conversation_id !== convId));
+      if (conversationId === convId) {
+        handleNewConversation();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const formatTimestamp = (ts: string) => {
+    const date = new Date(ts);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (showHistory) {
+    return (
+      <div className="chat-panel">
+        <div className="chat-panel-header">
+          <h3>{t('chat.history')}</h3>
+          <div className="chat-header-actions">
+            <button onClick={() => setShowHistory(false)}>{t('chat.backToChat')}</button>
+            <button onClick={onClose}>{'\u2715'}</button>
+          </div>
+        </div>
+
+        <div className="chat-conversations-list">
+          {loadingHistory && <div className="chat-typing"><span className="chat-typing-dot" /><span className="chat-typing-dot" /><span className="chat-typing-dot" /></div>}
+          {!loadingHistory && conversations.length === 0 && (
+            <div className="chat-empty">{t('chat.noConversations')}</div>
+          )}
+          {conversations.map((conv) => (
+            <div key={conv.conversation_id} className="chat-conversation-item">
+              <div
+                className="chat-conversation-item-content"
+                onClick={() => handleLoadConversation(conv.conversation_id)}
+              >
+                <div className="chat-conversation-item-message">
+                  {conv.last_message.length > 80
+                    ? conv.last_message.slice(0, 80) + '...'
+                    : conv.last_message}
+                </div>
+                <div className="chat-conversation-item-meta">
+                  {conv.message_count} msg &middot; {formatTimestamp(conv.updated_at)}
+                </div>
+              </div>
+              <button
+                className="chat-conversation-delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteConversation(conv.conversation_id);
+                }}
+              >
+                {t('chat.deleteConversation')}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="chat-panel">
       <div className="chat-panel-header">
         <h3>{t('chat.title')}</h3>
         <div className="chat-header-actions">
+          <button onClick={handleShowHistory}>{t('chat.history')}</button>
           <button onClick={handleNewConversation}>{t('chat.newConversation')}</button>
           <button onClick={onClose}>{'\u2715'}</button>
         </div>
@@ -111,7 +225,21 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
       <div className="chat-messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-message ${msg.role}`}>
-            <div>{msg.content}</div>
+            {msg.role === 'assistant' ? (
+              <div className="chat-message-markdown">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
+            ) : (
+              <div>{msg.content}</div>
+            )}
+            {msg.role === 'assistant' && (
+              <button
+                className="chat-message-copy"
+                onClick={() => handleCopy(msg.id, msg.content)}
+              >
+                {copiedId === msg.id ? t('chat.copied') : '\u2398'}
+              </button>
+            )}
             {msg.actions && msg.actions.length > 0 && (
               <div className="chat-message-actions">
                 {msg.actions.map((action, idx) => {

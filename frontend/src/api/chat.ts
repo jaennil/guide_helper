@@ -38,6 +38,14 @@ export interface ChatHistoryMessage {
   created_at: string;
 }
 
+export interface ConversationSummary {
+  conversation_id: string;
+  last_message: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const getAuthHeader = () => {
   const token = localStorage.getItem('access_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -64,5 +72,18 @@ export const chatApi = {
       headers: getAuthHeader(),
     });
     return response.data;
+  },
+
+  async listConversations(): Promise<ConversationSummary[]> {
+    const response = await axios.get(CHAT_URL, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await axios.delete(`${CHAT_URL}/${conversationId}`, {
+      headers: getAuthHeader(),
+    });
   },
 };
