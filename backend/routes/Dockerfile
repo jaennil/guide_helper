@@ -8,7 +8,7 @@ COPY Cargo.lock Cargo.toml ./
 COPY src src/
 COPY migrations migrations/
 
-RUN cargo build --locked --release
+RUN cargo build --release
 
 FROM alpine:latest
 

@@ -7,7 +7,7 @@ WORKDIR /app
 COPY Cargo.lock Cargo.toml ./
 COPY src src/
 
-RUN cargo build --locked --release
+RUN cargo build --release
 
 FROM alpine:latest
 
