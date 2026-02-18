@@ -60,6 +60,12 @@ pub trait LikeRepository: Send + Sync {
 }
 
 #[cfg_attr(test, mockall::automock)]
+pub trait SettingsRepository: Send + Sync {
+    async fn get_value(&self, key: &str) -> Result<Option<serde_json::Value>, RepositoryError>;
+    async fn set_value(&self, key: &str, value: &serde_json::Value) -> Result<(), RepositoryError>;
+}
+
+#[cfg_attr(test, mockall::automock)]
 pub trait RatingRepository: Send + Sync {
     async fn upsert(&self, rating: &RouteRating) -> Result<(), RepositoryError>;
     async fn delete_by_route_and_user(

@@ -18,7 +18,7 @@ pub struct RoutesStatsResponse {
     pub total_comments: i64,
 }
 
-fn require_admin(user: &AuthenticatedUser) -> Result<(), (StatusCode, String)> {
+pub(crate) fn require_admin(user: &AuthenticatedUser) -> Result<(), (StatusCode, String)> {
     if user.role != "admin" {
         tracing::warn!(user_id = %user.user_id, role = %user.role, "non-admin access attempt to admin endpoint");
         return Err((StatusCode::FORBIDDEN, "Admin access required".to_string()));

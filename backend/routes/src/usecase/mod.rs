@@ -6,3 +6,4 @@ pub mod likes;
 pub mod photo_tasks;
 pub mod ratings;
 pub mod routes;
+pub mod settings;

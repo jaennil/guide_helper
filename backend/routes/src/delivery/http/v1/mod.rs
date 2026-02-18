@@ -4,4 +4,5 @@ pub mod likes;
 pub mod middleware;
 pub mod ratings;
 pub mod routes;
+pub mod settings;
 pub mod ws;

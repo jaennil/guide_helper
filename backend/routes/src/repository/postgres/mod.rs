@@ -7,7 +7,7 @@ use crate::{
     domain::rating::RouteRating,
     domain::route::{ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{CommentRepository, LikeRepository, RatingRepository, RouteRepository},
+    usecase::contracts::{CommentRepository, LikeRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
 pub struct PostgresRouteRepository {
@@ -599,6 +599,55 @@ impl RatingRepository for PostgresRatingRepository {
         let average = result.0.unwrap_or(0.0);
         tracing::debug!(route_id = %route_id, average, count = result.1, "rating aggregate retrieved");
         Ok((average, result.1))
+    }
+}
+
+pub struct PostgresSettingsRepository {
+    pool: PgPool,
+}
+
+impl PostgresSettingsRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl SettingsRepository for PostgresSettingsRepository {
+    #[tracing::instrument(skip(self), fields(%key))]
+    async fn get_value(&self, key: &str) -> Result<Option<serde_json::Value>, RepositoryError> {
+        tracing::debug!("getting setting value");
+
+        let row: Option<(serde_json::Value,)> = sqlx::query_as(
+            "SELECT value FROM settings WHERE key = $1",
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(key, found = row.is_some(), "setting value retrieved");
+        Ok(row.map(|r| r.0))
+    }
+
+    #[tracing::instrument(skip(self, value), fields(%key))]
+    async fn set_value(&self, key: &str, value: &serde_json::Value) -> Result<(), RepositoryError> {
+        tracing::debug!("setting value");
+
+        sqlx::query(
+            r#"
+            INSERT INTO settings (key, value, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
+            "#,
+        )
+        .bind(key)
+        .bind(value)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(key, "setting value saved");
+        Ok(())
     }
 }
 
