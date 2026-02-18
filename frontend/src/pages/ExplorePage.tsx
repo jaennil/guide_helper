@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
+import { categoriesApi } from '../api/categories';
 import './ExplorePage.css';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
@@ -25,7 +26,15 @@ export default function ExplorePage() {
   const [offset, setOffset] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
 
-  const AVAILABLE_TAGS = ['hiking', 'cycling', 'historical', 'nature', 'urban'] as const;
+  const [availableTags, setAvailableTags] = useState<string[]>(['hiking', 'cycling', 'historical', 'nature', 'urban']);
+
+  useEffect(() => {
+    categoriesApi.getCategories().then(cats => {
+      if (cats.length > 0) {
+        setAvailableTags(cats.map(c => c.name));
+      }
+    }).catch(err => console.error('Failed to load categories:', err));
+  }, []);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -115,7 +124,7 @@ export default function ExplorePage() {
             onChange={(e) => setTag(e.target.value)}
           >
             <option value="">{t('explore.allTags')}</option>
-            {AVAILABLE_TAGS.map((t_tag) => (
+            {availableTags.map((t_tag) => (
               <option key={t_tag} value={t_tag}>
                 {t(`tags.${t_tag}` as any)}
               </option>

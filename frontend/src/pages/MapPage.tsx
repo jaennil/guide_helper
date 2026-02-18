@@ -18,6 +18,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
+import { categoriesApi } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
@@ -395,7 +396,15 @@ export function MapPage() {
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
-  const AVAILABLE_TAGS = ['hiking', 'cycling', 'historical', 'nature', 'urban'] as const;
+  const [availableTags, setAvailableTags] = useState<string[]>(['hiking', 'cycling', 'historical', 'nature', 'urban']);
+
+  useEffect(() => {
+    categoriesApi.getCategories().then(cats => {
+      if (cats.length > 0) {
+        setAvailableTags(cats.map(c => c.name));
+      }
+    }).catch(err => console.error('Failed to load categories:', err));
+  }, []);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev =>
@@ -978,7 +987,7 @@ export function MapPage() {
               <div className="tag-selector">
                 <label>{t("map.selectTags")}</label>
                 <div className="tag-selector-buttons">
-                  {AVAILABLE_TAGS.map((tag) => (
+                  {availableTags.map((tag) => (
                     <button
                       key={tag}
                       type="button"

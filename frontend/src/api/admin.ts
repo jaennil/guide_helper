@@ -3,6 +3,7 @@ import { API_BASE_URL } from './config';
 
 const AUTH_URL = `${API_BASE_URL}/api/v1/admin`;
 const ROUTES_URL = `${API_BASE_URL}/api/v1/admin/routes`;
+const COMMENTS_URL = `${API_BASE_URL}/api/v1/admin/comments`;
 
 export interface AdminUser {
   id: string;
@@ -25,6 +26,35 @@ export interface AuthStatsResponse {
 export interface RoutesStatsResponse {
   total_routes: number;
   total_comments: number;
+}
+
+export interface AdminRoute {
+  id: string;
+  user_id: string;
+  name: string;
+  points_count: number;
+  created_at: string;
+  share_token: string | null;
+  tags: string[];
+}
+
+export interface AdminRoutesListResponse {
+  routes: AdminRoute[];
+  total: number;
+}
+
+export interface AdminComment {
+  id: string;
+  route_id: string;
+  user_id: string;
+  author_name: string;
+  text: string;
+  created_at: string;
+}
+
+export interface AdminCommentsListResponse {
+  comments: AdminComment[];
+  total: number;
 }
 
 const getAuthHeader = () => {
@@ -63,6 +93,28 @@ export const adminApi = {
   async getRoutesStats(): Promise<RoutesStatsResponse> {
     const response = await axios.get(`${ROUTES_URL}/stats`, {
       headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async getAdminRoutes(params: {
+    limit?: number;
+    offset?: number;
+  }): Promise<AdminRoutesListResponse> {
+    const response = await axios.get(ROUTES_URL, {
+      headers: getAuthHeader(),
+      params,
+    });
+    return response.data;
+  },
+
+  async getAdminComments(params: {
+    limit?: number;
+    offset?: number;
+  }): Promise<AdminCommentsListResponse> {
+    const response = await axios.get(COMMENTS_URL, {
+      headers: getAuthHeader(),
+      params,
     });
     return response.data;
   },
