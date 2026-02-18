@@ -54,6 +54,7 @@ func (h *Handler) Tile(c *gin.Context) {
 		return
 	}
 
-	// Return PNG image
+	// Return PNG image with cache headers (24h browser cache)
+	c.Header("Cache-Control", "public, max-age=86400")
 	c.Data(http.StatusOK, "image/png", tileData)
 }
