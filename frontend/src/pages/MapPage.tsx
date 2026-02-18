@@ -30,6 +30,8 @@ import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
 import { NotificationBell } from "../components/NotificationBell";
+import { ChatPanel } from "../components/ChatPanel";
+import type { ChatPoint } from "../api/chat";
 
 type RouteMode = "auto" | "manual";
 
@@ -394,6 +396,7 @@ export function MapPage() {
   const [historicalYear, setHistoricalYear] = useState(1900);
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const [playbackActive, setPlaybackActive] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -753,6 +756,36 @@ export function MapPage() {
     localStorage.setItem("tileProvider", providerId);
   };
 
+  const handleChatShowPoints = (points: ChatPoint[]) => {
+    const newPoints: RoutePoint[] = points.map((p) => ({
+      id: pointIdRef.current++,
+      position: [p.lat, p.lng] as [number, number],
+    }));
+    setRoutePoints((prev) => {
+      const newSegments: RouteSegment[] = [];
+      if (prev.length > 0 && newPoints.length > 0) {
+        newSegments.push({
+          fromIndex: prev.length - 1,
+          toIndex: prev.length,
+          mode: routeMode,
+        });
+      }
+      for (let i = 1; i < newPoints.length; i++) {
+        newSegments.push({
+          fromIndex: prev.length + i - 1,
+          toIndex: prev.length + i,
+          mode: routeMode,
+        });
+      }
+      setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
+      return [...prev, ...newPoints];
+    });
+  };
+
+  const handleChatShowRoutes = (routeIds: string[]) => {
+    loadOverlayRoutes(routeIds);
+  };
+
   const currentProvider = TILE_PROVIDERS.find((p) => p.id === tileProvider) || TILE_PROVIDERS[0];
 
   const waypoints = routePoints.map((point) =>
@@ -854,6 +887,9 @@ export function MapPage() {
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
           </button>
+          <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
+            {t("chat.toggle")}
+          </button>
           <NotificationBell />
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
@@ -914,6 +950,9 @@ export function MapPage() {
           </button>
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
+          </button>
+          <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
+            {t("chat.toggle")}
           </button>
           <button onClick={() => navigate("/profile")} className="profile-btn">
             {user?.name || user?.email || t("map.profile")}
@@ -1130,6 +1169,12 @@ export function MapPage() {
           />
         </>
       )}
+      <ChatPanel
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onShowPoints={handleChatShowPoints}
+        onShowRoutes={handleChatShowRoutes}
+      />
     </div>
   );
 }
