@@ -28,11 +28,9 @@ pub async fn auth_middleware(
         .get("Authorization")
         .and_then(|h| h.to_str().ok());
 
-    let token = match auth_header {
-        Some(header) if header.starts_with("Bearer ") => {
-            header.strip_prefix("Bearer ").unwrap()
-        }
-        _ => {
+    let token = match auth_header.and_then(|h| h.strip_prefix("Bearer ")) {
+        Some(token) => token,
+        None => {
             tracing::warn!("missing or invalid authorization header");
             return Err((
                 StatusCode::UNAUTHORIZED,

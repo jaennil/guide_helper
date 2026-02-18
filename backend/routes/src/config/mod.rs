@@ -83,14 +83,11 @@ fn default_telemetry_otlp_endpoint() -> String {
 }
 
 impl AppConfig {
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Result<Self, config::ConfigError> {
         Config::builder()
-            .set_default("database_max_connections", 5)
-            .unwrap()
+            .set_default("database_max_connections", 5)?
             .add_source(Environment::default())
-            .build()
-            .unwrap()
+            .build()?
             .try_deserialize()
-            .unwrap()
     }
 }

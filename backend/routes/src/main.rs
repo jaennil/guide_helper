@@ -65,7 +65,8 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = config::AppConfig::from_env();
+    let config = config::AppConfig::from_env()
+        .expect("failed to load configuration from environment");
 
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info"));

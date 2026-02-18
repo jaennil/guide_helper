@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, Query, State, WebSocketUpgrade},
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
@@ -33,10 +33,7 @@ pub async fn websocket_handler(
                 error = %e,
                 "WS connection rejected: invalid token"
             );
-            return Response::builder()
-                .status(401)
-                .body("Unauthorized".into())
-                .unwrap();
+            return (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
         }
     };
 
@@ -45,10 +42,7 @@ pub async fn websocket_handler(
             route_id = %route_id,
             "WS connection rejected: not an access token"
         );
-        return Response::builder()
-            .status(401)
-            .body("Unauthorized".into())
-            .unwrap();
+        return (axum::http::StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
     tracing::info!(
