@@ -29,13 +29,13 @@ images:
   newTag: main-e8f1902
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-91b1266
+  newTag: main-88e0070
 - name: photo-worker
   newName: ghcr.io/jaennil/guide-helper-photo-worker
   newTag: main-d34a87c
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-add58c4
+  newTag: main-88e0070
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-6474abb
