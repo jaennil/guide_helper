@@ -44,6 +44,21 @@ export interface ConversationSummary {
   message_count: number;
   created_at: string;
   updated_at: string;
+  title: string;
+}
+
+export interface ListConversationsResponse {
+  conversations: ConversationSummary[];
+  total: number;
+}
+
+export interface ChatStreamEvent {
+  type: 'token' | 'actions' | 'done' | 'error';
+  content?: string;
+  actions?: ChatAction[];
+  id?: string;
+  conversation_id?: string;
+  message?: string;
 }
 
 const getAuthHeader = () => {
@@ -67,6 +82,78 @@ export const chatApi = {
     return response.data;
   },
 
+  async sendMessageStream(
+    message: string,
+    conversationId: string | undefined,
+    onToken: (content: string) => void,
+    onActions: (actions: ChatAction[]) => void,
+    onDone: (id: string, conversationId: string) => void,
+    onError: (message: string) => void,
+  ): Promise<void> {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${CHAT_URL}/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        message,
+        conversation_id: conversationId || undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw { response: { status: response.status }, message: text };
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data:')) {
+          const data = trimmed.slice(5).trim();
+          if (!data) continue;
+
+          try {
+            const event: ChatStreamEvent = JSON.parse(data);
+            switch (event.type) {
+              case 'token':
+                if (event.content) onToken(event.content);
+                break;
+              case 'actions':
+                if (event.actions) onActions(event.actions);
+                break;
+              case 'done':
+                if (event.id && event.conversation_id) onDone(event.id, event.conversation_id);
+                break;
+              case 'error':
+                onError(event.message || 'Unknown error');
+                break;
+            }
+          } catch {
+            // skip unparseable lines
+          }
+        }
+      }
+    }
+  },
+
   async getHistory(conversationId: string): Promise<ChatHistoryMessage[]> {
     const response = await axios.get(`${CHAT_URL}/${conversationId}`, {
       headers: getAuthHeader(),
@@ -74,7 +161,7 @@ export const chatApi = {
     return response.data;
   },
 
-  async listConversations(): Promise<ConversationSummary[]> {
+  async listConversations(): Promise<ListConversationsResponse> {
     const response = await axios.get(CHAT_URL, {
       headers: getAuthHeader(),
     });
@@ -83,6 +170,12 @@ export const chatApi = {
 
   async deleteConversation(conversationId: string): Promise<void> {
     await axios.delete(`${CHAT_URL}/${conversationId}`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  async deleteMessage(conversationId: string, messageId: string): Promise<void> {
+    await axios.delete(`${CHAT_URL}/${conversationId}/messages/${messageId}`, {
       headers: getAuthHeader(),
     });
   },

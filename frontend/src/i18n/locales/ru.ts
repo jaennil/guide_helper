@@ -251,4 +251,6 @@ export const ru = {
   "chat.noConversations": "Нет диалогов",
   "chat.copied": "Скопировано!",
   "chat.backToChat": "Назад",
+  "chat.rateLimited": "Слишком много сообщений. Подождите.",
+  "chat.deleteMessage": "Удалить",
 } as const;

@@ -59,22 +59,84 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
+    // Try streaming first, fallback to non-streaming
     try {
-      const response = await chatApi.sendMessage(text, conversationId);
-      setConversationId(response.conversation_id);
+      const streamingMsgId = crypto.randomUUID();
+      let streamingContent = '';
+      let streamingActions: ChatAction[] = [];
 
-      const assistantMsg: DisplayMessage = {
-        id: response.id,
-        role: 'assistant',
-        content: response.message,
-        actions: response.actions,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      // Add placeholder assistant message for streaming
+      setMessages((prev) => [
+        ...prev,
+        { id: streamingMsgId, role: 'assistant', content: '' },
+      ]);
+
+      await chatApi.sendMessageStream(
+        text,
+        conversationId,
+        (content) => {
+          streamingContent += content;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgId ? { ...m, content: streamingContent } : m,
+            ),
+          );
+        },
+        (actions) => {
+          streamingActions = actions;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgId ? { ...m, actions } : m,
+            ),
+          );
+        },
+        (id, convId) => {
+          setConversationId(convId);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingMsgId
+                ? { ...m, id, content: streamingContent, actions: streamingActions.length > 0 ? streamingActions : undefined }
+                : m,
+            ),
+          );
+        },
+        (errorMsg) => {
+          setError(errorMsg);
+          // Remove the placeholder message on error
+          setMessages((prev) => prev.filter((m) => m.id !== streamingMsgId));
+        },
+      );
     } catch (err: any) {
-      if (err.response?.status === 503) {
+      // Remove streaming placeholder if it exists
+      setMessages((prev) => prev.filter((m) => m.role !== 'assistant' || m.content !== ''));
+
+      const status = err?.response?.status;
+      if (status === 429) {
+        setError(t('chat.rateLimited'));
+      } else if (status === 503) {
         setError(t('chat.unavailable'));
       } else {
-        setError(t('chat.error'));
+        // Fallback to non-streaming
+        try {
+          const response = await chatApi.sendMessage(text, conversationId);
+          setConversationId(response.conversation_id);
+          const assistantMsg: DisplayMessage = {
+            id: response.id,
+            role: 'assistant',
+            content: response.message,
+            actions: response.actions,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        } catch (fallbackErr: any) {
+          const fbStatus = fallbackErr?.response?.status;
+          if (fbStatus === 429) {
+            setError(t('chat.rateLimited'));
+          } else if (fbStatus === 503) {
+            setError(t('chat.unavailable'));
+          } else {
+            setError(t('chat.error'));
+          }
+        }
       }
     } finally {
       setLoading(false);
@@ -113,12 +175,22 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     }
   };
 
+  const handleDeleteMessage = async (msgId: string) => {
+    if (!conversationId) return;
+    try {
+      await chatApi.deleteMessage(conversationId, msgId);
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+    } catch {
+      // ignore
+    }
+  };
+
   const handleShowHistory = async () => {
     setShowHistory(true);
     setLoadingHistory(true);
     try {
-      const convs = await chatApi.listConversations();
-      setConversations(convs);
+      const response = await chatApi.listConversations();
+      setConversations(response.conversations);
     } catch {
       setConversations([]);
     } finally {
@@ -187,9 +259,9 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
                 onClick={() => handleLoadConversation(conv.conversation_id)}
               >
                 <div className="chat-conversation-item-message">
-                  {conv.last_message.length > 80
-                    ? conv.last_message.slice(0, 80) + '...'
-                    : conv.last_message}
+                  {(conv.title || conv.last_message).length > 80
+                    ? (conv.title || conv.last_message).slice(0, 80) + '...'
+                    : (conv.title || conv.last_message)}
                 </div>
                 <div className="chat-conversation-item-meta">
                   {conv.message_count} msg &middot; {formatTimestamp(conv.updated_at)}
@@ -232,7 +304,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
             ) : (
               <div>{msg.content}</div>
             )}
-            {msg.role === 'assistant' && (
+            {msg.role === 'assistant' && msg.content && (
               <button
                 className="chat-message-copy"
                 onClick={() => handleCopy(msg.id, msg.content)}
@@ -240,6 +312,12 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
                 {copiedId === msg.id ? t('chat.copied') : '\u2398'}
               </button>
             )}
+            <button
+              className="chat-message-delete"
+              onClick={() => handleDeleteMessage(msg.id)}
+            >
+              {t('chat.deleteMessage')}
+            </button>
             {msg.actions && msg.actions.length > 0 && (
               <div className="chat-message-actions">
                 {msg.actions.map((action, idx) => {

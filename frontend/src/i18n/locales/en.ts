@@ -251,4 +251,6 @@ export const en = {
   "chat.noConversations": "No conversations yet",
   "chat.copied": "Copied!",
   "chat.backToChat": "Back",
+  "chat.rateLimited": "Too many messages. Please wait.",
+  "chat.deleteMessage": "Delete",
 } as const;
