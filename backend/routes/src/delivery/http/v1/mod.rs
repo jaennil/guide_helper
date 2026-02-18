@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod categories;
+pub mod chat;
 pub mod comments;
 pub mod likes;
 pub mod middleware;

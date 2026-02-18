@@ -22,6 +22,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
+use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history};
 use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
@@ -30,12 +31,14 @@ use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
 use crate::delivery::http::v1::ws::websocket_handler;
-use crate::repository::postgres::{create_pool, PostgresCategoryRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
+use crate::repository::postgres::{create_pool, PostgresCategoryRepository, PostgresChatMessageRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
 use crate::usecase::categories::CategoriesUseCase;
+use crate::usecase::chat::ChatUseCase;
 use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::notifications::NotificationsUseCase;
 use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
+use crate::usecase::ollama::OllamaClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
 use crate::usecase::settings::SettingsUseCase;
@@ -48,6 +51,7 @@ pub struct AppState {
     pub settings_usecase: SettingsUseCase<PostgresSettingsRepository>,
     pub categories_usecase: CategoriesUseCase<PostgresCategoryRepository>,
     pub notifications_usecase: NotificationsUseCase<PostgresNotificationRepository>,
+    pub chat_usecase: ChatUseCase<PostgresChatMessageRepository, PostgresRouteRepository>,
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
@@ -103,7 +107,9 @@ async fn main() -> anyhow::Result<()> {
     let route_repository_for_ratings = PostgresRouteRepository::new(pool.clone());
     let settings_repository = PostgresSettingsRepository::new(pool.clone());
     let category_repository = PostgresCategoryRepository::new(pool.clone());
-    let notification_repository = PostgresNotificationRepository::new(pool);
+    let notification_repository = PostgresNotificationRepository::new(pool.clone());
+    let chat_message_repository = PostgresChatMessageRepository::new(pool.clone());
+    let route_repository_for_chat = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let routes_usecase = RoutesUseCase::new(route_repository);
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
@@ -112,6 +118,24 @@ async fn main() -> anyhow::Result<()> {
     let settings_usecase = SettingsUseCase::new(settings_repository);
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
+
+    // Create Ollama client (optional — chat works without it)
+    let ollama_client = {
+        let client = OllamaClient::new(config.ollama_url.clone(), config.ollama_model.clone());
+        tracing::info!(
+            ollama_url = %config.ollama_url,
+            ollama_model = %config.ollama_model,
+            "OllamaClient configured"
+        );
+        Some(client)
+    };
+
+    let chat_usecase = ChatUseCase::new(
+        chat_message_repository,
+        route_repository_for_chat,
+        ollama_client,
+    );
+    tracing::info!("ChatUseCase initialized");
 
     // Connect to NATS and setup JetStream
     let nats_client = match async_nats::connect(&config.nats_url).await {
@@ -152,6 +176,7 @@ async fn main() -> anyhow::Result<()> {
         settings_usecase,
         categories_usecase,
         notifications_usecase,
+        chat_usecase,
         jwt_service,
         metrics_handle,
         nats_client,
@@ -260,6 +285,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/notifications/{id}/read", post(mark_as_read))
         .route("/api/v1/notifications/read-all", post(mark_all_as_read))
         .route("/api/v1/admin/settings/difficulty", put(set_difficulty_thresholds))
+        .route("/api/v1/chat", post(send_chat_message))
+        .route("/api/v1/chat/{conversation_id}", get(get_chat_history))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,
