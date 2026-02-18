@@ -24,10 +24,15 @@ export function GeoSearchControl() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLUListElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const selectResultRef = useRef<(result: NominatimResult) => void>(() => {});
 
-  // Prevent map click propagation through the search control
+  // Prevent map interactions when clicking/scrolling on the search control.
+  // We stop mousedown on the container to prevent map dragging, but use
+  // native listeners on child elements (results list) that fire before
+  // Leaflet's container-level stopPropagation blocks React's delegation.
   useEffect(() => {
     const el = containerRef.current;
     if (el) {
@@ -102,7 +107,7 @@ export function GeoSearchControl() {
     debounceRef.current = setTimeout(() => search(value), 300);
   };
 
-  const selectResult = (result: NominatimResult) => {
+  const selectResult = useCallback((result: NominatimResult) => {
     const [south, north, west, east] = result.boundingbox.map(Number);
     const bounds = L.latLngBounds(
       L.latLng(south, west),
@@ -112,7 +117,31 @@ export function GeoSearchControl() {
     map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 17 });
     setQuery(result.display_name);
     setIsOpen(false);
-  };
+  }, [map]);
+
+  selectResultRef.current = selectResult;
+
+  // Native mousedown handler on results list — needed because
+  // L.DomEvent.disableClickPropagation stops mousedown propagation
+  // which prevents React's delegated onMouseDown from firing.
+  useEffect(() => {
+    const ul = resultsRef.current;
+    if (!ul) return;
+
+    const handler = (e: MouseEvent) => {
+      const li = (e.target as HTMLElement).closest('.geo-search-item') as HTMLElement | null;
+      if (!li) return;
+
+      e.preventDefault();
+      const idx = Array.from(ul.querySelectorAll('.geo-search-item')).indexOf(li);
+      if (idx >= 0 && idx < results.length) {
+        selectResultRef.current(results[idx]);
+      }
+    };
+
+    ul.addEventListener('mousedown', handler);
+    return () => ul.removeEventListener('mousedown', handler);
+  }, [results]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen || results.length === 0) {
@@ -188,7 +217,7 @@ export function GeoSearchControl() {
         )}
       </div>
       {isOpen && (
-        <ul className="geo-search-results">
+        <ul ref={resultsRef} className="geo-search-results">
           {loading && (
             <li className="geo-search-loading">...</li>
           )}
@@ -200,10 +229,6 @@ export function GeoSearchControl() {
               key={result.place_id}
               className={`geo-search-item${idx === activeIndex ? " geo-search-item--active" : ""}`}
               onMouseEnter={() => setActiveIndex(idx)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectResult(result);
-              }}
             >
               {result.display_name}
             </li>
