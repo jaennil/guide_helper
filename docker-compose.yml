@@ -125,6 +125,8 @@ services:
       - DATABASE_MAX_CONNECTIONS=5
       - JWT_SECRET=${JWT_SECRET:-change_this_secret_key_in_production}
       - NATS_URL=nats://nats:4222
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,6 +184,22 @@ services:
     networks:
       - guide_helper_network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: guide_helper_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - guide_helper_network
+
   frontend:
     build:
       context: ./frontend
@@ -207,5 +225,6 @@ volumes:
   redis_data:
   nats_data:
   minio_data:
+  ollama_data:
 
 
