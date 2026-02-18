@@ -5,10 +5,11 @@ use crate::{
     domain::category::Category,
     domain::comment::Comment,
     domain::like::RouteLike,
+    domain::notification::Notification,
     domain::rating::RouteRating,
     domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{CategoryRepository, CommentRepository, LikeRepository, RatingRepository, RouteRepository, SettingsRepository},
+    usecase::contracts::{CategoryRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
 pub struct PostgresRouteRepository {
@@ -821,6 +822,126 @@ impl CategoryRepository for PostgresCategoryRepository {
         }
 
         tracing::debug!(category_id = %id, "category deleted successfully");
+        Ok(())
+    }
+}
+
+pub struct PostgresNotificationRepository {
+    pool: PgPool,
+}
+
+impl PostgresNotificationRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl NotificationRepository for PostgresNotificationRepository {
+    #[tracing::instrument(skip(self, notification), fields(notification_id = %notification.id, user_id = %notification.user_id))]
+    async fn create(&self, notification: &Notification) -> Result<(), RepositoryError> {
+        tracing::debug!("creating notification");
+
+        sqlx::query(
+            r#"
+            INSERT INTO notifications (id, user_id, notification_type, route_id, actor_name, message, is_read, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            "#,
+        )
+        .bind(notification.id)
+        .bind(notification.user_id)
+        .bind(&notification.notification_type)
+        .bind(notification.route_id)
+        .bind(&notification.actor_name)
+        .bind(&notification.message)
+        .bind(notification.is_read)
+        .bind(notification.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(notification_id = %notification.id, "notification created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, %limit, %offset))]
+    async fn find_by_user_id(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Notification>, RepositoryError> {
+        tracing::debug!("finding notifications by user_id");
+
+        let notifications = sqlx::query_as::<_, Notification>(
+            r#"
+            SELECT id, user_id, notification_type, route_id, actor_name, message, is_read, created_at
+            FROM notifications
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(user_id = %user_id, count = notifications.len(), "found notifications");
+        Ok(notifications)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    async fn count_unread(&self, user_id: Uuid) -> Result<i64, RepositoryError> {
+        tracing::debug!("counting unread notifications");
+
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE",
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(user_id = %user_id, count = count.0, "counted unread notifications");
+        Ok(count.0)
+    }
+
+    #[tracing::instrument(skip(self), fields(notification_id = %id, user_id = %user_id))]
+    async fn mark_as_read(&self, id: Uuid, user_id: Uuid) -> Result<(), RepositoryError> {
+        tracing::debug!("marking notification as read");
+
+        let result = sqlx::query(
+            "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
+        )
+        .bind(id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(notification_id = %id, "notification marked as read");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    async fn mark_all_as_read(&self, user_id: Uuid) -> Result<(), RepositoryError> {
+        tracing::debug!("marking all notifications as read");
+
+        sqlx::query(
+            "UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE",
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(user_id = %user_id, "all notifications marked as read");
         Ok(())
     }
 }

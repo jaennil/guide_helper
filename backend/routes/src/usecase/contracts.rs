@@ -4,6 +4,7 @@ use crate::{
     domain::category::Category,
     domain::comment::Comment,
     domain::like::RouteLike,
+    domain::notification::Notification,
     domain::rating::RouteRating,
     domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
@@ -99,4 +100,18 @@ pub trait RatingRepository: Send + Sync {
         user_id: Uuid,
     ) -> Result<Option<RouteRating>, RepositoryError>;
     async fn get_aggregate(&self, route_id: Uuid) -> Result<(f64, i64), RepositoryError>;
+}
+
+#[cfg_attr(test, mockall::automock)]
+pub trait NotificationRepository: Send + Sync {
+    async fn create(&self, notification: &Notification) -> Result<(), RepositoryError>;
+    async fn find_by_user_id(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Notification>, RepositoryError>;
+    async fn count_unread(&self, user_id: Uuid) -> Result<i64, RepositoryError>;
+    async fn mark_as_read(&self, id: Uuid, user_id: Uuid) -> Result<(), RepositoryError>;
+    async fn mark_all_as_read(&self, user_id: Uuid) -> Result<(), RepositoryError>;
 }

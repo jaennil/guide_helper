@@ -3,6 +3,7 @@ pub mod categories;
 pub mod comments;
 pub mod likes;
 pub mod middleware;
+pub mod notifications;
 pub mod ratings;
 pub mod routes;
 pub mod settings;

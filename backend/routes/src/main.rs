@@ -22,6 +22,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
+use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
 use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
@@ -29,9 +30,10 @@ use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
 use crate::delivery::http::v1::ws::websocket_handler;
-use crate::repository::postgres::{create_pool, PostgresCategoryRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
+use crate::repository::postgres::{create_pool, PostgresCategoryRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
 use crate::usecase::categories::CategoriesUseCase;
 use crate::usecase::comments::CommentsUseCase;
+use crate::usecase::notifications::NotificationsUseCase;
 use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
 use crate::usecase::ratings::RatingsUseCase;
@@ -45,6 +47,7 @@ pub struct AppState {
     pub ratings_usecase: RatingsUseCase<PostgresRatingRepository, PostgresRouteRepository>,
     pub settings_usecase: SettingsUseCase<PostgresSettingsRepository>,
     pub categories_usecase: CategoriesUseCase<PostgresCategoryRepository>,
+    pub notifications_usecase: NotificationsUseCase<PostgresNotificationRepository>,
     pub jwt_service: JwtService,
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
@@ -99,7 +102,8 @@ async fn main() -> anyhow::Result<()> {
     let rating_repository = PostgresRatingRepository::new(pool.clone());
     let route_repository_for_ratings = PostgresRouteRepository::new(pool.clone());
     let settings_repository = PostgresSettingsRepository::new(pool.clone());
-    let category_repository = PostgresCategoryRepository::new(pool);
+    let category_repository = PostgresCategoryRepository::new(pool.clone());
+    let notification_repository = PostgresNotificationRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let routes_usecase = RoutesUseCase::new(route_repository);
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
@@ -107,6 +111,7 @@ async fn main() -> anyhow::Result<()> {
     let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);
     let settings_usecase = SettingsUseCase::new(settings_repository);
     let categories_usecase = CategoriesUseCase::new(category_repository);
+    let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
     // Connect to NATS and setup JetStream
     let nats_client = match async_nats::connect(&config.nats_url).await {
@@ -146,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
         ratings_usecase,
         settings_usecase,
         categories_usecase,
+        notifications_usecase,
         jwt_service,
         metrics_handle,
         nats_client,
@@ -249,6 +255,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/admin/comments", get(list_admin_comments))
         .route("/api/v1/admin/categories", post(create_category))
         .route("/api/v1/admin/categories/{id}", put(update_category).delete(delete_category))
+        .route("/api/v1/notifications", get(list_notifications))
+        .route("/api/v1/notifications/unread-count", get(get_unread_count))
+        .route("/api/v1/notifications/{id}/read", post(mark_as_read))
+        .route("/api/v1/notifications/read-all", post(mark_all_as_read))
         .route("/api/v1/admin/settings/difficulty", put(set_difficulty_thresholds))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
