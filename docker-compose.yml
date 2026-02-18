@@ -193,10 +193,28 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags | grep -q models"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+    networks:
+      - guide_helper_network
+
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: guide_helper_ollama_init
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Pulling model ${OLLAMA_MODEL:-llama3.2}..."
+        curl -sf http://ollama:11434/api/pull -d "{\"name\": \"${OLLAMA_MODEL:-llama3.2}\"}"
+        echo "Model ready."
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+    depends_on:
+      ollama:
+        condition: service_healthy
     networks:
       - guide_helper_network
 
