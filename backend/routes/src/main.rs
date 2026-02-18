@@ -24,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
-use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history, list_conversations, delete_conversation, delete_message, chat_health};
+use crate::delivery::http::v1::chat::{send_chat_message, send_chat_message_stream, get_chat_history, list_conversations, delete_conversation, delete_message, chat_health};
 use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
@@ -326,6 +326,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/admin/settings/difficulty", put(set_difficulty_thresholds))
         .route("/api/v1/chat", get(list_conversations).post(send_chat_message))
         .route("/api/v1/chat/{conversation_id}", get(get_chat_history).delete(delete_conversation))
+        .route("/api/v1/chat/stream", post(send_chat_message_stream))
         .route("/api/v1/chat/{conversation_id}/messages/{message_id}", delete(delete_message))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),

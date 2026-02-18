@@ -115,4 +115,33 @@ impl OllamaClient {
 
         Ok(chat_response)
     }
+
+    pub async fn chat_stream(
+        &self,
+        request: OllamaChatRequest,
+    ) -> anyhow::Result<reqwest::Response> {
+        let url = format!("{}/api/chat", self.base_url);
+        tracing::debug!(%url, model = %request.model, "sending streaming chat request to Ollama");
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "failed to send streaming request to Ollama");
+                anyhow::anyhow!("Ollama streaming request failed: {}", e)
+            })?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            tracing::error!(%status, %body, "Ollama streaming returned error");
+            return Err(anyhow::anyhow!("Ollama error ({}): {}", status, body));
+        }
+
+        tracing::debug!("Ollama streaming response started");
+        Ok(response)
+    }
 }

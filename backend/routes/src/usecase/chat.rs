@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Error};
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -48,6 +49,19 @@ pub struct ChatResponse {
     pub message: String,
     pub actions: Vec<ChatAction>,
     pub conversation_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum ChatStreamEvent {
+    #[serde(rename = "token")]
+    Token { content: String },
+    #[serde(rename = "actions")]
+    Actions { actions: Vec<ChatAction> },
+    #[serde(rename = "done")]
+    Done { id: Uuid, conversation_id: Uuid },
+    #[serde(rename = "error")]
+    Error { message: String },
 }
 
 pub struct ChatUseCase<CM, R>
@@ -267,6 +281,54 @@ where
 
         tracing::warn!("tool-calling loop exhausted after {} iterations", self.max_tool_iterations);
         Err(anyhow!("AI assistant exceeded maximum tool call iterations"))
+    }
+
+    #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
+    pub async fn send_message_stream(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        text: String,
+    ) -> Result<(ChatResponse, std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, Error>> + Send>>), Error> {
+        // Run full non-streaming call first (tool loop + final answer)
+        let response = self.send_message(user_id, conversation_id, text).await?;
+
+        tracing::info!(
+            response_id = %response.id,
+            response_len = response.message.len(),
+            "streaming buffered response"
+        );
+
+        let actions = response.actions.clone();
+        let message_id = response.id;
+        let conv_id = response.conversation_id;
+
+        // Split response text into word-level chunks for progressive rendering
+        let chunks: Vec<String> = response
+            .message
+            .split_inclusive(char::is_whitespace)
+            .map(String::from)
+            .collect();
+
+        let stream = async_stream::try_stream! {
+            // Emit actions first
+            if !actions.is_empty() {
+                yield ChatStreamEvent::Actions { actions };
+            }
+
+            // Stream tokens progressively
+            for chunk in chunks {
+                yield ChatStreamEvent::Token { content: chunk };
+            }
+
+            // Done
+            yield ChatStreamEvent::Done {
+                id: message_id,
+                conversation_id: conv_id,
+            };
+        };
+
+        Ok((response, Box::pin(stream)))
     }
 
     async fn execute_tool(

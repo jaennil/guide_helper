@@ -1,17 +1,19 @@
 use std::sync::Arc;
+use std::convert::Infallible;
 
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, sse::{Event, Sse}},
     Extension, Json,
 };
 use chrono::{DateTime, Utc};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
-use crate::usecase::chat::ChatAction;
+use crate::usecase::chat::{ChatAction, ChatStreamEvent};
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -300,6 +302,97 @@ pub async fn delete_message(
 
     tracing::info!("message deleted");
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[tracing::instrument(skip(state, body), fields(user_id = %user.user_id))]
+pub async fn send_chat_message_stream(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(body): Json<SendMessageRequest>,
+) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+    let conversation_id = body.conversation_id.unwrap_or_else(|| {
+        let id = Uuid::new_v4();
+        tracing::info!(%id, "created new conversation for stream");
+        id
+    });
+
+    // Validate message length
+    let max_len = state.chat_usecase.max_message_length();
+    if body.message.is_empty() || body.message.len() > max_len {
+        tracing::warn!(user_id = %user.user_id, message_len = body.message.len(), "stream message validation failed");
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("Message must be between 1 and {} characters", max_len),
+        ));
+    }
+
+    // Rate limiting check
+    {
+        let now = std::time::Instant::now();
+        let mut limits = state.chat_rate_limits.write().await;
+        let entry = limits.entry(user.user_id).or_insert((now, 0));
+
+        if now.duration_since(entry.0).as_secs() >= state.chat_rate_limit_window_secs {
+            *entry = (now, 1);
+        } else {
+            entry.1 += 1;
+            if entry.1 > state.chat_rate_limit_max {
+                tracing::warn!(user_id = %user.user_id, "chat stream rate limit exceeded");
+                metrics::counter!("chat_rate_limited_total").increment(1);
+                return Err((
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Too many requests. Please try again later.".to_string(),
+                ));
+            }
+        }
+    }
+
+    if !state.chat_usecase.is_available() {
+        tracing::warn!("chat stream request received but Ollama is not available");
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            "AI assistant is currently unavailable".to_string(),
+        ));
+    }
+
+    metrics::counter!("chat_messages_total", "role" => "user").increment(1);
+
+    let (_response, event_stream) = state
+        .chat_usecase
+        .send_message_stream(user.user_id, conversation_id, body.message)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to start chat stream");
+            metrics::counter!("chat_errors_total").increment(1);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Chat error: {}", e),
+            )
+        })?;
+
+    let sse_stream = event_stream.map(|result| {
+        match result {
+            Ok(event) => {
+                let data = serde_json::to_string(&event).unwrap_or_default();
+                let event_type = match &event {
+                    ChatStreamEvent::Token { .. } => "token",
+                    ChatStreamEvent::Actions { .. } => "actions",
+                    ChatStreamEvent::Done { .. } => "done",
+                    ChatStreamEvent::Error { .. } => "error",
+                };
+                Ok(Event::default().event(event_type).data(data))
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "stream error");
+                let error_event = ChatStreamEvent::Error { message: e.to_string() };
+                let data = serde_json::to_string(&error_event).unwrap_or_default();
+                Ok(Event::default().event("error").data(data))
+            }
+        }
+    });
+
+    tracing::info!(%conversation_id, "SSE stream started");
+    Ok(Sse::new(sse_stream))
 }
 
 #[derive(Serialize)]
