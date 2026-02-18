@@ -2,12 +2,13 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use uuid::Uuid;
 
 use crate::{
+    domain::category::Category,
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::rating::RouteRating,
-    domain::route::{ExploreRouteRow, Route},
+    domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{CommentRepository, LikeRepository, RatingRepository, RouteRepository, SettingsRepository},
+    usecase::contracts::{CategoryRepository, CommentRepository, LikeRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
 pub struct PostgresRouteRepository {
@@ -258,6 +259,34 @@ impl RouteRepository for PostgresRouteRepository {
         tracing::debug!(count = count.0, "counted all routes");
         Ok(count.0)
     }
+
+    #[tracing::instrument(skip(self), fields(%limit, %offset))]
+    async fn find_all_admin(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<AdminRouteRow>, RepositoryError> {
+        tracing::debug!("listing all routes for admin");
+
+        let rows = sqlx::query_as::<_, AdminRouteRow>(
+            r#"
+            SELECT id, user_id, name,
+                   jsonb_array_length(points)::bigint AS points_count,
+                   created_at, share_token, tags
+            FROM routes
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = rows.len(), "admin routes listed");
+        Ok(rows)
+    }
 }
 
 pub struct PostgresCommentRepository {
@@ -385,6 +414,32 @@ impl CommentRepository for PostgresCommentRepository {
 
         tracing::debug!(count = count.0, "counted all comments");
         Ok(count.0)
+    }
+
+    #[tracing::instrument(skip(self), fields(%limit, %offset))]
+    async fn find_all_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Comment>, RepositoryError> {
+        tracing::debug!("listing all comments paginated for admin");
+
+        let comments = sqlx::query_as::<_, Comment>(
+            r#"
+            SELECT id, route_id, user_id, author_name, text, created_at
+            FROM comments
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = comments.len(), "admin comments listed");
+        Ok(comments)
     }
 }
 
@@ -647,6 +702,125 @@ impl SettingsRepository for PostgresSettingsRepository {
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         tracing::debug!(key, "setting value saved");
+        Ok(())
+    }
+}
+
+pub struct PostgresCategoryRepository {
+    pool: PgPool,
+}
+
+impl PostgresCategoryRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl CategoryRepository for PostgresCategoryRepository {
+    #[tracing::instrument(skip(self, category), fields(category_id = %category.id))]
+    async fn create(&self, category: &Category) -> Result<(), RepositoryError> {
+        tracing::debug!("creating category");
+
+        sqlx::query(
+            r#"
+            INSERT INTO categories (id, name, created_at)
+            VALUES ($1, $2, $3)
+            "#,
+        )
+        .bind(category.id)
+        .bind(&category.name)
+        .bind(category.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(category_id = %category.id, "category created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn find_all(&self) -> Result<Vec<Category>, RepositoryError> {
+        tracing::debug!("finding all categories");
+
+        let categories = sqlx::query_as::<_, Category>(
+            r#"
+            SELECT id, name, created_at
+            FROM categories
+            ORDER BY name ASC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = categories.len(), "found categories");
+        Ok(categories)
+    }
+
+    #[tracing::instrument(skip(self), fields(category_id = %id))]
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Category>, RepositoryError> {
+        tracing::debug!("finding category by id");
+
+        let category = sqlx::query_as::<_, Category>(
+            r#"
+            SELECT id, name, created_at
+            FROM categories
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(category)
+    }
+
+    #[tracing::instrument(skip(self), fields(category_id = %id, %name))]
+    async fn update(&self, id: Uuid, name: &str) -> Result<(), RepositoryError> {
+        tracing::debug!("updating category");
+
+        let result = sqlx::query(
+            r#"
+            UPDATE categories
+            SET name = $2
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(name)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(category_id = %id, "category updated successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(category_id = %id))]
+    async fn delete(&self, id: Uuid) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting category");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM categories
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(category_id = %id, "category deleted successfully");
         Ok(())
     }
 }

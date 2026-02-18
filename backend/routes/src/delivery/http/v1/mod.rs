@@ -1,4 +1,5 @@
 pub mod admin;
+pub mod categories;
 pub mod comments;
 pub mod likes;
 pub mod middleware;

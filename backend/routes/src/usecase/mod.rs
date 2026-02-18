@@ -1,3 +1,4 @@
+pub mod categories;
 pub mod comments;
 pub mod contracts;
 pub mod geojson_import;

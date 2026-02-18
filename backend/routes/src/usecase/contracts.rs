@@ -1,10 +1,11 @@
 use uuid::Uuid;
 
 use crate::{
+    domain::category::Category,
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::rating::RouteRating,
-    domain::route::{ExploreRouteRow, Route},
+    domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
 };
 
@@ -31,6 +32,11 @@ pub trait RouteRepository: Send + Sync {
         tag: Option<String>,
     ) -> Result<i64, RepositoryError>;
     async fn count_all(&self) -> Result<i64, RepositoryError>;
+    async fn find_all_admin(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<AdminRouteRow>, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -41,6 +47,20 @@ pub trait CommentRepository: Send + Sync {
     async fn delete(&self, id: Uuid) -> Result<(), RepositoryError>;
     async fn count_by_route_id(&self, route_id: Uuid) -> Result<i64, RepositoryError>;
     async fn count_all(&self) -> Result<i64, RepositoryError>;
+    async fn find_all_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Comment>, RepositoryError>;
+}
+
+#[cfg_attr(test, mockall::automock)]
+pub trait CategoryRepository: Send + Sync {
+    async fn create(&self, category: &Category) -> Result<(), RepositoryError>;
+    async fn find_all(&self) -> Result<Vec<Category>, RepositoryError>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Category>, RepositoryError>;
+    async fn update(&self, id: Uuid, name: &str) -> Result<(), RepositoryError>;
+    async fn delete(&self, id: Uuid) -> Result<(), RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
