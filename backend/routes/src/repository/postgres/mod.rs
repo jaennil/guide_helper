@@ -3,13 +3,14 @@ use uuid::Uuid;
 
 use crate::{
     domain::category::Category,
+    domain::chat_message::ChatMessage,
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::notification::Notification,
     domain::rating::RouteRating,
     domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{CategoryRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
+    usecase::contracts::{CategoryRepository, ChatMessageRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
 pub struct PostgresRouteRepository {
@@ -943,6 +944,75 @@ impl NotificationRepository for PostgresNotificationRepository {
 
         tracing::debug!(user_id = %user_id, "all notifications marked as read");
         Ok(())
+    }
+}
+
+pub struct PostgresChatMessageRepository {
+    pool: PgPool,
+}
+
+impl PostgresChatMessageRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl ChatMessageRepository for PostgresChatMessageRepository {
+    #[tracing::instrument(skip(self, message), fields(message_id = %message.id, user_id = %message.user_id, conversation_id = %message.conversation_id))]
+    async fn create(&self, message: &ChatMessage) -> Result<(), RepositoryError> {
+        tracing::debug!(role = %message.role, "creating chat message");
+
+        sqlx::query(
+            r#"
+            INSERT INTO chat_messages (id, user_id, conversation_id, role, content, actions, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(message.id)
+        .bind(message.user_id)
+        .bind(message.conversation_id)
+        .bind(&message.role)
+        .bind(&message.content)
+        .bind(&message.actions)
+        .bind(message.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(message_id = %message.id, "chat message created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id, %limit))]
+    async fn find_by_conversation(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<ChatMessage>, RepositoryError> {
+        tracing::debug!("finding chat messages by conversation");
+
+        let messages = sqlx::query_as::<_, ChatMessage>(
+            r#"
+            SELECT * FROM (
+                SELECT id, user_id, conversation_id, role, content, actions, created_at
+                FROM chat_messages
+                WHERE user_id = $1 AND conversation_id = $2
+                ORDER BY created_at DESC
+                LIMIT $3
+            ) sub
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(user_id)
+        .bind(conversation_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = messages.len(), "found chat messages");
+        Ok(messages)
     }
 }
 

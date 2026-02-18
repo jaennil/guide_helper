@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::{
     domain::category::Category,
+    domain::chat_message::ChatMessage,
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::notification::Notification,
@@ -100,6 +101,17 @@ pub trait RatingRepository: Send + Sync {
         user_id: Uuid,
     ) -> Result<Option<RouteRating>, RepositoryError>;
     async fn get_aggregate(&self, route_id: Uuid) -> Result<(f64, i64), RepositoryError>;
+}
+
+#[cfg_attr(test, mockall::automock)]
+pub trait ChatMessageRepository: Send + Sync {
+    async fn create(&self, message: &ChatMessage) -> Result<(), RepositoryError>;
+    async fn find_by_conversation(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<ChatMessage>, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
