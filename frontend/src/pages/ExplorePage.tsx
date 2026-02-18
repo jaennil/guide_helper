@@ -27,7 +27,7 @@ export default function ExplorePage() {
 
   const AVAILABLE_TAGS = ['hiking', 'cycling', 'historical', 'nature', 'urban'] as const;
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchRoutes = useCallback(async (searchValue: string, tagValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
     setLoading(true);
