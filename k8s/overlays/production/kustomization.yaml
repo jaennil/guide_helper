@@ -29,7 +29,7 @@ images:
   newTag: main-e8f1902
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-3fb0d6f
+  newTag: main-6474abb
 - name: photo-worker
   newName: ghcr.io/jaennil/guide-helper-photo-worker
   newTag: main-d34a87c
@@ -38,7 +38,7 @@ images:
   newTag: main-add58c4
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
-  newTag: main-e8f1902
+  newTag: main-6474abb
 
 replicas:
 - count: 1
