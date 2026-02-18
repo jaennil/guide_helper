@@ -36,3 +36,4 @@ validator = { version = "0.20.0", features = ["derive"] }
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
+wiremock = "0.6"

@@ -1042,4 +1042,227 @@ mod tests {
         assert_eq!(json["message"], "Here are results");
         assert!(json["actions"].is_array());
     }
+
+    // --- list_conversations ---
+
+    #[tokio::test]
+    async fn test_list_conversations_empty() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_list_conversations()
+            .with(
+                mockall::predicate::eq(user_id),
+                mockall::predicate::eq(20i64),
+                mockall::predicate::eq(0i64),
+            )
+            .times(1)
+            .return_once(|_, _, _| Ok(vec![]));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.list_conversations(user_id, 20, 0).await;
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_conversations_returns_results() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+        let conv_id = Uuid::new_v4();
+
+        let summary = ConversationSummary {
+            conversation_id: conv_id,
+            last_message: "hello".to_string(),
+            message_count: 2,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        mock_chat
+            .expect_list_conversations()
+            .times(1)
+            .return_once(move |_, _, _| Ok(vec![summary]));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.list_conversations(user_id, 20, 0).await;
+
+        assert!(result.is_ok());
+        let conversations = result.unwrap();
+        assert_eq!(conversations.len(), 1);
+        assert_eq!(conversations[0].conversation_id, conv_id);
+        assert_eq!(conversations[0].last_message, "hello");
+        assert_eq!(conversations[0].message_count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_list_conversations_repo_error() {
+        let mut mock_chat = MockChatMessageRepository::new();
+
+        mock_chat
+            .expect_list_conversations()
+            .times(1)
+            .return_once(|_, _, _| Err(RepositoryError::DatabaseError("db error".to_string())));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.list_conversations(Uuid::new_v4(), 20, 0).await;
+
+        assert!(result.is_err());
+    }
+
+    // --- delete_conversation ---
+
+    #[tokio::test]
+    async fn test_delete_conversation_success() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+        let conv_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_delete_conversation()
+            .with(
+                mockall::predicate::eq(user_id),
+                mockall::predicate::eq(conv_id),
+            )
+            .times(1)
+            .return_once(|_, _| Ok(()));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.delete_conversation(user_id, conv_id).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_delete_conversation_not_found() {
+        let mut mock_chat = MockChatMessageRepository::new();
+
+        mock_chat
+            .expect_delete_conversation()
+            .times(1)
+            .return_once(|_, _| Err(RepositoryError::NotFound));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.delete_conversation(Uuid::new_v4(), Uuid::new_v4()).await;
+
+        assert!(result.is_err());
+    }
+
+    // --- tool_geocode with wiremock ---
+
+    fn make_usecase_with_nominatim(
+        chat_repo: MockChatMessageRepository,
+        route_repo: MockRouteRepository,
+        nominatim_url: String,
+    ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
+        ChatUseCase::new(chat_repo, route_repo, None).with_nominatim_url(nominatim_url)
+    }
+
+    #[tokio::test]
+    async fn test_tool_geocode_success() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(
+                serde_json::json!([{
+                    "lat": "55.7558",
+                    "lon": "37.6173",
+                    "display_name": "Moscow, Russia"
+                }]),
+            ))
+            .mount(&mock_server)
+            .await;
+
+        let uc = make_usecase_with_nominatim(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            mock_server.uri(),
+        );
+
+        let mut args = HashMap::new();
+        args.insert(
+            "query".to_string(),
+            serde_json::Value::String("Moscow".to_string()),
+        );
+
+        let (text, actions) = uc.tool_geocode(&args).await;
+
+        assert!(text.contains("55.7558"));
+        assert!(text.contains("37.6173"));
+        assert_eq!(actions.len(), 1);
+        match &actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 1);
+                assert!((points[0].lat - 55.7558).abs() < 0.001);
+                assert!((points[0].lng - 37.6173).abs() < 0.001);
+                assert!(points[0].name.contains("Moscow"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tool_geocode_no_results() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let uc = make_usecase_with_nominatim(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            mock_server.uri(),
+        );
+
+        let mut args = HashMap::new();
+        args.insert(
+            "query".to_string(),
+            serde_json::Value::String("nonexistent_place_xyz".to_string()),
+        );
+
+        let (text, actions) = uc.tool_geocode(&args).await;
+
+        assert!(text.contains("No results"));
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_geocode_server_error() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .respond_with(wiremock::ResponseTemplate::new(500))
+            .mount(&mock_server)
+            .await;
+
+        let uc = make_usecase_with_nominatim(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            mock_server.uri(),
+        );
+
+        let mut args = HashMap::new();
+        args.insert(
+            "query".to_string(),
+            serde_json::Value::String("Moscow".to_string()),
+        );
+
+        let (text, actions) = uc.tool_geocode(&args).await;
+
+        assert!(
+            text.contains("Failed to parse") || text.contains("Geocoding failed"),
+            "unexpected text: {}",
+            text
+        );
+        assert!(actions.is_empty());
+    }
 }
