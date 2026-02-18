@@ -238,16 +238,16 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
 
   if (showHistory) {
     return (
-      <div className="chat-panel">
+      <section className="chat-panel" role="complementary" aria-label={t('chat.history')}>
         <div className="chat-panel-header">
           <h3>{t('chat.history')}</h3>
           <div className="chat-header-actions">
-            <button onClick={() => setShowHistory(false)}>{t('chat.backToChat')}</button>
-            <button onClick={onClose}>{'\u2715'}</button>
+            <button aria-label={t('chat.backToChat')} onClick={() => setShowHistory(false)}>{t('chat.backToChat')}</button>
+            <button aria-label="Close" onClick={onClose}>{'\u2715'}</button>
           </div>
         </div>
 
-        <div className="chat-conversations-list">
+        <nav className="chat-conversations-list" aria-label={t('chat.history')}>
           {loadingHistory && <div className="chat-typing"><span className="chat-typing-dot" /><span className="chat-typing-dot" /><span className="chat-typing-dot" /></div>}
           {!loadingHistory && conversations.length === 0 && (
             <div className="chat-empty">{t('chat.noConversations')}</div>
@@ -269,6 +269,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
               </div>
               <button
                 className="chat-conversation-delete"
+                aria-label={t('chat.deleteConversation')}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteConversation(conv.conversation_id);
@@ -278,23 +279,23 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
               </button>
             </div>
           ))}
-        </div>
-      </div>
+        </nav>
+      </section>
     );
   }
 
   return (
-    <div className="chat-panel">
+    <section className="chat-panel" role="complementary" aria-label={t('chat.title')}>
       <div className="chat-panel-header">
         <h3>{t('chat.title')}</h3>
         <div className="chat-header-actions">
-          <button onClick={handleShowHistory}>{t('chat.history')}</button>
-          <button onClick={handleNewConversation}>{t('chat.newConversation')}</button>
-          <button onClick={onClose}>{'\u2715'}</button>
+          <button aria-label={t('chat.history')} onClick={handleShowHistory}>{t('chat.history')}</button>
+          <button aria-label={t('chat.newConversation')} onClick={handleNewConversation}>{t('chat.newConversation')}</button>
+          <button aria-label="Close" onClick={onClose}>{'\u2715'}</button>
         </div>
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" role="log" aria-live="polite" aria-label="Messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-message ${msg.role}`}>
             {msg.role === 'assistant' ? (
@@ -307,6 +308,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
             {msg.role === 'assistant' && msg.content && (
               <button
                 className="chat-message-copy"
+                aria-label="Copy"
                 onClick={() => handleCopy(msg.id, msg.content)}
               >
                 {copiedId === msg.id ? t('chat.copied') : '\u2398'}
@@ -314,6 +316,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
             )}
             <button
               className="chat-message-delete"
+              aria-label={t('chat.deleteMessage')}
               onClick={() => handleDeleteMessage(msg.id)}
             >
               {t('chat.deleteMessage')}
@@ -382,17 +385,19 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
+          aria-label={t('chat.placeholder')}
           rows={1}
           disabled={loading}
         />
         <button
           className="chat-send-btn"
+          aria-label={t('chat.send')}
           onClick={handleSend}
           disabled={loading || !input.trim()}
         >
           {loading ? t('chat.sending') : t('chat.send')}
         </button>
       </div>
-    </div>
+    </section>
   );
 }
