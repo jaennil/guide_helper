@@ -46,14 +46,16 @@ body {
 
 /* Переключатель режима */
 .mode-switcher {
-    background: black;
-    padding: 10px 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    background: var(--bg-panel);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px var(--color-shadow);
     display: flex;
-    gap: 15px;
+    gap: 12px;
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
+    color: var(--text-primary);
 }
 
 .mode-switcher label {
@@ -61,27 +63,30 @@ body {
     align-items: center;
     gap: 5px;
     cursor: pointer;
+    color: var(--text-primary);
 }
 
 .mode-switcher input[type="radio"] {
     cursor: pointer;
+    accent-color: var(--color-brand);
 }
 
 /* Переключатель тайлов */
 .tile-switcher {
-    background: black;
-    padding: 10px 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    background: var(--bg-panel);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px var(--color-shadow);
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .tile-switcher select {
-    background: black;
-    color: white;
+    background: transparent;
+    color: var(--text-primary);
     border: none;
-    font-size: 14px;
+    font-size: 13px;
     font-family: Arial, sans-serif;
     cursor: pointer;
     outline: none;
@@ -186,20 +191,39 @@ body {
     object-fit: cover;
 }
 
-/* Logout button */
-.logout-btn {
-    background: var(--color-danger);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
+/* ── Unified header button base ── */
+.header-actions button,
+.header-actions .import-photos-btn,
+.map-menu-dropdown button {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.875rem;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    font-size: 13px;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 2px 8px var(--color-shadow);
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.header-actions button:hover,
+.header-actions .import-photos-btn:hover,
+.map-menu-dropdown button:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-dark);
+}
+
+/* Logout — subtle danger accent */
+.logout-btn {
+    color: var(--color-danger) !important;
 }
 
 .logout-btn:hover {
-    background: #c82333;
+    background: var(--color-danger) !important;
+    color: white !important;
+    border-color: var(--color-danger) !important;
 }
 
 /* Loading screen */
@@ -215,57 +239,26 @@ body {
 /* Header actions */
 .header-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 6px;
     align-items: center;
 }
 
+/* Save button — success accent */
 .save-btn {
-    background: var(--color-success);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    background: var(--color-success) !important;
+    color: white !important;
+    border-color: var(--color-success) !important;
 }
 
 .save-btn:hover {
-    background: #218838;
+    opacity: 0.9;
 }
 
-.clear-btn {
-    background: var(--color-warning);
-    color: #212529;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    box-shadow: 0 2px 5px var(--color-shadow);
-}
-
-.clear-btn:hover {
-    background: #e0a800;
-}
-
+/* Profile button — truncate long names */
 .profile-btn {
-    background: var(--color-info);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    box-shadow: 0 2px 5px var(--color-shadow);
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.profile-btn:hover {
-    background: #138496;
 }
 
 /* Historical map controls */
@@ -324,9 +317,9 @@ body {
 }
 
 .active-toggle {
-    background-color: var(--color-rating) !important;
-    color: #000 !important;
-    border-color: var(--color-rating) !important;
+    background: var(--color-brand) !important;
+    color: #fff !important;
+    border-color: var(--color-brand) !important;
 }
 
 @media (max-width: 768px) {
@@ -339,26 +332,7 @@ body {
     }
 }
 
-/* Explore nav button on map header */
-.explore-nav-btn {
-    box-shadow: 0 2px 5px var(--color-shadow);
-}
-
-/* Import photos button */
-.import-photos-btn {
-    background: #6f42c1;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    box-shadow: 0 2px 5px var(--color-shadow);
-}
-
-.import-photos-btn:hover {
-    background: #5a32a3;
-}
+/* Active toggle state (e.g. Historical mode on) */
 
 /* Modal styles */
 .modal-overlay {
@@ -651,19 +625,19 @@ body {
 .geo-search-input {
     width: 100%;
     padding: 10px 32px 10px 12px;
-    border: none;
-    border-radius: 5px;
-    background: black;
-    color: white;
-    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font-size: 13px;
     font-family: Arial, sans-serif;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    box-shadow: 0 2px 8px var(--color-shadow);
     outline: none;
     box-sizing: border-box;
 }
 
 .geo-search-input::placeholder {
-    color: #999;
+    color: var(--text-dim);
 }
 
 .geo-search-clear {
@@ -671,7 +645,7 @@ body {
     right: 6px;
     background: none;
     border: none;
-    color: #999;
+    color: var(--text-dim);
     font-size: 18px;
     cursor: pointer;
     padding: 2px 6px;
@@ -679,16 +653,17 @@ body {
 }
 
 .geo-search-clear:hover {
-    color: white;
+    color: var(--text-primary);
 }
 
 .geo-search-results {
     list-style: none;
     margin: 4px 0 0;
     padding: 0;
-    background: black;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--color-shadow);
     max-height: 240px;
     overflow-y: auto;
 }
@@ -696,7 +671,7 @@ body {
 .geo-search-item {
     padding: 8px 12px;
     font-size: 13px;
-    color: #ccc;
+    color: var(--text-secondary);
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
@@ -705,15 +680,15 @@ body {
 
 .geo-search-item:hover,
 .geo-search-item--active {
-    background: #333;
-    color: white;
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .geo-search-no-results,
 .geo-search-loading {
     padding: 8px 12px;
     font-size: 13px;
-    color: #777;
+    color: var(--text-dim);
 }
 
 /* Mobile hamburger menu — hidden on desktop */
@@ -723,11 +698,11 @@ body {
 }
 
 .map-menu-toggle {
-    background: black;
-    border: none;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
     padding: 10px 12px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px var(--color-shadow);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--color-shadow);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -738,7 +713,7 @@ body {
     display: block;
     width: 20px;
     height: 2px;
-    background: white;
+    background: var(--text-primary);
     position: relative;
 }
 
@@ -748,7 +723,7 @@ body {
     display: block;
     width: 20px;
     height: 2px;
-    background: white;
+    background: var(--text-primary);
     position: absolute;
     left: 0;
 }
@@ -1245,21 +1220,10 @@ body {
     }
 }
 
-/* Theme toggle button */
+/* Theme toggle button — inherits unified header button style, just adjust icon size */
 .theme-toggle-btn {
-    background: none;
-    border: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    color: var(--text-primary);
-    transition: background-color 0.2s;
-}
-
-.theme-toggle-btn:hover {
-    background: var(--bg-hover);
+    font-size: 16px !important;
+    padding: 6px 10px !important;
 }
 
 /* Leaflet dark mode overrides */
