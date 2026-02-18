@@ -503,3 +503,454 @@ mod urlencoding {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::chat_message::ChatMessage;
+    use crate::domain::route::{ExploreRouteRow, Route};
+    use crate::repository::errors::RepositoryError;
+    use crate::usecase::contracts::{MockChatMessageRepository, MockRouteRepository};
+    use std::collections::HashMap;
+
+    fn make_usecase(
+        chat_repo: MockChatMessageRepository,
+        route_repo: MockRouteRepository,
+        with_ollama: bool,
+    ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
+        let ollama = if with_ollama {
+            Some(OllamaClient::new(
+                "http://localhost:11434".to_string(),
+                "test-model".to_string(),
+            ))
+        } else {
+            None
+        };
+        ChatUseCase::new(chat_repo, route_repo, ollama)
+    }
+
+    // --- is_available ---
+
+    #[test]
+    fn test_is_available_without_ollama() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+        assert!(!uc.is_available());
+    }
+
+    #[test]
+    fn test_is_available_with_ollama() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            true,
+        );
+        assert!(uc.is_available());
+    }
+
+    // --- send_message without ollama ---
+
+    #[tokio::test]
+    async fn test_send_message_no_ollama_returns_error() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+        let result = uc
+            .send_message(Uuid::new_v4(), Uuid::new_v4(), "hi".to_string())
+            .await;
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not available"));
+    }
+
+    // --- get_history ---
+
+    #[tokio::test]
+    async fn test_get_history_returns_messages() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+        let conv_id = Uuid::new_v4();
+
+        let msg = ChatMessage::new_user_message(user_id, conv_id, "hello".to_string());
+        let msgs = vec![msg];
+
+        mock_chat
+            .expect_find_by_conversation()
+            .with(
+                mockall::predicate::eq(user_id),
+                mockall::predicate::eq(conv_id),
+                mockall::predicate::eq(100i64),
+            )
+            .times(1)
+            .return_once(move |_, _, _| Ok(msgs));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.get_history(user_id, conv_id).await;
+
+        assert!(result.is_ok());
+        let messages = result.unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].content, "hello");
+    }
+
+    #[tokio::test]
+    async fn test_get_history_empty() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+        let conv_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_find_by_conversation()
+            .times(1)
+            .return_once(|_, _, _| Ok(vec![]));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.get_history(user_id, conv_id).await;
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_history_repo_error() {
+        let mut mock_chat = MockChatMessageRepository::new();
+
+        mock_chat
+            .expect_find_by_conversation()
+            .times(1)
+            .return_once(|_, _, _| Err(RepositoryError::NotFound));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.get_history(Uuid::new_v4(), Uuid::new_v4()).await;
+
+        assert!(result.is_err());
+    }
+
+    // --- execute_tool ---
+
+    #[tokio::test]
+    async fn test_execute_tool_unknown_returns_error_text() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+        let args = HashMap::new();
+        let (text, actions) = uc.execute_tool("nonexistent_tool", &args).await;
+
+        assert!(text.contains("Unknown tool"));
+        assert!(text.contains("nonexistent_tool"));
+        assert!(actions.is_empty());
+    }
+
+    // --- tool_search_routes ---
+
+    #[tokio::test]
+    async fn test_tool_search_routes_returns_results() {
+        let mut mock_route = MockRouteRepository::new();
+
+        let route_id = Uuid::new_v4();
+        let rows = vec![ExploreRouteRow {
+            id: route_id,
+            name: "Test Route".to_string(),
+            points_count: 5,
+            created_at: chrono::Utc::now(),
+            share_token: Uuid::new_v4(),
+            likes_count: 10,
+            avg_rating: 4.5,
+            ratings_count: 3,
+            tags: vec!["hiking".to_string()],
+        }];
+
+        mock_route
+            .expect_explore_shared()
+            .times(1)
+            .return_once(move |_, _, _, _, _| Ok(rows));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let mut args = HashMap::new();
+        args.insert(
+            "query".to_string(),
+            serde_json::Value::String("test".to_string()),
+        );
+
+        let (text, actions) = uc.tool_search_routes(&args).await;
+
+        assert!(text.contains("Test Route"));
+        assert_eq!(actions.len(), 1);
+        match &actions[0] {
+            ChatAction::ShowRoutes { routes } => {
+                assert_eq!(routes.len(), 1);
+                assert_eq!(routes[0].name, "Test Route");
+                assert_eq!(routes[0].likes_count, 10);
+            }
+            _ => panic!("expected ShowRoutes action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tool_search_routes_empty_results() {
+        let mut mock_route = MockRouteRepository::new();
+
+        mock_route
+            .expect_explore_shared()
+            .times(1)
+            .return_once(|_, _, _, _, _| Ok(vec![]));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let args = HashMap::new();
+        let (_, actions) = uc.tool_search_routes(&args).await;
+
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_search_routes_with_sort_popular() {
+        let mut mock_route = MockRouteRepository::new();
+
+        mock_route
+            .expect_explore_shared()
+            .withf(|_, _, order, _, _| order == "likes_count DESC, r.created_at DESC")
+            .times(1)
+            .return_once(|_, _, _, _, _| Ok(vec![]));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let mut args = HashMap::new();
+        args.insert(
+            "sort".to_string(),
+            serde_json::Value::String("popular".to_string()),
+        );
+
+        let _ = uc.tool_search_routes(&args).await;
+    }
+
+    #[tokio::test]
+    async fn test_tool_search_routes_repo_error() {
+        let mut mock_route = MockRouteRepository::new();
+
+        mock_route
+            .expect_explore_shared()
+            .times(1)
+            .return_once(|_, _, _, _, _| Err(RepositoryError::NotFound));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let args = HashMap::new();
+        let (text, actions) = uc.tool_search_routes(&args).await;
+
+        assert!(text.contains("Failed to search routes"));
+        assert!(actions.is_empty());
+    }
+
+    // --- tool_get_route_details ---
+
+    #[tokio::test]
+    async fn test_tool_get_route_details_found() {
+        let mut mock_route = MockRouteRepository::new();
+        let route_id = Uuid::new_v4();
+
+        let route = Route {
+            id: route_id,
+            user_id: Uuid::new_v4(),
+            name: "My Route".to_string(),
+            points: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            share_token: Some(Uuid::new_v4()),
+            tags: vec!["nature".to_string()],
+        };
+        let route_clone = route.clone();
+
+        mock_route
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(route_id))
+            .times(1)
+            .return_once(move |_| Ok(Some(route_clone)));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let mut args = HashMap::new();
+        args.insert(
+            "route_id".to_string(),
+            serde_json::Value::String(route_id.to_string()),
+        );
+
+        let (text, actions) = uc.tool_get_route_details(&args).await;
+
+        assert!(text.contains("My Route"));
+        assert!(text.contains("is_shared"));
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_get_route_details_not_found() {
+        let mut mock_route = MockRouteRepository::new();
+        let route_id = Uuid::new_v4();
+
+        mock_route
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(route_id))
+            .times(1)
+            .return_once(|_| Ok(None));
+
+        let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
+
+        let mut args = HashMap::new();
+        args.insert(
+            "route_id".to_string(),
+            serde_json::Value::String(route_id.to_string()),
+        );
+
+        let (text, actions) = uc.tool_get_route_details(&args).await;
+
+        assert!(text.contains("not found"));
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_get_route_details_invalid_uuid() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+
+        let mut args = HashMap::new();
+        args.insert(
+            "route_id".to_string(),
+            serde_json::Value::String("not-a-uuid".to_string()),
+        );
+
+        let (text, actions) = uc.tool_get_route_details(&args).await;
+
+        assert!(text.contains("Invalid route ID"));
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_get_route_details_missing_arg() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+
+        let args = HashMap::new();
+        let (text, actions) = uc.tool_get_route_details(&args).await;
+
+        assert!(text.contains("Invalid route ID"));
+        assert!(actions.is_empty());
+    }
+
+    // --- urlencoding ---
+
+    #[test]
+    fn test_urlencoding_ascii() {
+        assert_eq!(urlencoding::encode("hello"), "hello");
+    }
+
+    #[test]
+    fn test_urlencoding_spaces() {
+        assert_eq!(urlencoding::encode("hello world"), "hello%20world");
+    }
+
+    #[test]
+    fn test_urlencoding_cyrillic() {
+        let encoded = urlencoding::encode("Москва");
+        assert!(!encoded.contains("Москва"));
+        assert!(encoded.contains("%"));
+    }
+
+    #[test]
+    fn test_urlencoding_special_chars() {
+        assert_eq!(urlencoding::encode("a&b=c"), "a%26b%3Dc");
+    }
+
+    #[test]
+    fn test_urlencoding_preserves_unreserved() {
+        assert_eq!(urlencoding::encode("a-b_c.d~e"), "a-b_c.d~e");
+    }
+
+    // --- build_tools ---
+
+    #[test]
+    fn test_build_tools_returns_three_tools() {
+        let tools = build_tools();
+        assert_eq!(tools.len(), 3);
+
+        let names: Vec<&str> = tools.iter().map(|t| t.function.name.as_str()).collect();
+        assert!(names.contains(&"geocode"));
+        assert!(names.contains(&"search_routes"));
+        assert!(names.contains(&"get_route_details"));
+    }
+
+    #[test]
+    fn test_build_tools_all_function_type() {
+        let tools = build_tools();
+        for tool in &tools {
+            assert_eq!(tool.tool_type, "function");
+        }
+    }
+
+    // --- ChatAction serialization ---
+
+    #[test]
+    fn test_chat_action_show_points_serialization() {
+        let action = ChatAction::ShowPoints {
+            points: vec![ChatPoint {
+                lat: 55.75,
+                lng: 37.62,
+                name: "Moscow".to_string(),
+            }],
+        };
+
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["type"], "show_points");
+        assert_eq!(json["points"][0]["name"], "Moscow");
+    }
+
+    #[test]
+    fn test_chat_action_show_routes_serialization() {
+        let action = ChatAction::ShowRoutes {
+            routes: vec![ChatRouteRef {
+                id: "abc-123".to_string(),
+                name: "Trail".to_string(),
+                tags: vec!["hiking".to_string()],
+                avg_rating: 4.2,
+                likes_count: 7,
+            }],
+        };
+
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["type"], "show_routes");
+        assert_eq!(json["routes"][0]["name"], "Trail");
+        assert_eq!(json["routes"][0]["likes_count"], 7);
+    }
+
+    #[test]
+    fn test_chat_response_serialization() {
+        let resp = ChatResponse {
+            id: Uuid::new_v4(),
+            message: "Here are results".to_string(),
+            actions: vec![ChatAction::ShowPoints {
+                points: vec![],
+            }],
+            conversation_id: Uuid::new_v4(),
+        };
+
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["message"], "Here are results");
+        assert!(json["actions"].is_array());
+    }
+}
