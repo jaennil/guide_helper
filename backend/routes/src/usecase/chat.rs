@@ -8,8 +8,6 @@ use crate::usecase::ollama::{
     OllamaChatRequest, OllamaClient, OllamaMessage, OllamaTool, OllamaToolFunction,
 };
 
-const DEFAULT_NOMINATIM_URL: &str = "https://nominatim.openstreetmap.org";
-
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
 You help users find routes, plan trips, search the route catalog, and answer questions about places.
 Always respond in the same language the user writes in.
@@ -18,8 +16,6 @@ When the user asks about a place or location, use the geocode tool.
 When the user asks to find or search routes, use the search_routes tool.
 When the user asks about a specific route by ID, use the get_route_details tool.
 Be concise and helpful. When showing results, summarize them naturally."#;
-
-const MAX_TOOL_ITERATIONS: usize = 5;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -64,6 +60,8 @@ where
     ollama: Option<OllamaClient>,
     http_client: reqwest::Client,
     nominatim_url: String,
+    max_tool_iterations: usize,
+    max_message_length: usize,
 }
 
 impl<CM, R> ChatUseCase<CM, R>
@@ -71,25 +69,39 @@ where
     CM: ChatMessageRepository,
     R: RouteRepository,
 {
-    pub fn new(chat_repo: CM, route_repo: R, ollama: Option<OllamaClient>) -> Self {
+    pub fn new(
+        chat_repo: CM,
+        route_repo: R,
+        ollama: Option<OllamaClient>,
+        nominatim_url: String,
+        max_tool_iterations: usize,
+        max_message_length: usize,
+    ) -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
             .build()
             .expect("failed to create reqwest client for ChatUseCase");
+
+        tracing::info!(
+            %nominatim_url,
+            max_tool_iterations,
+            max_message_length,
+            "ChatUseCase configured"
+        );
 
         Self {
             chat_repo,
             route_repo,
             ollama,
             http_client,
-            nominatim_url: DEFAULT_NOMINATIM_URL.to_string(),
+            nominatim_url,
+            max_tool_iterations,
+            max_message_length,
         }
     }
 
-    #[cfg(test)]
-    pub fn with_nominatim_url(mut self, url: String) -> Self {
-        self.nominatim_url = url;
-        self
+    pub fn max_message_length(&self) -> usize {
+        self.max_message_length
     }
 
     pub fn is_available(&self) -> bool {
@@ -179,7 +191,7 @@ where
         let mut actions: Vec<ChatAction> = Vec::new();
 
         // Function-calling loop
-        for iteration in 0..MAX_TOOL_ITERATIONS {
+        for iteration in 0..self.max_tool_iterations {
             tracing::debug!(iteration, "sending request to Ollama");
 
             let request = OllamaChatRequest {
@@ -253,7 +265,7 @@ where
             }
         }
 
-        tracing::warn!("tool-calling loop exhausted after {} iterations", MAX_TOOL_ITERATIONS);
+        tracing::warn!("tool-calling loop exhausted after {} iterations", self.max_tool_iterations);
         Err(anyhow!("AI assistant exceeded maximum tool call iterations"))
     }
 
@@ -615,7 +627,14 @@ mod tests {
         } else {
             None
         };
-        ChatUseCase::new(chat_repo, route_repo, ollama)
+        ChatUseCase::new(
+            chat_repo,
+            route_repo,
+            ollama,
+            "https://nominatim.openstreetmap.org".to_string(),
+            5,
+            2000,
+        )
     }
 
     // --- is_available ---
@@ -1157,7 +1176,7 @@ mod tests {
         route_repo: MockRouteRepository,
         nominatim_url: String,
     ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
-        ChatUseCase::new(chat_repo, route_repo, None).with_nominatim_url(nominatim_url)
+        ChatUseCase::new(chat_repo, route_repo, None, nominatim_url, 5, 2000)
     }
 
     #[tokio::test]

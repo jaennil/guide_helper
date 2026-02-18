@@ -59,6 +59,8 @@ pub struct AppState {
     pub nats_client: Option<async_nats::Client>,
     pub ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>>,
     pub chat_rate_limits: Arc<RwLock<HashMap<Uuid, (std::time::Instant, u32)>>>,
+    pub chat_rate_limit_max: u32,
+    pub chat_rate_limit_window_secs: u64,
 }
 
 #[tokio::main]
@@ -137,6 +139,9 @@ async fn main() -> anyhow::Result<()> {
         chat_message_repository,
         route_repository_for_chat,
         ollama_client,
+        config.nominatim_url.clone(),
+        config.chat_max_tool_iterations,
+        config.chat_max_message_length,
     );
     tracing::info!("ChatUseCase initialized");
 
@@ -188,6 +193,8 @@ async fn main() -> anyhow::Result<()> {
         nats_client,
         ws_channels: ws_channels.clone(),
         chat_rate_limits,
+        chat_rate_limit_max: config.chat_rate_limit_max,
+        chat_rate_limit_window_secs: config.chat_rate_limit_window_secs,
     });
 
     // Spawn NATS subscriber for photo completion events (core NATS, not JetStream)

@@ -22,6 +22,16 @@ pub struct AppConfig {
     pub ollama_url: String,
     #[serde(default = "default_ollama_model")]
     pub ollama_model: String,
+    #[serde(default = "default_chat_rate_limit_max")]
+    pub chat_rate_limit_max: u32,
+    #[serde(default = "default_chat_rate_limit_window_secs")]
+    pub chat_rate_limit_window_secs: u64,
+    #[serde(default = "default_chat_max_tool_iterations")]
+    pub chat_max_tool_iterations: usize,
+    #[serde(default = "default_nominatim_url")]
+    pub nominatim_url: String,
+    #[serde(default = "default_chat_max_message_length")]
+    pub chat_max_message_length: usize,
 }
 
 fn default_nats_url() -> String {
@@ -34,6 +44,26 @@ fn default_ollama_url() -> String {
 
 fn default_ollama_model() -> String {
     "llama3.2".to_string()
+}
+
+fn default_chat_rate_limit_max() -> u32 {
+    10
+}
+
+fn default_chat_rate_limit_window_secs() -> u64 {
+    60
+}
+
+fn default_chat_max_tool_iterations() -> usize {
+    5
+}
+
+fn default_nominatim_url() -> String {
+    "https://nominatim.openstreetmap.org".to_string()
+}
+
+fn default_chat_max_message_length() -> usize {
+    2000
 }
 
 fn default_telemetry_service_name() -> String {

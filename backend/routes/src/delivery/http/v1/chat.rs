@@ -14,9 +14,6 @@ use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::chat::ChatAction;
 use crate::AppState;
 
-const RATE_LIMIT_MAX_REQUESTS: u32 = 10;
-const RATE_LIMIT_WINDOW_SECS: u64 = 60;
-
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
     pub message: String,
@@ -67,6 +64,21 @@ pub async fn send_chat_message(
         id
     });
 
+    // Validate message length
+    let max_len = state.chat_usecase.max_message_length();
+    if body.message.is_empty() || body.message.len() > max_len {
+        tracing::warn!(
+            user_id = %user.user_id,
+            message_len = body.message.len(),
+            max_len,
+            "message validation failed"
+        );
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("Message must be between 1 and {} characters", max_len),
+        ));
+    }
+
     tracing::info!(
         %conversation_id,
         message_len = body.message.len(),
@@ -83,11 +95,11 @@ pub async fn send_chat_message(
             .entry(user.user_id)
             .or_insert((now, 0));
 
-        if now.duration_since(entry.0).as_secs() >= RATE_LIMIT_WINDOW_SECS {
+        if now.duration_since(entry.0).as_secs() >= state.chat_rate_limit_window_secs {
             *entry = (now, 1);
         } else {
             entry.1 += 1;
-            if entry.1 > RATE_LIMIT_MAX_REQUESTS {
+            if entry.1 > state.chat_rate_limit_max {
                 tracing::warn!(user_id = %user.user_id, "chat rate limit exceeded");
                 metrics::counter!("chat_rate_limited_total").increment(1);
                 return Err((
