@@ -618,10 +618,7 @@ export function MapPage() {
     const results = await Promise.allSettled(
       Array.from(files).map(async (file): Promise<ParsedPhoto | null> => {
         try {
-          const exifData = await exifr.parse(file, {
-            gps: true,
-            pick: ["DateTimeOriginal"],
-          });
+          const exifData = await exifr.parse(file, true);
 
           if (!exifData?.latitude || !exifData?.longitude) {
             console.log(`[photo-import] no GPS data in: ${file.name}`);
