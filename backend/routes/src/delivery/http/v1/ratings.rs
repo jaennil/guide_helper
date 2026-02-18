@@ -11,6 +11,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
+use crate::usecase::contracts::RouteRepository;
 use crate::AppState;
 
 #[derive(Deserialize, Validate)]
@@ -86,6 +87,22 @@ pub async fn set_rating(
                 format!("Failed to get rating info: {}", e),
             )
         })?;
+
+    // Emit notification to route owner (best-effort)
+    if let Ok(Some(route)) = state.routes_usecase.route_repository().find_by_id(route_id).await {
+        if route.user_id != user.user_id {
+            let msg = format!("{} rated your route \"{}\" with {}/5", &user.email, &route.name, payload.rating);
+            if let Err(e) = state.notifications_usecase.create_notification(
+                route.user_id,
+                "rating".to_string(),
+                route_id,
+                user.email.clone(),
+                msg,
+            ).await {
+                tracing::error!(error = %e, "failed to create rating notification");
+            }
+        }
+    }
 
     tracing::debug!(route_id = %route_id, average = info.average, count = info.count, "rating set successfully");
     Ok((
