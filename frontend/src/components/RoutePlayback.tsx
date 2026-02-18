@@ -403,14 +403,14 @@ export function RoutePlayback({ points, segments, onClose }: RoutePlaybackProps)
             onClick={handleRewind}
             title={t('playback.rewind')}
           >
-            \u23EA
+            {'\u23EA'}
           </button>
           <button
             className="playback-btn"
             onClick={handleForward}
             title={t('playback.forward')}
           >
-            \u23E9
+            {'\u23E9'}
           </button>
           <button
             className="playback-btn playback-speed-btn"
@@ -442,7 +442,7 @@ export function RoutePlayback({ points, segments, onClose }: RoutePlaybackProps)
             onClick={handleClose}
             title={t('playback.stop')}
           >
-            \u2715
+            {'\u2715'}
           </button>
         </div>
 
