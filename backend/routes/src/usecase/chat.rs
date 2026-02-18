@@ -1373,4 +1373,121 @@ mod tests {
         );
         assert!(actions.is_empty());
     }
+
+    // --- delete_message ---
+
+    #[tokio::test]
+    async fn test_delete_message_success() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_delete_message()
+            .with(
+                mockall::predicate::eq(user_id),
+                mockall::predicate::eq(message_id),
+            )
+            .times(1)
+            .return_once(|_, _| Ok(()));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.delete_message(user_id, message_id).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_delete_message_not_found() {
+        let mut mock_chat = MockChatMessageRepository::new();
+
+        mock_chat
+            .expect_delete_message()
+            .times(1)
+            .return_once(|_, _| Err(RepositoryError::NotFound));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.delete_message(Uuid::new_v4(), Uuid::new_v4()).await;
+
+        assert!(result.is_err());
+    }
+
+    // --- count_conversations ---
+
+    #[tokio::test]
+    async fn test_count_conversations_empty() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_count_conversations()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .return_once(|_| Ok(0));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.count_conversations(user_id).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_count_conversations_returns_count() {
+        let mut mock_chat = MockChatMessageRepository::new();
+        let user_id = Uuid::new_v4();
+
+        mock_chat
+            .expect_count_conversations()
+            .with(mockall::predicate::eq(user_id))
+            .times(1)
+            .return_once(|_| Ok(5));
+
+        let uc = make_usecase(mock_chat, MockRouteRepository::new(), false);
+        let result = uc.count_conversations(user_id).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 5);
+    }
+
+    // --- max_message_length config ---
+
+    #[test]
+    fn test_max_message_length_from_config() {
+        let uc = ChatUseCase::new(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            None,
+            "https://nominatim.openstreetmap.org".to_string(),
+            5,
+            500,
+        );
+        assert_eq!(uc.max_message_length(), 500);
+    }
+
+    // --- ChatStreamEvent serialization ---
+
+    #[test]
+    fn test_chat_stream_event_token_serialization() {
+        let event = ChatStreamEvent::Token {
+            content: "hello".to_string(),
+        };
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(json["type"], "token");
+        assert_eq!(json["content"], "hello");
+    }
+
+    #[test]
+    fn test_chat_stream_event_done_serialization() {
+        let id = Uuid::new_v4();
+        let conv_id = Uuid::new_v4();
+        let event = ChatStreamEvent::Done {
+            id,
+            conversation_id: conv_id,
+        };
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(json["type"], "done");
+        assert_eq!(json["id"], id.to_string());
+        assert_eq!(json["conversation_id"], conv_id.to_string());
+    }
 }
