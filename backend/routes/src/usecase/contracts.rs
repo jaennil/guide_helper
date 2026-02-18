@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::{
     domain::category::Category,
-    domain::chat_message::ChatMessage,
+    domain::chat_message::{ChatMessage, ConversationSummary},
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::notification::Notification,
@@ -112,6 +112,17 @@ pub trait ChatMessageRepository: Send + Sync {
         conversation_id: Uuid,
         limit: i64,
     ) -> Result<Vec<ChatMessage>, RepositoryError>;
+    async fn list_conversations(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ConversationSummary>, RepositoryError>;
+    async fn delete_conversation(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+    ) -> Result<(), RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]

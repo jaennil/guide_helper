@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::domain::chat_message::ChatMessage;
+use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::ollama::{
     OllamaChatRequest, OllamaClient, OllamaMessage, OllamaTool, OllamaToolFunction,
@@ -424,6 +424,40 @@ where
 
         tracing::debug!(count = messages.len(), "chat history retrieved");
         Ok(messages)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    pub async fn list_conversations(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ConversationSummary>, Error> {
+        tracing::debug!(%limit, %offset, "listing conversations");
+
+        let conversations = self
+            .chat_repo
+            .list_conversations(user_id, limit, offset)
+            .await?;
+
+        tracing::debug!(count = conversations.len(), "conversations listed");
+        Ok(conversations)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id))]
+    pub async fn delete_conversation(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+    ) -> Result<(), Error> {
+        tracing::info!("deleting conversation");
+
+        self.chat_repo
+            .delete_conversation(user_id, conversation_id)
+            .await?;
+
+        tracing::info!("conversation deleted");
+        Ok(())
     }
 }
 

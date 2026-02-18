@@ -13,6 +13,15 @@ pub struct ChatMessage {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ConversationSummary {
+    pub conversation_id: Uuid,
+    pub last_message: String,
+    pub message_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 impl ChatMessage {
     pub fn new_user_message(user_id: Uuid, conversation_id: Uuid, content: String) -> Self {
         Self {

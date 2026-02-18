@@ -24,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
-use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history};
+use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history, list_conversations, delete_conversation};
 use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
@@ -58,6 +58,7 @@ pub struct AppState {
     pub metrics_handle: PrometheusHandle,
     pub nats_client: Option<async_nats::Client>,
     pub ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>>,
+    pub chat_rate_limits: Arc<RwLock<HashMap<Uuid, (std::time::Instant, u32)>>>,
 }
 
 #[tokio::main]
@@ -170,6 +171,9 @@ async fn main() -> anyhow::Result<()> {
     let ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>> =
         Arc::new(RwLock::new(HashMap::new()));
 
+    let chat_rate_limits: Arc<RwLock<HashMap<Uuid, (std::time::Instant, u32)>>> =
+        Arc::new(RwLock::new(HashMap::new()));
+
     let shared_state = Arc::new(AppState {
         routes_usecase,
         comments_usecase,
@@ -183,6 +187,7 @@ async fn main() -> anyhow::Result<()> {
         metrics_handle,
         nats_client,
         ws_channels: ws_channels.clone(),
+        chat_rate_limits,
     });
 
     // Spawn NATS subscriber for photo completion events (core NATS, not JetStream)
@@ -287,8 +292,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/notifications/{id}/read", post(mark_as_read))
         .route("/api/v1/notifications/read-all", post(mark_all_as_read))
         .route("/api/v1/admin/settings/difficulty", put(set_difficulty_thresholds))
-        .route("/api/v1/chat", post(send_chat_message))
-        .route("/api/v1/chat/{conversation_id}", get(get_chat_history))
+        .route("/api/v1/chat", get(list_conversations).post(send_chat_message))
+        .route("/api/v1/chat/{conversation_id}", get(get_chat_history).delete(delete_conversation))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Extension, Json,
@@ -14,10 +14,28 @@ use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::chat::ChatAction;
 use crate::AppState;
 
+const RATE_LIMIT_MAX_REQUESTS: u32 = 10;
+const RATE_LIMIT_WINDOW_SECS: u64 = 60;
+
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
     pub message: String,
     pub conversation_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListConversationsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct ConversationSummaryResponse {
+    pub conversation_id: Uuid,
+    pub last_message: String,
+    pub message_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -56,6 +74,29 @@ pub async fn send_chat_message(
     );
 
     metrics::counter!("chat_messages_total", "role" => "user").increment(1);
+
+    // Rate limiting check
+    {
+        let now = std::time::Instant::now();
+        let mut limits = state.chat_rate_limits.write().await;
+        let entry = limits
+            .entry(user.user_id)
+            .or_insert((now, 0));
+
+        if now.duration_since(entry.0).as_secs() >= RATE_LIMIT_WINDOW_SECS {
+            *entry = (now, 1);
+        } else {
+            entry.1 += 1;
+            if entry.1 > RATE_LIMIT_MAX_REQUESTS {
+                tracing::warn!(user_id = %user.user_id, "chat rate limit exceeded");
+                metrics::counter!("chat_rate_limited_total").increment(1);
+                return Err((
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Too many requests. Please try again later.".to_string(),
+                ));
+            }
+        }
+    }
 
     if !state.chat_usecase.is_available() {
         tracing::warn!("chat request received but Ollama is not available");
@@ -136,4 +177,66 @@ pub async fn get_chat_history(
 
     tracing::debug!(count = response.len(), "chat history fetched");
     Ok((StatusCode::OK, Json(response)))
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
+pub async fn list_conversations(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(query): Query<ListConversationsQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let limit = query.limit.unwrap_or(20).min(100);
+    let offset = query.offset.unwrap_or(0);
+
+    tracing::debug!(%limit, %offset, "listing conversations");
+
+    let conversations = state
+        .chat_usecase
+        .list_conversations(user.user_id, limit, offset)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to list conversations");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to list conversations: {}", e),
+            )
+        })?;
+
+    let response: Vec<ConversationSummaryResponse> = conversations
+        .into_iter()
+        .map(|c| ConversationSummaryResponse {
+            conversation_id: c.conversation_id,
+            last_message: c.last_message,
+            message_count: c.message_count,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+        })
+        .collect();
+
+    tracing::debug!(count = response.len(), "conversations listed");
+    Ok((StatusCode::OK, Json(response)))
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id, conversation_id = %conversation_id))]
+pub async fn delete_conversation(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(conversation_id): Path<Uuid>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    tracing::info!("deleting conversation");
+
+    state
+        .chat_usecase
+        .delete_conversation(user.user_id, conversation_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to delete conversation");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to delete conversation: {}", e),
+            )
+        })?;
+
+    tracing::info!("conversation deleted");
+    Ok(StatusCode::NO_CONTENT)
 }

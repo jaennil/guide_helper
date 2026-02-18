@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     domain::category::Category,
-    domain::chat_message::ChatMessage,
+    domain::chat_message::{ChatMessage, ConversationSummary},
     domain::comment::Comment,
     domain::like::RouteLike,
     domain::notification::Notification,
@@ -1013,6 +1013,69 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
 
         tracing::debug!(count = messages.len(), "found chat messages");
         Ok(messages)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, %limit, %offset))]
+    async fn list_conversations(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ConversationSummary>, RepositoryError> {
+        tracing::debug!("listing conversations");
+
+        let rows = sqlx::query_as::<_, ConversationSummary>(
+            r#"
+            SELECT
+                conversation_id,
+                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_message,
+                COUNT(*)::bigint AS message_count,
+                MIN(created_at) AS created_at,
+                MAX(created_at) AS updated_at
+            FROM chat_messages
+            WHERE user_id = $1
+            GROUP BY conversation_id
+            ORDER BY MAX(created_at) DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(count = rows.len(), "listed conversations");
+        Ok(rows)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id))]
+    async fn delete_conversation(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting conversation");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM chat_messages
+            WHERE user_id = $1 AND conversation_id = $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(conversation_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!(rows_deleted = result.rows_affected(), "conversation deleted");
+        Ok(())
     }
 }
 
