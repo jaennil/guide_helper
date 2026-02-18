@@ -36,6 +36,12 @@ pub struct ConversationSummaryResponse {
 }
 
 #[derive(Serialize)]
+pub struct ListConversationsResponse {
+    pub conversations: Vec<ConversationSummaryResponse>,
+    pub total: i64,
+}
+
+#[derive(Serialize)]
 pub struct ChatMessageResponse {
     pub id: Uuid,
     pub message: String,
@@ -214,7 +220,19 @@ pub async fn list_conversations(
             )
         })?;
 
-    let response: Vec<ConversationSummaryResponse> = conversations
+    let total = state
+        .chat_usecase
+        .count_conversations(user.user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to count conversations");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to count conversations: {}", e),
+            )
+        })?;
+
+    let items: Vec<ConversationSummaryResponse> = conversations
         .into_iter()
         .map(|c| ConversationSummaryResponse {
             conversation_id: c.conversation_id,
@@ -225,8 +243,11 @@ pub async fn list_conversations(
         })
         .collect();
 
-    tracing::debug!(count = response.len(), "conversations listed");
-    Ok((StatusCode::OK, Json(response)))
+    tracing::debug!(count = items.len(), total, "conversations listed");
+    Ok((StatusCode::OK, Json(ListConversationsResponse {
+        conversations: items,
+        total,
+    })))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id, conversation_id = %conversation_id))]

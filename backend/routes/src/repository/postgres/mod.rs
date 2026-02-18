@@ -1077,6 +1077,22 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
         tracing::debug!(rows_deleted = result.rows_affected(), "conversation deleted");
         Ok(())
     }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    async fn count_conversations(&self, user_id: Uuid) -> Result<i64, RepositoryError> {
+        tracing::debug!("counting conversations");
+
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(DISTINCT conversation_id) FROM chat_messages WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(user_id = %user_id, count = count.0, "counted conversations");
+        Ok(count.0)
+    }
 }
 
 pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<PgPool, sqlx::Error> {

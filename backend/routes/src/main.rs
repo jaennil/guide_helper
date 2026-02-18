@@ -197,6 +197,31 @@ async fn main() -> anyhow::Result<()> {
         chat_rate_limit_window_secs: config.chat_rate_limit_window_secs,
     });
 
+    // Spawn rate limiter cleanup task
+    {
+        let rate_limits = shared_state.chat_rate_limits.clone();
+        let window_secs = shared_state.chat_rate_limit_window_secs;
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+            loop {
+                interval.tick().await;
+                let now = std::time::Instant::now();
+                let mut limits = rate_limits.write().await;
+                let before = limits.len();
+                limits.retain(|_, (timestamp, _)| {
+                    now.duration_since(*timestamp).as_secs() < window_secs
+                });
+                let cleaned = before - limits.len();
+                if cleaned > 0 {
+                    tracing::info!(cleaned, remaining = limits.len(), "rate limiter cleanup completed");
+                } else {
+                    tracing::debug!(entries = limits.len(), "rate limiter cleanup: nothing to clean");
+                }
+            }
+        });
+        tracing::info!("rate limiter cleanup task spawned (every 5 minutes)");
+    }
+
     // Spawn NATS subscriber for photo completion events (core NATS, not JetStream)
     if let Some(ref client) = shared_state.nats_client {
         let nats_client = client.clone();

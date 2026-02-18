@@ -495,6 +495,16 @@ where
         Ok(conversations)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    pub async fn count_conversations(&self, user_id: Uuid) -> Result<i64, Error> {
+        tracing::debug!("counting conversations");
+
+        let count = self.chat_repo.count_conversations(user_id).await?;
+
+        tracing::debug!(count, "conversations counted");
+        Ok(count)
+    }
+
     #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id))]
     pub async fn delete_conversation(
         &self,

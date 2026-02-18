@@ -123,6 +123,7 @@ pub trait ChatMessageRepository: Send + Sync {
         user_id: Uuid,
         conversation_id: Uuid,
     ) -> Result<(), RepositoryError>;
+    async fn count_conversations(&self, user_id: Uuid) -> Result<i64, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
