@@ -23,7 +23,7 @@ patches:
 images:
 - name: auth
   newName: ghcr.io/jaennil/guide-helper-auth
-  newTag: main-add58c4
+  newTag: main-3ef92e6
 - name: cache
   newName: ghcr.io/jaennil/guide-helper-cache
   newTag: main-e8f1902
@@ -35,7 +35,7 @@ images:
   newTag: main-d34a87c
 - name: routes
   newName: ghcr.io/jaennil/guide-helper-routes
-  newTag: main-43c30d6
+  newTag: main-3ef92e6
 - name: tiles
   newName: ghcr.io/jaennil/guide-helper-tiles
   newTag: main-6474abb
