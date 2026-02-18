@@ -195,7 +195,7 @@ impl RouteRepository for PostgresRouteRepository {
         let query = format!(
             r#"
             SELECT r.id, r.name,
-                   jsonb_array_length(r.points) AS points_count,
+                   jsonb_array_length(r.points)::bigint AS points_count,
                    r.created_at, r.share_token,
                    COALESCE(l.likes_count, 0) AS likes_count,
                    COALESCE(rt.avg_rating, 0.0) AS avg_rating,
