@@ -76,6 +76,10 @@ impl OllamaClient {
         &self.model
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     pub async fn chat(&self, request: OllamaChatRequest) -> anyhow::Result<OllamaChatResponse> {
         let url = format!("{}/api/chat", self.base_url);
         tracing::debug!(%url, model = %request.model, messages_count = request.messages.len(), "sending chat request to Ollama");

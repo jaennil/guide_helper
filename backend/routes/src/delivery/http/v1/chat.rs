@@ -240,3 +240,24 @@ pub async fn delete_conversation(
     tracing::info!("conversation deleted");
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Serialize)]
+pub struct ChatHealthResponse {
+    pub available: bool,
+    pub model: String,
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn chat_health(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let available = state.chat_usecase.check_health().await;
+    let model = state.chat_usecase.model_name().to_string();
+
+    tracing::debug!(%available, %model, "chat health check");
+
+    (
+        StatusCode::OK,
+        Json(ChatHealthResponse { available, model }),
+    )
+}

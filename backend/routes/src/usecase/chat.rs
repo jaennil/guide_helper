@@ -96,6 +96,45 @@ where
         self.ollama.is_some()
     }
 
+    pub fn model_name(&self) -> &str {
+        self.ollama
+            .as_ref()
+            .map(|o| o.model())
+            .unwrap_or("none")
+    }
+
+    pub async fn check_health(&self) -> bool {
+        let ollama = match self.ollama.as_ref() {
+            Some(o) => o,
+            None => {
+                tracing::debug!("health check: ollama not configured");
+                return false;
+            }
+        };
+
+        let url = format!("{}/api/tags", ollama.base_url());
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap_or_default();
+
+        match client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                tracing::debug!("health check: ollama is healthy");
+                true
+            }
+            Ok(resp) => {
+                tracing::warn!(status = %resp.status(), "health check: ollama returned error");
+                false
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "health check: failed to reach ollama");
+                false
+            }
+        }
+    }
+
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
     pub async fn send_message(
         &self,

@@ -24,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
-use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history, list_conversations, delete_conversation};
+use crate::delivery::http::v1::chat::{send_chat_message, get_chat_history, list_conversations, delete_conversation, chat_health};
 use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
@@ -311,6 +311,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/routes/{route_id}/rating", get(get_rating_aggregate))
         .route("/api/v1/settings/difficulty", get(get_difficulty_thresholds))
         .route("/api/v1/categories", get(list_categories))
+        .route("/api/v1/chat/health", get(chat_health))
         .merge(routes_api)
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state);
