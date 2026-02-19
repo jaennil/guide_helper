@@ -9,11 +9,13 @@ import ExplorePage from './pages/ExplorePage';
 import { SharedMapPage } from './pages/SharedMapPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminPage from './pages/AdminPage';
 import './App.css';
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <ThemeProvider>
       <LanguageProvider>
@@ -52,6 +54,7 @@ function App() {
       </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

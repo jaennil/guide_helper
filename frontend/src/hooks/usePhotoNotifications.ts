@@ -7,9 +7,13 @@ interface PhotoNotificationOptions {
   onPhotoUpdate: (points: any[]) => void;
 }
 
+const INITIAL_RECONNECT_MS = 1000;
+const MAX_RECONNECT_MS = 30000;
+
 export function usePhotoNotifications({ routeId, enabled, onPhotoUpdate }: PhotoNotificationOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectDelayRef = useRef(INITIAL_RECONNECT_MS);
   const onPhotoUpdateRef = useRef(onPhotoUpdate);
   onPhotoUpdateRef.current = onPhotoUpdate;
 
@@ -44,6 +48,7 @@ export function usePhotoNotifications({ routeId, enabled, onPhotoUpdate }: Photo
 
       ws.onopen = () => {
         console.log('[ws] connected for route', routeId);
+        reconnectDelayRef.current = INITIAL_RECONNECT_MS;
       };
 
       ws.onmessage = (event) => {
@@ -63,8 +68,10 @@ export function usePhotoNotifications({ routeId, enabled, onPhotoUpdate }: Photo
         console.log('[ws] disconnected, code:', event.code);
         wsRef.current = null;
         if (mounted && enabled) {
-          console.log('[ws] reconnecting in 5s');
-          reconnectTimerRef.current = setTimeout(connect, 5000);
+          const delay = reconnectDelayRef.current;
+          console.log(`[ws] reconnecting in ${delay}ms`);
+          reconnectTimerRef.current = setTimeout(connect, delay);
+          reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_MS);
         }
       };
 
