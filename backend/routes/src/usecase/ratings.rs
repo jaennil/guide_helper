@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Error};
 use uuid::Uuid;
 
 use crate::domain::rating::{RatingInfo, RouteRating};
 use crate::usecase::contracts::{RatingRepository, RouteRepository};
+use crate::usecase::error::UsecaseError;
 
 pub struct RatingsUseCase<Ra, R>
 where
@@ -31,18 +31,18 @@ where
         route_id: Uuid,
         user_id: Uuid,
         rating: i16,
-    ) -> Result<(), Error> {
+    ) -> Result<(), UsecaseError> {
         tracing::debug!("setting rating");
 
         if !(1..=5).contains(&rating) {
-            return Err(anyhow!("Rating must be between 1 and 5"));
+            return Err(UsecaseError::Validation("Rating must be between 1 and 5".to_string()));
         }
 
         // Verify route exists
         self.route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         let route_rating = RouteRating::new(route_id, user_id, rating);
         self.rating_repository.upsert(&route_rating).await?;
@@ -52,7 +52,7 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
-    pub async fn remove_rating(&self, route_id: Uuid, user_id: Uuid) -> Result<(), Error> {
+    pub async fn remove_rating(&self, route_id: Uuid, user_id: Uuid) -> Result<(), UsecaseError> {
         tracing::debug!("removing rating");
 
         self.rating_repository
@@ -68,7 +68,7 @@ where
         &self,
         route_id: Uuid,
         user_id: Option<Uuid>,
-    ) -> Result<RatingInfo, Error> {
+    ) -> Result<RatingInfo, UsecaseError> {
         tracing::debug!("getting rating info");
 
         let (average, count) = self.rating_repository.get_aggregate(route_id).await?;

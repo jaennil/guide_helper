@@ -1,10 +1,10 @@
-use anyhow::{anyhow, Error};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
+use crate::usecase::error::UsecaseError;
 use crate::usecase::ollama::{
     OllamaChatRequest, OllamaClient, OllamaMessage, OllamaTool, OllamaToolFunction,
 };
@@ -167,11 +167,11 @@ where
         user_id: Uuid,
         conversation_id: Uuid,
         text: String,
-    ) -> Result<ChatResponse, Error> {
+    ) -> Result<ChatResponse, UsecaseError> {
         let ollama = self
             .ollama
             .as_ref()
-            .ok_or_else(|| anyhow!("AI assistant is not available"))?;
+            .ok_or_else(|| UsecaseError::Unavailable("AI assistant is not available".to_string()))?;
 
         tracing::info!(%user_id, %conversation_id, "processing chat message");
 
@@ -258,7 +258,7 @@ where
                 let actions_json = if actions.is_empty() {
                     None
                 } else {
-                    Some(serde_json::to_value(&actions)?)
+                    Some(serde_json::to_value(&actions).map_err(|e| UsecaseError::Internal(format!("failed to serialize actions: {}", e)))?)
                 };
 
                 let assistant_msg = ChatMessage::new_assistant_message(
@@ -280,7 +280,7 @@ where
         }
 
         tracing::warn!("tool-calling loop exhausted after {} iterations", self.max_tool_iterations);
-        Err(anyhow!("AI assistant exceeded maximum tool call iterations"))
+        Err(UsecaseError::Internal("AI assistant exceeded maximum tool call iterations".to_string()))
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -289,7 +289,7 @@ where
         user_id: Uuid,
         conversation_id: Uuid,
         text: String,
-    ) -> Result<(ChatResponse, std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, Error>> + Send>>), Error> {
+    ) -> Result<(ChatResponse, std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, UsecaseError>> + Send>>), UsecaseError> {
         // Run full non-streaming call first (tool loop + final answer)
         let response = self.send_message(user_id, conversation_id, text).await?;
 
@@ -527,7 +527,7 @@ where
         &self,
         user_id: Uuid,
         conversation_id: Uuid,
-    ) -> Result<Vec<ChatMessage>, Error> {
+    ) -> Result<Vec<ChatMessage>, UsecaseError> {
         tracing::debug!("getting chat history");
 
         let messages = self
@@ -545,7 +545,7 @@ where
         user_id: Uuid,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<ConversationSummary>, Error> {
+    ) -> Result<Vec<ConversationSummary>, UsecaseError> {
         tracing::debug!(%limit, %offset, "listing conversations");
 
         let conversations = self
@@ -558,7 +558,7 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id))]
-    pub async fn count_conversations(&self, user_id: Uuid) -> Result<i64, Error> {
+    pub async fn count_conversations(&self, user_id: Uuid) -> Result<i64, UsecaseError> {
         tracing::debug!("counting conversations");
 
         let count = self.chat_repo.count_conversations(user_id).await?;
@@ -572,7 +572,7 @@ where
         &self,
         user_id: Uuid,
         message_id: Uuid,
-    ) -> Result<(), Error> {
+    ) -> Result<(), UsecaseError> {
         tracing::info!("deleting message");
 
         self.chat_repo
@@ -588,7 +588,7 @@ where
         &self,
         user_id: Uuid,
         conversation_id: Uuid,
-    ) -> Result<(), Error> {
+    ) -> Result<(), UsecaseError> {
         tracing::info!("deleting conversation");
 
         self.chat_repo

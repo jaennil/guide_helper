@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
+use crate::usecase::error::UsecaseError;
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -47,7 +48,7 @@ pub async fn list_notifications(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<NotificationListParams>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     tracing::debug!(limit, offset, "listing notifications");
@@ -55,20 +56,12 @@ pub async fn list_notifications(
     let notifications = state
         .notifications_usecase
         .list_notifications(user.user_id, limit, offset)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to list notifications");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list notifications: {}", e))
-        })?;
+        .await?;
 
     let unread_count = state
         .notifications_usecase
         .count_unread(user.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count unread notifications");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to count unread: {}", e))
-        })?;
+        .await?;
 
     let response: Vec<NotificationResponse> = notifications
         .into_iter()
@@ -92,17 +85,13 @@ pub async fn list_notifications(
 pub async fn get_unread_count(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("getting unread notification count");
 
     let unread_count = state
         .notifications_usecase
         .count_unread(user.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count unread notifications");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to count unread: {}", e))
-        })?;
+        .await?;
 
     tracing::debug!(unread_count, "unread count retrieved");
     Ok((StatusCode::OK, Json(UnreadCountResponse { unread_count })))
@@ -113,23 +102,13 @@ pub async fn mark_as_read(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("marking notification as read");
 
     state
         .notifications_usecase
         .mark_as_read(id, user.user_id)
-        .await
-        .map_err(|e| {
-            let error_msg = e.to_string();
-            if error_msg.contains("Not found") || error_msg.contains("NotFound") {
-                tracing::warn!(notification_id = %id, "notification not found");
-                (StatusCode::NOT_FOUND, "Notification not found".to_string())
-            } else {
-                tracing::error!(notification_id = %id, error = %e, "failed to mark notification as read");
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to mark as read: {}", e))
-            }
-        })?;
+        .await?;
 
     tracing::debug!(notification_id = %id, "notification marked as read");
     Ok(StatusCode::NO_CONTENT)
@@ -139,17 +118,13 @@ pub async fn mark_as_read(
 pub async fn mark_all_as_read(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("marking all notifications as read");
 
     state
         .notifications_usecase
         .mark_all_as_read(user.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to mark all notifications as read");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to mark all as read: {}", e))
-        })?;
+        .await?;
 
     tracing::debug!("all notifications marked as read");
     Ok(StatusCode::NO_CONTENT)

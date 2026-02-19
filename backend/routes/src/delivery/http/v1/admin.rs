@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::contracts::{CommentRepository, RouteRepository};
+use crate::usecase::error::UsecaseError;
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -59,10 +60,10 @@ pub struct AdminCommentsListResponse {
     pub total: i64,
 }
 
-pub(crate) fn require_admin(user: &AuthenticatedUser) -> Result<(), (StatusCode, String)> {
+pub(crate) fn require_admin(user: &AuthenticatedUser) -> Result<(), UsecaseError> {
     if user.role != "admin" {
         tracing::warn!(user_id = %user.user_id, role = %user.role, "non-admin access attempt to admin endpoint");
-        return Err((StatusCode::FORBIDDEN, "Admin access required".to_string()));
+        return Err(UsecaseError::Forbidden("Admin access required".to_string()));
     }
     Ok(())
 }
@@ -71,22 +72,13 @@ pub(crate) fn require_admin(user: &AuthenticatedUser) -> Result<(), (StatusCode,
 pub async fn get_routes_stats(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     require_admin(&user)?;
 
     tracing::debug!("getting routes admin stats");
 
-    let total_routes = state.routes_usecase.route_repository().count_all().await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count routes");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get stats: {}", e))
-        })?;
-
-    let total_comments = state.comments_usecase.comment_repository().count_all().await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count comments");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get stats: {}", e))
-        })?;
+    let total_routes = state.routes_usecase.route_repository().count_all().await?;
+    let total_comments = state.comments_usecase.comment_repository().count_all().await?;
 
     tracing::debug!(total_routes, total_comments, "routes admin stats retrieved");
     Ok((StatusCode::OK, Json(RoutesStatsResponse { total_routes, total_comments })))
@@ -97,24 +89,15 @@ pub async fn list_admin_routes(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AdminListParams>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     require_admin(&user)?;
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     tracing::debug!(limit, offset, "listing admin routes");
 
-    let total = state.routes_usecase.route_repository().count_all().await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count routes for admin listing");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to count routes: {}", e))
-        })?;
-
-    let rows = state.routes_usecase.route_repository().find_all_admin(limit, offset).await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to list admin routes");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list routes: {}", e))
-        })?;
+    let total = state.routes_usecase.route_repository().count_all().await?;
+    let rows = state.routes_usecase.route_repository().find_all_admin(limit, offset).await?;
 
     let routes: Vec<AdminRouteResponse> = rows
         .into_iter()
@@ -138,24 +121,15 @@ pub async fn list_admin_comments(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AdminListParams>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     require_admin(&user)?;
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     tracing::debug!(limit, offset, "listing admin comments");
 
-    let total = state.comments_usecase.comment_repository().count_all().await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count comments for admin listing");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to count comments: {}", e))
-        })?;
-
-    let rows = state.comments_usecase.comment_repository().find_all_paginated(limit, offset).await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to list admin comments");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list comments: {}", e))
-        })?;
+    let total = state.comments_usecase.comment_repository().count_all().await?;
+    let rows = state.comments_usecase.comment_repository().find_all_paginated(limit, offset).await?;
 
     let comments: Vec<AdminCommentResponse> = rows
         .into_iter()

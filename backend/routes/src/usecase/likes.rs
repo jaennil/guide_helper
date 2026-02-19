@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Error};
 use uuid::Uuid;
 
 use crate::domain::like::RouteLike;
 use crate::usecase::contracts::{LikeRepository, RouteRepository};
+use crate::usecase::error::UsecaseError;
 
 pub struct LikesUseCase<L, R>
 where
@@ -26,14 +26,14 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
-    pub async fn toggle_like(&self, route_id: Uuid, user_id: Uuid) -> Result<bool, Error> {
+    pub async fn toggle_like(&self, route_id: Uuid, user_id: Uuid) -> Result<bool, UsecaseError> {
         tracing::debug!("toggling like");
 
         // Verify route exists
         self.route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         // Check if already liked
         let existing = self
@@ -56,7 +56,7 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %route_id))]
-    pub async fn get_like_count(&self, route_id: Uuid) -> Result<i64, Error> {
+    pub async fn get_like_count(&self, route_id: Uuid) -> Result<i64, UsecaseError> {
         tracing::debug!("getting like count");
 
         let count = self.like_repository.count_by_route_id(route_id).await?;
@@ -70,7 +70,7 @@ where
         &self,
         route_id: Uuid,
         user_id: Uuid,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, UsecaseError> {
         tracing::debug!("getting user like status");
 
         let existing = self

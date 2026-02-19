@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Error};
 use uuid::Uuid;
 
 use crate::domain::comment::Comment;
 use crate::usecase::contracts::{CommentRepository, RouteRepository};
+use crate::usecase::error::UsecaseError;
 
 pub struct CommentsUseCase<C, R>
 where
@@ -36,14 +36,14 @@ where
         user_id: Uuid,
         author_name: String,
         text: String,
-    ) -> Result<Comment, Error> {
+    ) -> Result<Comment, UsecaseError> {
         tracing::debug!("creating comment");
 
         // Verify route exists
         self.route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         let comment = Comment::new(route_id, user_id, author_name, text);
         self.comment_repository.create(&comment).await?;
@@ -53,7 +53,7 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %route_id))]
-    pub async fn list_comments(&self, route_id: Uuid) -> Result<Vec<Comment>, Error> {
+    pub async fn list_comments(&self, route_id: Uuid) -> Result<Vec<Comment>, UsecaseError> {
         tracing::debug!("listing comments for route");
 
         let comments = self.comment_repository.find_by_route_id(route_id).await?;
@@ -63,14 +63,14 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(comment_id = %comment_id, user_id = %user_id, %role))]
-    pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, role: &str) -> Result<(), Error> {
+    pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, role: &str) -> Result<(), UsecaseError> {
         tracing::debug!("deleting comment");
 
         let comment = self
             .comment_repository
             .find_by_id(comment_id)
             .await?
-            .ok_or_else(|| anyhow!("Comment not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Comment".to_string()))?;
 
         // Admin and moderator can delete any comment
         let is_privileged = role == "admin" || role == "moderator";
@@ -81,7 +81,7 @@ where
                 .route_repository
                 .find_by_id(comment.route_id)
                 .await?
-                .ok_or_else(|| anyhow!("Route not found"))?;
+                .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
             if route.user_id != user_id {
                 tracing::warn!(
@@ -89,7 +89,7 @@ where
                     user_id = %user_id,
                     "unauthorized comment delete attempt"
                 );
-                return Err(anyhow!("Not authorized to delete this comment"));
+                return Err(UsecaseError::Forbidden("Not authorized to delete this comment".to_string()));
             }
         }
 
@@ -104,7 +104,7 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(route_id = %route_id))]
-    pub async fn count_comments(&self, route_id: Uuid) -> Result<i64, Error> {
+    pub async fn count_comments(&self, route_id: Uuid) -> Result<i64, UsecaseError> {
         tracing::debug!("counting comments for route");
 
         let count = self.comment_repository.count_by_route_id(route_id).await?;

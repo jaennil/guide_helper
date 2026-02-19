@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::chat::{ChatAction, ChatStreamEvent};
+use crate::usecase::error::UsecaseError;
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -61,32 +62,62 @@ pub struct ChatHistoryMessage {
     pub created_at: DateTime<Utc>,
 }
 
+async fn enforce_rate_limit(state: &Arc<AppState>, user_id: Uuid) -> Result<(), UsecaseError> {
+    let now = std::time::Instant::now();
+    let mut limits = state.chat_rate_limits.write().await;
+    let entry = limits.entry(user_id).or_insert((now, 0));
+
+    if now.duration_since(entry.0).as_secs() >= state.chat_rate_limit_window_secs {
+        *entry = (now, 1);
+    } else {
+        entry.1 += 1;
+        if entry.1 > state.chat_rate_limit_max {
+            tracing::warn!(%user_id, "chat rate limit exceeded");
+            metrics::counter!("chat_rate_limited_total").increment(1);
+            return Err(UsecaseError::RateLimited(
+                "Too many requests. Please try again later.".to_string(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_message(message: &str, max_len: usize) -> Result<(), UsecaseError> {
+    if message.is_empty() || message.len() > max_len {
+        return Err(UsecaseError::Validation(format!(
+            "Message must be between 1 and {} characters",
+            max_len
+        )));
+    }
+    Ok(())
+}
+
+fn check_availability(state: &AppState) -> Result<(), UsecaseError> {
+    if !state.chat_usecase.is_available() {
+        tracing::warn!("chat request received but Ollama is not available");
+        metrics::counter!("chat_unavailable_total").increment(1);
+        return Err(UsecaseError::Unavailable(
+            "AI assistant is currently unavailable".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 #[tracing::instrument(skip(state, body), fields(user_id = %user.user_id))]
 pub async fn send_chat_message(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(body): Json<SendMessageRequest>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     let conversation_id = body.conversation_id.unwrap_or_else(|| {
         let id = Uuid::new_v4();
         tracing::info!(%id, "created new conversation");
         id
     });
 
-    // Validate message length
-    let max_len = state.chat_usecase.max_message_length();
-    if body.message.is_empty() || body.message.len() > max_len {
-        tracing::warn!(
-            user_id = %user.user_id,
-            message_len = body.message.len(),
-            max_len,
-            "message validation failed"
-        );
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Message must be between 1 and {} characters", max_len),
-        ));
-    }
+    validate_message(&body.message, state.chat_usecase.max_message_length())?;
+    enforce_rate_limit(&state, user.user_id).await?;
+    check_availability(&state)?;
 
     tracing::info!(
         %conversation_id,
@@ -96,52 +127,12 @@ pub async fn send_chat_message(
 
     metrics::counter!("chat_messages_total", "role" => "user").increment(1);
 
-    // Rate limiting check
-    {
-        let now = std::time::Instant::now();
-        let mut limits = state.chat_rate_limits.write().await;
-        let entry = limits
-            .entry(user.user_id)
-            .or_insert((now, 0));
-
-        if now.duration_since(entry.0).as_secs() >= state.chat_rate_limit_window_secs {
-            *entry = (now, 1);
-        } else {
-            entry.1 += 1;
-            if entry.1 > state.chat_rate_limit_max {
-                tracing::warn!(user_id = %user.user_id, "chat rate limit exceeded");
-                metrics::counter!("chat_rate_limited_total").increment(1);
-                return Err((
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "Too many requests. Please try again later.".to_string(),
-                ));
-            }
-        }
-    }
-
-    if !state.chat_usecase.is_available() {
-        tracing::warn!("chat request received but Ollama is not available");
-        metrics::counter!("chat_unavailable_total").increment(1);
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            "AI assistant is currently unavailable".to_string(),
-        ));
-    }
-
     let start = std::time::Instant::now();
 
     let result = state
         .chat_usecase
         .send_message(user.user_id, conversation_id, body.message)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "chat message processing failed");
-            metrics::counter!("chat_errors_total").increment(1);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Chat error: {}", e),
-            )
-        })?;
+        .await?;
 
     let elapsed = start.elapsed().as_secs_f64();
     metrics::histogram!("chat_response_duration_seconds").record(elapsed);
@@ -170,20 +161,13 @@ pub async fn get_chat_history(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("fetching chat history");
 
     let messages = state
         .chat_usecase
         .get_history(user.user_id, conversation_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to fetch chat history");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get chat history: {}", e),
-            )
-        })?;
+        .await?;
 
     let response: Vec<ChatHistoryMessage> = messages
         .into_iter()
@@ -205,7 +189,7 @@ pub async fn list_conversations(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Query(query): Query<ListConversationsQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     let limit = query.limit.unwrap_or(20).min(100);
     let offset = query.offset.unwrap_or(0);
 
@@ -214,26 +198,12 @@ pub async fn list_conversations(
     let conversations = state
         .chat_usecase
         .list_conversations(user.user_id, limit, offset)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to list conversations");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to list conversations: {}", e),
-            )
-        })?;
+        .await?;
 
     let total = state
         .chat_usecase
         .count_conversations(user.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to count conversations");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to count conversations: {}", e),
-            )
-        })?;
+        .await?;
 
     let items: Vec<ConversationSummaryResponse> = conversations
         .into_iter()
@@ -259,20 +229,13 @@ pub async fn delete_conversation(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::info!("deleting conversation");
 
     state
         .chat_usecase
         .delete_conversation(user.user_id, conversation_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to delete conversation");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to delete conversation: {}", e),
-            )
-        })?;
+        .await?;
 
     tracing::info!("conversation deleted");
     Ok(StatusCode::NO_CONTENT)
@@ -283,7 +246,7 @@ pub async fn delete_message(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path((conversation_id, message_id)): Path<(Uuid, Uuid)>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::info!("deleting message");
 
     let _ = conversation_id; // included in path for REST convention
@@ -291,14 +254,7 @@ pub async fn delete_message(
     state
         .chat_usecase
         .delete_message(user.user_id, message_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to delete message");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to delete message: {}", e),
-            )
-        })?;
+        .await?;
 
     tracing::info!("message deleted");
     Ok(StatusCode::NO_CONTENT)
@@ -309,68 +265,25 @@ pub async fn send_chat_message_stream(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(body): Json<SendMessageRequest>,
-) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, UsecaseError> {
     let conversation_id = body.conversation_id.unwrap_or_else(|| {
         let id = Uuid::new_v4();
         tracing::info!(%id, "created new conversation for stream");
         id
     });
 
-    // Validate message length
-    let max_len = state.chat_usecase.max_message_length();
-    if body.message.is_empty() || body.message.len() > max_len {
-        tracing::warn!(user_id = %user.user_id, message_len = body.message.len(), "stream message validation failed");
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Message must be between 1 and {} characters", max_len),
-        ));
-    }
-
-    // Rate limiting check
-    {
-        let now = std::time::Instant::now();
-        let mut limits = state.chat_rate_limits.write().await;
-        let entry = limits.entry(user.user_id).or_insert((now, 0));
-
-        if now.duration_since(entry.0).as_secs() >= state.chat_rate_limit_window_secs {
-            *entry = (now, 1);
-        } else {
-            entry.1 += 1;
-            if entry.1 > state.chat_rate_limit_max {
-                tracing::warn!(user_id = %user.user_id, "chat stream rate limit exceeded");
-                metrics::counter!("chat_rate_limited_total").increment(1);
-                return Err((
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "Too many requests. Please try again later.".to_string(),
-                ));
-            }
-        }
-    }
-
-    if !state.chat_usecase.is_available() {
-        tracing::warn!("chat stream request received but Ollama is not available");
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            "AI assistant is currently unavailable".to_string(),
-        ));
-    }
+    validate_message(&body.message, state.chat_usecase.max_message_length())?;
+    enforce_rate_limit(&state, user.user_id).await?;
+    check_availability(&state)?;
 
     metrics::counter!("chat_messages_total", "role" => "user").increment(1);
 
     let (_response, event_stream) = state
         .chat_usecase
         .send_message_stream(user.user_id, conversation_id, body.message)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to start chat stream");
-            metrics::counter!("chat_errors_total").increment(1);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Chat error: {}", e),
-            )
-        })?;
+        .await?;
 
-    let sse_stream = event_stream.map(|result| {
+    let sse_stream = event_stream.map(|result: Result<ChatStreamEvent, _>| {
         match result {
             Ok(event) => {
                 let data = serde_json::to_string(&event).unwrap_or_default();

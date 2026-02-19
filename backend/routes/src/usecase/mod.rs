@@ -2,6 +2,7 @@ pub mod categories;
 pub mod chat;
 pub mod comments;
 pub mod contracts;
+pub mod error;
 pub mod geojson_import;
 pub mod jwt;
 pub mod likes;

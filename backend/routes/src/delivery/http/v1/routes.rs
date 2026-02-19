@@ -14,6 +14,7 @@ use validator::Validate;
 
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::domain::route::{Route as DomainRoute, RoutePoint};
+use crate::usecase::error::UsecaseError;
 use crate::usecase::geojson_import::{parse_geojson, ImportError};
 use crate::usecase::photo_tasks::PhotoProcessTask;
 use crate::AppState;
@@ -49,42 +50,31 @@ pub struct UpdateRouteRequest {
     pub tags: Option<Vec<String>>,
 }
 
+fn route_to_response(r: DomainRoute) -> RouteResponse {
+    RouteResponse {
+        id: r.id,
+        user_id: r.user_id,
+        name: r.name,
+        points: r.points,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        share_token: r.share_token.map(|t| t.to_string()),
+        tags: r.tags,
+    }
+}
+
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
 pub async fn list_routes(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("handling list routes request");
 
-    match state.routes_usecase.get_user_routes(user.user_id).await {
-        Ok(routes) => {
-            let response: Vec<RouteResponse> = routes
-                .into_iter()
-                .map(|r| {
-                    let share_token = r.share_token.map(|t| t.to_string());
-                    RouteResponse {
-                        id: r.id,
-                        user_id: r.user_id,
-                        name: r.name,
-                        points: r.points,
-                        created_at: r.created_at,
-                        updated_at: r.updated_at,
-                        share_token,
-                        tags: r.tags,
-                    }
-                })
-                .collect();
-            tracing::debug!(user_id = %user.user_id, count = response.len(), "routes listed successfully");
-            Ok((StatusCode::OK, Json(response)))
-        }
-        Err(e) => {
-            tracing::error!(user_id = %user.user_id, error = %e, "failed to list routes");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to list routes: {}", e),
-            ))
-        }
-    }
+    let routes = state.routes_usecase.get_user_routes(user.user_id).await?;
+    let response: Vec<RouteResponse> = routes.into_iter().map(route_to_response).collect();
+
+    tracing::debug!(user_id = %user.user_id, count = response.len(), "routes listed successfully");
+    Ok((StatusCode::OK, Json(response)))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -92,40 +82,13 @@ pub async fn get_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(user_id = %user.user_id, %route_id, "handling get route request");
 
-    match state.routes_usecase.get_route(user.user_id, route_id).await {
-        Ok(route) => {
-            tracing::debug!(%route_id, "route retrieved successfully");
-            Ok((
-                StatusCode::OK,
-                Json(RouteResponse {
-                    id: route.id,
-                    user_id: route.user_id,
-                    name: route.name,
-                    points: route.points,
-                    created_at: route.created_at,
-                    updated_at: route.updated_at,
-                    share_token: route.share_token.map(|t| t.to_string()),
-                    tags: route.tags,
-                }),
-            ))
-        }
-        Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("not found") {
-                tracing::warn!(%route_id, "route not found");
-                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
-            } else {
-                tracing::error!(%route_id, error = %e, "failed to get route");
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to get route: {}", e),
-                ))
-            }
-        }
-    }
+    let route = state.routes_usecase.get_route(user.user_id, route_id).await?;
+
+    tracing::debug!(%route_id, "route retrieved successfully");
+    Ok((StatusCode::OK, Json(route_to_response(route))))
 }
 
 #[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id))]
@@ -133,47 +96,22 @@ pub async fn create_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateRouteRequest>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("handling create route request");
 
     if let Err(validation_errors) = payload.validate() {
         tracing::warn!(user_id = %user.user_id, ?validation_errors, "validation failed");
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Validation error: {:?}", validation_errors),
-        ));
+        return Err(UsecaseError::Validation(format!("{:?}", validation_errors)));
     }
 
-    match state
+    let route = state
         .routes_usecase
         .create_route(user.user_id, payload.name, payload.points, payload.tags)
-        .await
-    {
-        Ok(route) => {
-            tracing::debug!(route_id = %route.id, "route created successfully");
-            publish_photo_task(&state.nats_client, &route).await;
-            Ok((
-                StatusCode::CREATED,
-                Json(RouteResponse {
-                    id: route.id,
-                    user_id: route.user_id,
-                    name: route.name,
-                    points: route.points,
-                    created_at: route.created_at,
-                    updated_at: route.updated_at,
-                    share_token: route.share_token.map(|t| t.to_string()),
-                    tags: route.tags,
-                }),
-            ))
-        }
-        Err(e) => {
-            tracing::error!(user_id = %user.user_id, error = %e, "failed to create route");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create route: {}", e),
-            ))
-        }
-    }
+        .await?;
+
+    tracing::debug!(route_id = %route.id, "route created successfully");
+    publish_photo_task(&state.nats_client, &route).await;
+    Ok((StatusCode::CREATED, Json(route_to_response(route))))
 }
 
 #[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id))]
@@ -182,53 +120,22 @@ pub async fn update_route(
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
     Json(payload): Json<UpdateRouteRequest>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(%route_id, "handling update route request");
 
     if let Err(validation_errors) = payload.validate() {
         tracing::warn!(user_id = %user.user_id, ?validation_errors, "validation failed");
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Validation error: {:?}", validation_errors),
-        ));
+        return Err(UsecaseError::Validation(format!("{:?}", validation_errors)));
     }
 
-    match state
+    let route = state
         .routes_usecase
         .update_route(user.user_id, route_id, payload.name, payload.points, payload.tags)
-        .await
-    {
-        Ok(route) => {
-            tracing::debug!(%route_id, "route updated successfully");
-            publish_photo_task(&state.nats_client, &route).await;
-            Ok((
-                StatusCode::OK,
-                Json(RouteResponse {
-                    id: route.id,
-                    user_id: route.user_id,
-                    name: route.name,
-                    points: route.points,
-                    created_at: route.created_at,
-                    updated_at: route.updated_at,
-                    share_token: route.share_token.map(|t| t.to_string()),
-                    tags: route.tags,
-                }),
-            ))
-        }
-        Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("not found") {
-                tracing::warn!(%route_id, "route not found");
-                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
-            } else {
-                tracing::error!(%route_id, error = %e, "failed to update route");
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to update route: {}", e),
-                ))
-            }
-        }
-    }
+        .await?;
+
+    tracing::debug!(%route_id, "route updated successfully");
+    publish_photo_task(&state.nats_client, &route).await;
+    Ok((StatusCode::OK, Json(route_to_response(route))))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -236,32 +143,16 @@ pub async fn delete_route(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(%route_id, "handling delete route request");
 
-    match state
+    state
         .routes_usecase
         .delete_route(user.user_id, route_id, &user.role)
-        .await
-    {
-        Ok(()) => {
-            tracing::debug!(%route_id, "route deleted successfully");
-            Ok(StatusCode::NO_CONTENT)
-        }
-        Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("not found") {
-                tracing::warn!(%route_id, "route not found");
-                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
-            } else {
-                tracing::error!(%route_id, error = %e, "failed to delete route");
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to delete route: {}", e),
-                ))
-            }
-        }
-    }
+        .await?;
+
+    tracing::debug!(%route_id, "route deleted successfully");
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[tracing::instrument(skip(state, multipart), fields(user_id = %user.user_id))]
@@ -269,7 +160,7 @@ pub async fn import_route_from_geojson(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("handling import route from GeoJSON request");
 
     let mut file_content: Option<String> = None;
@@ -277,23 +168,18 @@ pub async fn import_route_from_geojson(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to read multipart field");
-            (StatusCode::BAD_REQUEST, format!("Failed to read multipart: {}", e))
-        })?
+        .map_err(|e| UsecaseError::Validation(format!("Failed to read multipart: {}", e)))?
     {
         let field_name = field.name().unwrap_or("").to_string();
         tracing::debug!(field_name = %field_name, "processing multipart field");
 
         if field_name == "file" {
             let bytes = field.bytes().await.map_err(|e| {
-                tracing::error!(error = %e, "failed to read file bytes");
-                (StatusCode::BAD_REQUEST, format!("Failed to read file: {}", e))
+                UsecaseError::Validation(format!("Failed to read file: {}", e))
             })?;
 
-            file_content = Some(String::from_utf8(bytes.to_vec()).map_err(|e| {
-                tracing::error!(error = %e, "file is not valid UTF-8");
-                (StatusCode::BAD_REQUEST, "File must be valid UTF-8".to_string())
+            file_content = Some(String::from_utf8(bytes.to_vec()).map_err(|_| {
+                UsecaseError::Validation("File must be valid UTF-8".to_string())
             })?);
 
             tracing::debug!(content_len = file_content.as_ref().map(|c| c.len()), "read file content");
@@ -303,18 +189,19 @@ pub async fn import_route_from_geojson(
 
     let content = file_content.ok_or_else(|| {
         tracing::warn!("no 'file' field in multipart request");
-        (StatusCode::BAD_REQUEST, "Missing 'file' field in multipart request".to_string())
+        UsecaseError::Validation("Missing 'file' field in multipart request".to_string())
     })?;
 
     let (name, points) = parse_geojson(&content).map_err(|e| {
-        let status = match &e {
-            ImportError::InvalidGeoJson(_) => StatusCode::BAD_REQUEST,
-            ImportError::MissingRouteName => StatusCode::BAD_REQUEST,
-            ImportError::EmptyRoute => StatusCode::BAD_REQUEST,
-            ImportError::UnsupportedGeometry => StatusCode::BAD_REQUEST,
-        };
         tracing::warn!(error = %e, "failed to parse GeoJSON");
-        (status, e.to_string())
+        match &e {
+            ImportError::InvalidGeoJson(_)
+            | ImportError::MissingRouteName
+            | ImportError::EmptyRoute
+            | ImportError::UnsupportedGeometry => {
+                UsecaseError::Validation(e.to_string())
+            }
+        }
     })?;
 
     tracing::info!(
@@ -324,36 +211,14 @@ pub async fn import_route_from_geojson(
         "parsed GeoJSON successfully, creating route"
     );
 
-    match state
+    let route = state
         .routes_usecase
         .create_route(user.user_id, name, points, vec![])
-        .await
-    {
-        Ok(route) => {
-            tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
-            publish_photo_task(&state.nats_client, &route).await;
-            Ok((
-                StatusCode::CREATED,
-                Json(RouteResponse {
-                    id: route.id,
-                    user_id: route.user_id,
-                    name: route.name,
-                    points: route.points,
-                    created_at: route.created_at,
-                    updated_at: route.updated_at,
-                    share_token: route.share_token.map(|t| t.to_string()),
-                    tags: route.tags,
-                }),
-            ))
-        }
-        Err(e) => {
-            tracing::error!(user_id = %user.user_id, error = %e, "failed to create route from import");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create route: {}", e),
-            ))
-        }
-    }
+        .await?;
+
+    tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
+    publish_photo_task(&state.nats_client, &route).await;
+    Ok((StatusCode::CREATED, Json(route_to_response(route))))
 }
 
 #[derive(Serialize)]
@@ -366,37 +231,21 @@ pub async fn enable_share(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(%route_id, "handling enable share request");
 
-    match state
+    let token = state
         .routes_usecase
         .enable_sharing(user.user_id, route_id)
-        .await
-    {
-        Ok(token) => {
-            tracing::info!(%route_id, %token, "sharing enabled");
-            Ok((
-                StatusCode::OK,
-                Json(ShareResponse {
-                    share_token: token.to_string(),
-                }),
-            ))
-        }
-        Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("not found") {
-                tracing::warn!(%route_id, "route not found");
-                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
-            } else {
-                tracing::error!(%route_id, error = %e, "failed to enable sharing");
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to enable sharing: {}", e),
-                ))
-            }
-        }
-    }
+        .await?;
+
+    tracing::info!(%route_id, %token, "sharing enabled");
+    Ok((
+        StatusCode::OK,
+        Json(ShareResponse {
+            share_token: token.to_string(),
+        }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -404,63 +253,29 @@ pub async fn disable_share(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(route_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(%route_id, "handling disable share request");
 
-    match state
+    state
         .routes_usecase
         .disable_sharing(user.user_id, route_id)
-        .await
-    {
-        Ok(()) => {
-            tracing::info!(%route_id, "sharing disabled");
-            Ok(StatusCode::NO_CONTENT)
-        }
-        Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("not found") {
-                tracing::warn!(%route_id, "route not found");
-                Err((StatusCode::NOT_FOUND, "Route not found".to_string()))
-            } else {
-                tracing::error!(%route_id, error = %e, "failed to disable sharing");
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to disable sharing: {}", e),
-                ))
-            }
-        }
-    }
+        .await?;
+
+    tracing::info!(%route_id, "sharing disabled");
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[tracing::instrument(skip(state))]
 pub async fn get_shared_route(
     State(state): State<Arc<AppState>>,
     Path(token): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(%token, "handling get shared route request");
 
-    match state.routes_usecase.get_shared_route(token).await {
-        Ok(route) => {
-            tracing::debug!(route_id = %route.id, "shared route retrieved");
-            Ok((
-                StatusCode::OK,
-                Json(RouteResponse {
-                    id: route.id,
-                    user_id: route.user_id,
-                    name: route.name,
-                    points: route.points,
-                    created_at: route.created_at,
-                    updated_at: route.updated_at,
-                    share_token: route.share_token.map(|t| t.to_string()),
-                    tags: route.tags,
-                }),
-            ))
-        }
-        Err(e) => {
-            tracing::warn!(%token, error = %e, "shared route not found");
-            Err((StatusCode::NOT_FOUND, "Shared route not found".to_string()))
-        }
-    }
+    let route = state.routes_usecase.get_shared_route(token).await?;
+
+    tracing::debug!(route_id = %route.id, "shared route retrieved");
+    Ok((StatusCode::OK, Json(route_to_response(route))))
 }
 
 #[derive(Debug, Deserialize)]
@@ -495,7 +310,7 @@ pub struct ExploreResponse {
 pub async fn explore_routes(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ExploreQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoResponse, UsecaseError> {
     let search = params.search.filter(|s| !s.is_empty());
     let tag = params.tag.filter(|s| !s.is_empty());
     let sort = params.sort.as_deref().unwrap_or("newest");
@@ -504,38 +319,28 @@ pub async fn explore_routes(
 
     tracing::debug!(?search, ?tag, %sort, %limit, %offset, "handling explore routes request");
 
-    match state
+    let (rows, total) = state
         .routes_usecase
         .explore_routes(search, tag, sort, limit, offset)
-        .await
-    {
-        Ok((rows, total)) => {
-            let routes: Vec<ExploreRouteResponse> = rows
-                .into_iter()
-                .map(|r| ExploreRouteResponse {
-                    id: r.id,
-                    name: r.name,
-                    points_count: r.points_count,
-                    created_at: r.created_at,
-                    share_token: r.share_token.to_string(),
-                    likes_count: r.likes_count,
-                    avg_rating: r.avg_rating,
-                    ratings_count: r.ratings_count,
-                    tags: r.tags,
-                })
-                .collect();
+        .await?;
 
-            tracing::debug!(count = routes.len(), total, "explore routes listed");
-            Ok((StatusCode::OK, Json(ExploreResponse { routes, total })))
-        }
-        Err(e) => {
-            tracing::error!(error = %e, "failed to explore routes");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to explore routes: {}", e),
-            ))
-        }
-    }
+    let routes: Vec<ExploreRouteResponse> = rows
+        .into_iter()
+        .map(|r| ExploreRouteResponse {
+            id: r.id,
+            name: r.name,
+            points_count: r.points_count,
+            created_at: r.created_at,
+            share_token: r.share_token.to_string(),
+            likes_count: r.likes_count,
+            avg_rating: r.avg_rating,
+            ratings_count: r.ratings_count,
+            tags: r.tags,
+        })
+        .collect();
+
+    tracing::debug!(count = routes.len(), total, "explore routes listed");
+    Ok((StatusCode::OK, Json(ExploreResponse { routes, total })))
 }
 
 async fn publish_photo_task(nats_client: &Option<async_nats::Client>, route: &DomainRoute) {

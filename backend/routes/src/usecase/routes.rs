@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Error};
 use uuid::Uuid;
 
 use crate::domain::route::{ExploreRouteRow, Route, RoutePoint};
 use crate::usecase::contracts::RouteRepository;
+use crate::usecase::error::UsecaseError;
 
 pub struct RoutesUseCase<R>
 where
@@ -30,7 +30,7 @@ where
         name: String,
         points: Vec<RoutePoint>,
         tags: Vec<String>,
-    ) -> Result<Route, Error> {
+    ) -> Result<Route, UsecaseError> {
         tracing::debug!(?tags, "creating new route");
 
         let route = Route::new(user_id, name, points, tags);
@@ -41,26 +41,26 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn get_route(&self, user_id: Uuid, route_id: Uuid) -> Result<Route, Error> {
+    pub async fn get_route(&self, user_id: Uuid, route_id: Uuid) -> Result<Route, UsecaseError> {
         tracing::debug!("getting route");
 
         let route = self
             .route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         // Check that route belongs to user
         if route.user_id != user_id {
             tracing::warn!("unauthorized route access attempt");
-            return Err(anyhow!("Route not found"));
+            return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
         Ok(route)
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id))]
-    pub async fn get_user_routes(&self, user_id: Uuid) -> Result<Vec<Route>, Error> {
+    pub async fn get_user_routes(&self, user_id: Uuid) -> Result<Vec<Route>, UsecaseError> {
         tracing::debug!("getting user routes");
 
         let routes = self.route_repository.find_by_user_id(user_id).await?;
@@ -77,19 +77,19 @@ where
         name: Option<String>,
         points: Option<Vec<RoutePoint>>,
         tags: Option<Vec<String>>,
-    ) -> Result<Route, Error> {
+    ) -> Result<Route, UsecaseError> {
         tracing::debug!(?tags, "updating route");
 
         let mut route = self
             .route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         // Check that route belongs to user
         if route.user_id != user_id {
             tracing::warn!("unauthorized route update attempt");
-            return Err(anyhow!("Route not found"));
+            return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
         route.update(name, points, tags);
@@ -100,18 +100,18 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn enable_sharing(&self, user_id: Uuid, route_id: Uuid) -> Result<Uuid, Error> {
+    pub async fn enable_sharing(&self, user_id: Uuid, route_id: Uuid) -> Result<Uuid, UsecaseError> {
         tracing::debug!("enabling sharing for route");
 
         let route = self
             .route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         if route.user_id != user_id {
             tracing::warn!("unauthorized share enable attempt");
-            return Err(anyhow!("Route not found"));
+            return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
         // Reuse existing token if already shared
@@ -130,18 +130,18 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn disable_sharing(&self, user_id: Uuid, route_id: Uuid) -> Result<(), Error> {
+    pub async fn disable_sharing(&self, user_id: Uuid, route_id: Uuid) -> Result<(), UsecaseError> {
         tracing::debug!("disabling sharing for route");
 
         let route = self
             .route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         if route.user_id != user_id {
             tracing::warn!("unauthorized share disable attempt");
-            return Err(anyhow!("Route not found"));
+            return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
         self.route_repository
@@ -153,14 +153,14 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(share_token = %token))]
-    pub async fn get_shared_route(&self, token: Uuid) -> Result<Route, Error> {
+    pub async fn get_shared_route(&self, token: Uuid) -> Result<Route, UsecaseError> {
         tracing::debug!("getting shared route by token");
 
         let route = self
             .route_repository
             .find_by_share_token(token)
             .await?
-            .ok_or_else(|| anyhow!("Shared route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Shared route".to_string()))?;
 
         tracing::debug!(route_id = %route.id, "shared route retrieved successfully");
         Ok(route)
@@ -174,7 +174,7 @@ where
         sort: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<(Vec<ExploreRouteRow>, i64), Error> {
+    ) -> Result<(Vec<ExploreRouteRow>, i64), UsecaseError> {
         tracing::debug!("exploring shared routes");
 
         let order_clause = match sort {
@@ -198,20 +198,20 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id, %role))]
-    pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid, role: &str) -> Result<(), Error> {
+    pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid, role: &str) -> Result<(), UsecaseError> {
         tracing::debug!("deleting route");
 
         let route = self
             .route_repository
             .find_by_id(route_id)
             .await?
-            .ok_or_else(|| anyhow!("Route not found"))?;
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
 
         // Admin and moderator can delete any route
         let is_privileged = role == "admin" || role == "moderator";
         if route.user_id != user_id && !is_privileged {
             tracing::warn!("unauthorized route delete attempt");
-            return Err(anyhow!("Route not found"));
+            return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
         if is_privileged && route.user_id != user_id {
