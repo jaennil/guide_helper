@@ -135,7 +135,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -255,7 +255,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -309,7 +309,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 

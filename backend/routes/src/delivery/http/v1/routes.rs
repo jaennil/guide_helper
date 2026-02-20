@@ -29,7 +29,7 @@ pub struct RouteResponse {
     pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub share_token: Option<String>,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -39,7 +39,7 @@ pub struct CreateRouteRequest {
     #[validate(length(min = 1))]
     pub points: Vec<RoutePoint>,
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -47,7 +47,7 @@ pub struct UpdateRouteRequest {
     #[validate(length(min = 1, max = 200))]
     pub name: Option<String>,
     pub points: Option<Vec<RoutePoint>>,
-    pub tags: Option<Vec<String>>,
+    pub category_ids: Option<Vec<Uuid>>,
 }
 
 fn route_to_response(r: DomainRoute) -> RouteResponse {
@@ -59,7 +59,7 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         created_at: r.created_at,
         updated_at: r.updated_at,
         share_token: r.share_token.map(|t| t.to_string()),
-        tags: r.tags,
+        category_ids: r.category_ids,
     }
 }
 
@@ -106,7 +106,7 @@ pub async fn create_route(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, payload.name, payload.points, payload.tags)
+        .create_route(user.user_id, payload.name, payload.points, payload.category_ids)
         .await?;
 
     tracing::debug!(route_id = %route.id, "route created successfully");
@@ -130,7 +130,7 @@ pub async fn update_route(
 
     let route = state
         .routes_usecase
-        .update_route(user.user_id, route_id, payload.name, payload.points, payload.tags)
+        .update_route(user.user_id, route_id, payload.name, payload.points, payload.category_ids)
         .await?;
 
     tracing::debug!(%route_id, "route updated successfully");
@@ -281,7 +281,7 @@ pub async fn get_shared_route(
 #[derive(Debug, Deserialize)]
 pub struct ExploreQuery {
     pub search: Option<String>,
-    pub tag: Option<String>,
+    pub category_id: Option<Uuid>,
     pub sort: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -297,7 +297,7 @@ pub struct ExploreRouteResponse {
     pub likes_count: i64,
     pub avg_rating: f64,
     pub ratings_count: i64,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Serialize)]
@@ -312,16 +312,16 @@ pub async fn explore_routes(
     Query(params): Query<ExploreQuery>,
 ) -> Result<impl IntoResponse, UsecaseError> {
     let search = params.search.filter(|s| !s.is_empty());
-    let tag = params.tag.filter(|s| !s.is_empty());
+    let category_id = params.category_id;
     let sort = params.sort.as_deref().unwrap_or("newest");
     let limit = params.limit.unwrap_or(20).min(50).max(1);
     let offset = params.offset.unwrap_or(0).max(0);
 
-    tracing::debug!(?search, ?tag, %sort, %limit, %offset, "handling explore routes request");
+    tracing::debug!(?search, ?category_id, %sort, %limit, %offset, "handling explore routes request");
 
     let (rows, total) = state
         .routes_usecase
-        .explore_routes(search, tag, sort, limit, offset)
+        .explore_routes(search, category_id, sort, limit, offset)
         .await?;
 
     let routes: Vec<ExploreRouteResponse> = rows
@@ -335,7 +335,7 @@ pub async fn explore_routes(
             likes_count: r.likes_count,
             avg_rating: r.avg_rating,
             ratings_count: r.ratings_count,
-            tags: r.tags,
+            category_ids: r.category_ids,
         })
         .collect();
 
@@ -407,7 +407,7 @@ mod tests {
                 segment_mode: None,
                 photo: None,
             }],
-            tags: vec![],
+            category_ids: vec![],
         };
 
         assert!(request.validate().is_ok());
@@ -424,7 +424,7 @@ mod tests {
                 segment_mode: None,
                 photo: None,
             }],
-            tags: vec![],
+            category_ids: vec![],
         };
 
         assert!(request.validate().is_err());
@@ -435,7 +435,7 @@ mod tests {
         let request = CreateRouteRequest {
             name: "Test".to_string(),
             points: vec![],
-            tags: vec![],
+            category_ids: vec![],
         };
 
         assert!(request.validate().is_err());
@@ -457,7 +457,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
 
         let json = serde_json::to_string(&response).unwrap();

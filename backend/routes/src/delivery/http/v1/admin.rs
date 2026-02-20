@@ -35,7 +35,7 @@ pub struct AdminRouteResponse {
     pub points_count: i64,
     pub created_at: DateTime<Utc>,
     pub share_token: Option<Uuid>,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Serialize)]
@@ -108,7 +108,7 @@ pub async fn list_admin_routes(
             points_count: r.points_count,
             created_at: r.created_at,
             share_token: r.share_token,
-            tags: r.tags,
+            category_ids: r.category_ids,
         })
         .collect();
 

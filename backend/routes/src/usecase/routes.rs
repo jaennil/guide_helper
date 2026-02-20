@@ -29,11 +29,11 @@ where
         user_id: Uuid,
         name: String,
         points: Vec<RoutePoint>,
-        tags: Vec<String>,
+        category_ids: Vec<Uuid>,
     ) -> Result<Route, UsecaseError> {
-        tracing::debug!(?tags, "creating new route");
+        tracing::debug!(?category_ids, "creating new route");
 
-        let route = Route::new(user_id, name, points, tags);
+        let route = Route::new(user_id, name, points, category_ids);
         self.route_repository.create(&route).await?;
 
         tracing::debug!(route_id = %route.id, "route created successfully");
@@ -76,9 +76,9 @@ where
         route_id: Uuid,
         name: Option<String>,
         points: Option<Vec<RoutePoint>>,
-        tags: Option<Vec<String>>,
+        category_ids: Option<Vec<Uuid>>,
     ) -> Result<Route, UsecaseError> {
-        tracing::debug!(?tags, "updating route");
+        tracing::debug!(?category_ids, "updating route");
 
         let mut route = self
             .route_repository
@@ -92,7 +92,7 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
-        route.update(name, points, tags);
+        route.update(name, points, category_ids);
         self.route_repository.update(&route).await?;
 
         tracing::debug!(%route_id, "route updated successfully");
@@ -166,11 +166,11 @@ where
         Ok(route)
     }
 
-    #[tracing::instrument(skip(self), fields(?search, ?tag, %sort, %limit, %offset))]
+    #[tracing::instrument(skip(self), fields(?search, ?category_id, %sort, %limit, %offset))]
     pub async fn explore_routes(
         &self,
         search: Option<String>,
-        tag: Option<String>,
+        category_id: Option<Uuid>,
         sort: &str,
         limit: i64,
         offset: i64,
@@ -186,11 +186,11 @@ where
 
         let routes = self
             .route_repository
-            .explore_shared(search.clone(), tag.clone(), order_clause, limit, offset)
+            .explore_shared(search.clone(), category_id, order_clause, limit, offset)
             .await?;
         let total = self
             .route_repository
-            .count_explore_shared(search, tag)
+            .count_explore_shared(search, category_id)
             .await?;
 
         tracing::debug!(count = routes.len(), total, "explored shared routes");
@@ -269,7 +269,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -317,7 +317,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -346,7 +346,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -381,7 +381,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -416,7 +416,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: Some(existing_token),
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -446,7 +446,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: Some(Uuid::new_v4()),
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -479,7 +479,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: Some(token),
-            tags: vec![],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 

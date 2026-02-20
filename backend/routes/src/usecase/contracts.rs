@@ -23,7 +23,7 @@ pub trait RouteRepository: Send + Sync {
     async fn explore_shared(
         &self,
         search: Option<String>,
-        tag: Option<String>,
+        category_id: Option<Uuid>,
         order_clause: &str,
         limit: i64,
         offset: i64,
@@ -31,7 +31,7 @@ pub trait RouteRepository: Send + Sync {
     async fn count_explore_shared(
         &self,
         search: Option<String>,
-        tag: Option<String>,
+        category_id: Option<Uuid>,
     ) -> Result<i64, RepositoryError>;
     async fn count_all(&self) -> Result<i64, RepositoryError>;
     async fn find_all_admin(

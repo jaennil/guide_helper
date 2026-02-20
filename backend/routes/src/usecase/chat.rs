@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
-use crate::usecase::ollama::{
-    OllamaChatRequest, OllamaClient, OllamaMessage, OllamaTool, OllamaToolFunction,
+use crate::usecase::openai::{
+    OpenAIFunction, OpenAIFunctionCallPolicy, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
 };
 
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
@@ -38,7 +38,7 @@ pub struct ChatPoint {
 pub struct ChatRouteRef {
     pub id: String,
     pub name: String,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
     pub avg_rating: f64,
     pub likes_count: i64,
 }
@@ -71,7 +71,7 @@ where
 {
     chat_repo: CM,
     route_repo: R,
-    ollama: Option<OllamaClient>,
+    assistant: Option<OpenAIClient>,
     http_client: reqwest::Client,
     nominatim_url: String,
     max_tool_iterations: usize,
@@ -86,7 +86,7 @@ where
     pub fn new(
         chat_repo: CM,
         route_repo: R,
-        ollama: Option<OllamaClient>,
+        assistant: Option<OpenAIClient>,
         nominatim_url: String,
         max_tool_iterations: usize,
         max_message_length: usize,
@@ -106,7 +106,7 @@ where
         Self {
             chat_repo,
             route_repo,
-            ollama,
+            assistant,
             http_client,
             nominatim_url,
             max_tool_iterations,
@@ -119,43 +119,21 @@ where
     }
 
     pub fn is_available(&self) -> bool {
-        self.ollama.is_some()
+        self.assistant.is_some()
     }
 
     pub fn model_name(&self) -> &str {
-        self.ollama
+        self.assistant
             .as_ref()
-            .map(|o| o.model())
+            .map(|a| a.model())
             .unwrap_or("none")
     }
 
     pub async fn check_health(&self) -> bool {
-        let ollama = match self.ollama.as_ref() {
-            Some(o) => o,
+        match self.assistant.as_ref() {
+            Some(client) => client.health_check().await,
             None => {
-                tracing::debug!("health check: ollama not configured");
-                return false;
-            }
-        };
-
-        let url = format!("{}/api/tags", ollama.base_url());
-
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .unwrap_or_default();
-
-        match client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => {
-                tracing::debug!("health check: ollama is healthy");
-                true
-            }
-            Ok(resp) => {
-                tracing::warn!(status = %resp.status(), "health check: ollama returned error");
-                false
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "health check: failed to reach ollama");
+                tracing::debug!("health check: OpenAI assistant not configured");
                 false
             }
         }
@@ -168,97 +146,99 @@ where
         conversation_id: Uuid,
         text: String,
     ) -> Result<ChatResponse, UsecaseError> {
-        let ollama = self
-            .ollama
+        let assistant = self
+            .assistant
             .as_ref()
             .ok_or_else(|| UsecaseError::Unavailable("AI assistant is not available".to_string()))?;
 
         tracing::info!(%user_id, %conversation_id, "processing chat message");
 
-        // Save user message
         let user_msg = ChatMessage::new_user_message(user_id, conversation_id, text);
         self.chat_repo.create(&user_msg).await?;
         tracing::debug!(message_id = %user_msg.id, "user message saved");
 
-        // Load conversation history
         let history = self
             .chat_repo
             .find_by_conversation(user_id, conversation_id, 20)
             .await?;
         tracing::debug!(history_count = history.len(), "loaded conversation history");
 
-        // Build Ollama messages
-        let mut messages = vec![OllamaMessage {
+        let mut messages = vec![OpenAIMessage {
             role: "system".to_string(),
-            content: SYSTEM_PROMPT.to_string(),
-            tool_calls: None,
+            content: Some(SYSTEM_PROMPT.to_string()),
+            name: None,
         }];
         for msg in &history {
-            messages.push(OllamaMessage {
+            messages.push(OpenAIMessage {
                 role: msg.role.clone(),
-                content: msg.content.clone(),
-                tool_calls: None,
+                content: Some(msg.content.clone()),
+                name: None,
             });
         }
 
-        let tools = build_tools();
+        let functions = build_functions();
         let mut actions: Vec<ChatAction> = Vec::new();
 
-        // Function-calling loop
         for iteration in 0..self.max_tool_iterations {
-            tracing::debug!(iteration, "sending request to Ollama");
+            tracing::debug!(iteration, "sending request to OpenAI");
 
-            let request = OllamaChatRequest {
-                model: ollama.model().to_string(),
+            let request = OpenAIChatRequest {
+                model: assistant.model().to_string(),
                 messages: messages.clone(),
-                tools: Some(tools.clone()),
-                stream: false,
+                functions: Some(functions.clone()),
+                function_call: Some(OpenAIFunctionCallPolicy::Auto),
             };
 
-            let response = ollama.chat(request).await?;
-            let resp_message = response.message;
+            let response = assistant.chat(request).await?;
+            let choice = response
+                .choices
+                .get(0)
+                .ok_or_else(||
+                    UsecaseError::Internal("OpenAI returned no choices".to_string())
+                )?;
+            let resp_message = choice.message.clone();
 
-            if let Some(ref tool_calls) = resp_message.tool_calls {
+            if let Some(function_call) = resp_message.function_call.clone() {
                 tracing::info!(
                     iteration,
-                    tool_count = tool_calls.len(),
-                    "LLM requested tool calls"
+                    tool_name = %function_call.name,
+                    "LLM requested function call"
                 );
 
-                // Add the assistant message with tool_calls to the conversation
-                messages.push(resp_message.clone());
+                messages.push(OpenAIMessage {
+                    role: resp_message.role.clone(),
+                    content: resp_message.content.clone(),
+                    name: resp_message.name.clone(),
+                });
 
-                for tool_call in tool_calls {
-                    let tool_name = &tool_call.function.name;
-                    let tool_args = &tool_call.function.arguments;
-                    tracing::info!(%tool_name, ?tool_args, "executing tool call");
+                let tool_args = parse_function_arguments(&function_call.arguments);
+                let (result_text, new_actions) =
+                    self.execute_tool(&function_call.name, &tool_args).await;
 
-                    let (result_text, new_actions) =
-                        self.execute_tool(tool_name, tool_args).await;
+                actions.extend(new_actions);
 
-                    actions.extend(new_actions);
-
-                    // Add tool result as a tool message
-                    messages.push(OllamaMessage {
-                        role: "tool".to_string(),
-                        content: result_text,
-                        tool_calls: None,
-                    });
-                }
+                messages.push(OpenAIMessage {
+                    role: "function".to_string(),
+                    content: Some(result_text.clone()),
+                    name: Some(function_call.name.clone()),
+                });
             } else {
-                // No tool calls — this is the final text response
-                let assistant_text = resp_message.content.clone();
+                let assistant_text = resp_message.content.clone().unwrap_or_default();
                 tracing::info!(
                     iteration,
                     response_len = assistant_text.len(),
                     actions_count = actions.len(),
-                    "LLM returned final text response"
+                    "OpenAI returned final text response"
                 );
 
                 let actions_json = if actions.is_empty() {
                     None
                 } else {
-                    Some(serde_json::to_value(&actions).map_err(|e| UsecaseError::Internal(format!("failed to serialize actions: {}", e)))?)
+                    Some(serde_json::to_value(&actions).map_err(|e| {
+                        UsecaseError::Internal(
+                            format!("failed to serialize actions: {}", e)
+                        )
+                    })?)
                 };
 
                 let assistant_msg = ChatMessage::new_assistant_message(
@@ -279,8 +259,13 @@ where
             }
         }
 
-        tracing::warn!("tool-calling loop exhausted after {} iterations", self.max_tool_iterations);
-        Err(UsecaseError::Internal("AI assistant exceeded maximum tool call iterations".to_string()))
+        tracing::warn!(
+            "tool-calling loop exhausted after {} iterations",
+            self.max_tool_iterations
+        );
+        Err(UsecaseError::Internal(
+            "AI assistant exceeded maximum tool call iterations".to_string(),
+        ))
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -420,7 +405,7 @@ where
         args: &std::collections::HashMap<String, serde_json::Value>,
     ) -> (String, Vec<ChatAction>) {
         let search = args.get("query").and_then(|v| v.as_str()).map(String::from);
-        let tag = args.get("tag").and_then(|v| v.as_str()).map(String::from);
+        let category_id = args.get("category_id").and_then(|v| v.as_str()).and_then(|s| Uuid::parse_str(s).ok());
         let sort = args
             .get("sort")
             .and_then(|v| v.as_str())
@@ -431,7 +416,7 @@ where
             .unwrap_or(5)
             .min(10);
 
-        tracing::info!(?search, ?tag, %sort, %limit, "executing search_routes tool");
+        tracing::info!(?search, ?category_id, %sort, %limit, "executing search_routes tool");
 
         let order_clause = match sort {
             "oldest" => "r.created_at ASC",
@@ -442,7 +427,7 @@ where
 
         match self
             .route_repo
-            .explore_shared(search, tag, order_clause, limit, 0)
+            .explore_shared(search, category_id, order_clause, limit, 0)
             .await
         {
             Ok(routes) => {
@@ -453,7 +438,7 @@ where
                     .map(|r| ChatRouteRef {
                         id: r.id.to_string(),
                         name: r.name.clone(),
-                        tags: r.tags.clone(),
+                        category_ids: r.category_ids.clone(),
                         avg_rating: r.avg_rating,
                         likes_count: r.likes_count,
                     })
@@ -504,7 +489,7 @@ where
                     "id": route.id,
                     "name": route.name,
                     "points_count": route.points.len(),
-                    "tags": route.tags,
+                    "category_ids": route.category_ids,
                     "created_at": route.created_at.to_rfc3339(),
                     "is_shared": route.share_token.is_some(),
                 });
@@ -607,72 +592,80 @@ struct NominatimResult {
     display_name: String,
 }
 
-fn build_tools() -> Vec<OllamaTool> {
+fn build_functions() -> Vec<OpenAIFunction> {
     vec![
-        OllamaTool {
-            tool_type: "function".to_string(),
-            function: OllamaToolFunction {
-                name: "geocode".to_string(),
-                description: "Geocode a place name or address to get its latitude and longitude coordinates. Use this when the user asks about the location of a place.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The place name or address to geocode"
-                        }
-                    },
-                    "required": ["query"]
-                }),
-            },
-        },
-        OllamaTool {
-            tool_type: "function".to_string(),
-            function: OllamaToolFunction {
-                name: "search_routes".to_string(),
-                description: "Search the route catalog for shared routes. Can filter by text query, tag, and sort order.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Text search query for route names"
-                        },
-                        "tag": {
-                            "type": "string",
-                            "description": "Filter by tag (e.g. hiking, cycling, historical, nature, urban)"
-                        },
-                        "sort": {
-                            "type": "string",
-                            "enum": ["newest", "oldest", "popular", "top_rated"],
-                            "description": "Sort order for results"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of results (1-10)"
-                        }
+        OpenAIFunction {
+            name: "geocode".to_string(),
+            description: "Geocode a place name or address to get its latitude and longitude coordinates. Use this when the user asks about the location of a place.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The place name or address to geocode"
                     }
-                }),
-            },
+                },
+                "required": ["query"]
+            }),
         },
-        OllamaTool {
-            tool_type: "function".to_string(),
-            function: OllamaToolFunction {
-                name: "get_route_details".to_string(),
-                description: "Get detailed information about a specific route by its ID.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "route_id": {
-                            "type": "string",
-                            "description": "The UUID of the route"
-                        }
+        OpenAIFunction {
+            name: "search_routes".to_string(),
+            description: "Search the route catalog for shared routes. Can filter by text query, category UUID, and sort order.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Text search query for route names"
                     },
-                    "required": ["route_id"]
-                }),
-            },
+                    "category_id": {
+                        "type": "string",
+                        "description": "Filter by category UUID"
+                    },
+                    "sort": {
+                        "type": "string",
+                        "enum": ["newest", "oldest", "popular", "top_rated"],
+                        "description": "Sort order for results"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (1-10)"
+                    }
+                },
+                "required": []
+            }),
+        },
+        OpenAIFunction {
+            name: "get_route_details".to_string(),
+            description: "Get detailed information about a specific route by its ID.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "route_id": {
+                        "type": "string",
+                        "description": "The UUID of the route"
+                    }
+                },
+                "required": ["route_id"]
+            }),
         },
     ]
+}
+
+fn parse_function_arguments(
+    input: &str,
+) -> std::collections::HashMap<String, serde_json::Value> {
+    match serde_json::from_str::<serde_json::Value>(input) {
+        Ok(serde_json::Value::Object(map)) => map.into_iter().collect(),
+        Ok(_) => {
+            tracing::warn!(raw = %input, "function arguments are not an object");
+            std::collections::HashMap::new()
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, raw = %input, "failed to parse function arguments");
+            std::collections::HashMap::new()
+        }
+    }
 }
 
 // Need urlencoding for Nominatim queries
@@ -700,17 +693,19 @@ mod tests {
     use crate::domain::route::{ExploreRouteRow, Route};
     use crate::repository::errors::RepositoryError;
     use crate::usecase::contracts::{MockChatMessageRepository, MockRouteRepository};
+    use crate::usecase::openai::OpenAIClient;
     use std::collections::HashMap;
 
     fn make_usecase(
         chat_repo: MockChatMessageRepository,
         route_repo: MockRouteRepository,
-        with_ollama: bool,
+        with_assistant: bool,
     ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
-        let ollama = if with_ollama {
-            Some(OllamaClient::new(
-                "http://localhost:11434".to_string(),
+        let assistant = if with_assistant {
+            Some(OpenAIClient::new(
+                "https://api.openai.com/v1".to_string(),
                 "test-model".to_string(),
+                "test-key".to_string(),
             ))
         } else {
             None
@@ -718,7 +713,7 @@ mod tests {
         ChatUseCase::new(
             chat_repo,
             route_repo,
-            ollama,
+            assistant,
             "https://nominatim.openstreetmap.org".to_string(),
             5,
             2000,
@@ -728,7 +723,7 @@ mod tests {
     // --- is_available ---
 
     #[test]
-    fn test_is_available_without_ollama() {
+    fn test_is_available_without_assistant() {
         let uc = make_usecase(
             MockChatMessageRepository::new(),
             MockRouteRepository::new(),
@@ -738,7 +733,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_available_with_ollama() {
+    fn test_is_available_with_assistant() {
         let uc = make_usecase(
             MockChatMessageRepository::new(),
             MockRouteRepository::new(),
@@ -747,10 +742,10 @@ mod tests {
         assert!(uc.is_available());
     }
 
-    // --- send_message without ollama ---
+    // --- send_message without assistant ---
 
     #[tokio::test]
-    async fn test_send_message_no_ollama_returns_error() {
+    async fn test_send_message_no_assistant_returns_error() {
         let uc = make_usecase(
             MockChatMessageRepository::new(),
             MockRouteRepository::new(),
@@ -863,7 +858,7 @@ mod tests {
             likes_count: 10,
             avg_rating: 4.5,
             ratings_count: 3,
-            tags: vec!["hiking".to_string()],
+            category_ids: vec![],
         }];
 
         mock_route
@@ -964,7 +959,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: Some(Uuid::new_v4()),
-            tags: vec!["nature".to_string()],
+            category_ids: vec![],
         };
         let route_clone = route.clone();
 
@@ -1082,10 +1077,10 @@ mod tests {
 
     #[test]
     fn test_build_tools_returns_three_tools() {
-        let tools = build_tools();
-        assert_eq!(tools.len(), 3);
+        let functions = build_functions();
+        assert_eq!(functions.len(), 3);
 
-        let names: Vec<&str> = tools.iter().map(|t| t.function.name.as_str()).collect();
+        let names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
         assert!(names.contains(&"geocode"));
         assert!(names.contains(&"search_routes"));
         assert!(names.contains(&"get_route_details"));
@@ -1093,9 +1088,9 @@ mod tests {
 
     #[test]
     fn test_build_tools_all_function_type() {
-        let tools = build_tools();
-        for tool in &tools {
-            assert_eq!(tool.tool_type, "function");
+        let functions = build_functions();
+        for function in &functions {
+            assert!(!function.name.is_empty());
         }
     }
 
@@ -1122,7 +1117,7 @@ mod tests {
             routes: vec![ChatRouteRef {
                 id: "abc-123".to_string(),
                 name: "Trail".to_string(),
-                tags: vec!["hiking".to_string()],
+                category_ids: vec![],
                 avg_rating: 4.2,
                 likes_count: 7,
             }],

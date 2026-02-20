@@ -66,7 +66,7 @@ pub struct Route {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub share_token: Option<Uuid>,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -79,7 +79,7 @@ pub struct ExploreRouteRow {
     pub likes_count: i64,
     pub avg_rating: f64,
     pub ratings_count: i64,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -90,11 +90,11 @@ pub struct AdminRouteRow {
     pub points_count: i64,
     pub created_at: DateTime<Utc>,
     pub share_token: Option<Uuid>,
-    pub tags: Vec<String>,
+    pub category_ids: Vec<Uuid>,
 }
 
 impl Route {
-    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, tags: Vec<String>) -> Self {
+    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, category_ids: Vec<Uuid>) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -104,19 +104,19 @@ impl Route {
             created_at: now,
             updated_at: now,
             share_token: None,
-            tags,
+            category_ids,
         }
     }
 
-    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, tags: Option<Vec<String>>) {
+    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>) {
         if let Some(n) = name {
             self.name = n;
         }
         if let Some(p) = points {
             self.points = p;
         }
-        if let Some(t) = tags {
-            self.tags = t;
+        if let Some(c) = category_ids {
+            self.category_ids = c;
         }
         self.updated_at = Utc::now();
     }
@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(route.name, "Test Route");
         assert_eq!(route.points.len(), 2);
         assert_eq!(route.created_at, route.updated_at);
-        assert!(route.tags.is_empty());
+        assert!(route.category_ids.is_empty());
     }
 
     #[test]

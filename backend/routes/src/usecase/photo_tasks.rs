@@ -83,7 +83,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
 
         let task = PhotoProcessTask::from_route(&route).unwrap();
@@ -107,7 +107,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());
@@ -133,7 +133,7 @@ mod tests {
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             share_token: None,
-            tags: vec![],
+            category_ids: vec![],
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());

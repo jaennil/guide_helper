@@ -28,10 +28,12 @@ impl RouteRepository for PostgresRouteRepository {
     async fn create(&self, route: &Route) -> Result<(), RepositoryError> {
         tracing::debug!("creating route");
 
+        let mut tx = self.pool.begin().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
         sqlx::query(
             r#"
-            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, tags)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO routes (id, user_id, name, points, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
             "#
         )
         .bind(route.id)
@@ -40,12 +42,27 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.created_at)
         .bind(route.updated_at)
-        .bind(&route.tags)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
-        tracing::debug!(route_id = %route.id, "route created successfully");
+        for category_id in &route.category_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO route_categories (route_id, category_id)
+                VALUES ($1, $2)
+                "#
+            )
+            .bind(route.id)
+            .bind(category_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        }
+
+        tx.commit().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %route.id, category_count = route.category_ids.len(), "route created successfully");
         Ok(())
     }
 
@@ -55,9 +72,10 @@ impl RouteRepository for PostgresRouteRepository {
 
         let route = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
-            FROM routes
-            WHERE id = $1
+            SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+            FROM routes r
+            WHERE r.id = $1
             "#
         )
         .bind(id)
@@ -74,10 +92,11 @@ impl RouteRepository for PostgresRouteRepository {
 
         let routes = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
-            FROM routes
-            WHERE user_id = $1
-            ORDER BY created_at DESC
+            SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+            FROM routes r
+            WHERE r.user_id = $1
+            ORDER BY r.created_at DESC
             "#
         )
         .bind(user_id)
@@ -93,10 +112,12 @@ impl RouteRepository for PostgresRouteRepository {
     async fn update(&self, route: &Route) -> Result<(), RepositoryError> {
         tracing::debug!("updating route");
 
+        let mut tx = self.pool.begin().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
         let result = sqlx::query(
             r#"
             UPDATE routes
-            SET name = $2, points = $3, updated_at = $4, tags = $5
+            SET name = $2, points = $3, updated_at = $4
             WHERE id = $1
             "#
         )
@@ -104,8 +125,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(&route.name)
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.updated_at)
-        .bind(&route.tags)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
@@ -113,7 +133,29 @@ impl RouteRepository for PostgresRouteRepository {
             return Err(RepositoryError::NotFound);
         }
 
-        tracing::debug!(route_id = %route.id, "route updated successfully");
+        sqlx::query("DELETE FROM route_categories WHERE route_id = $1")
+            .bind(route.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        for category_id in &route.category_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO route_categories (route_id, category_id)
+                VALUES ($1, $2)
+                "#
+            )
+            .bind(route.id)
+            .bind(category_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        }
+
+        tx.commit().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %route.id, category_count = route.category_ids.len(), "route updated successfully");
         Ok(())
     }
 
@@ -148,9 +190,10 @@ impl RouteRepository for PostgresRouteRepository {
 
         let route = sqlx::query_as::<_, Route>(
             r#"
-            SELECT id, user_id, name, points, created_at, updated_at, share_token, tags
-            FROM routes
-            WHERE share_token = $1
+            SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+            FROM routes r
+            WHERE r.share_token = $1
             "#
         )
         .bind(token)
@@ -184,11 +227,11 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self), fields(?search, ?tag, %order_clause, %limit, %offset))]
+    #[tracing::instrument(skip(self), fields(?search, ?category_id, %order_clause, %limit, %offset))]
     async fn explore_shared(
         &self,
         search: Option<String>,
-        tag: Option<String>,
+        category_id: Option<Uuid>,
         order_clause: &str,
         limit: i64,
         offset: i64,
@@ -203,13 +246,13 @@ impl RouteRepository for PostgresRouteRepository {
                    COALESCE(l.likes_count, 0) AS likes_count,
                    COALESCE(rt.avg_rating, 0.0) AS avg_rating,
                    COALESCE(rt.ratings_count, 0) AS ratings_count,
-                   r.tags
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
             FROM routes r
             LEFT JOIN (SELECT route_id, COUNT(*) AS likes_count FROM route_likes GROUP BY route_id) l ON l.route_id = r.id
             LEFT JOIN (SELECT route_id, AVG(rating::float8) AS avg_rating, COUNT(*) AS ratings_count FROM route_ratings GROUP BY route_id) rt ON rt.route_id = r.id
             WHERE r.share_token IS NOT NULL
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
-              AND ($2::text IS NULL OR r.tags @> ARRAY[$2])
+              AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
             ORDER BY {}
             LIMIT $3 OFFSET $4
             "#,
@@ -218,7 +261,7 @@ impl RouteRepository for PostgresRouteRepository {
 
         let rows = sqlx::query_as::<_, ExploreRouteRow>(&query)
             .bind(search.as_deref())
-            .bind(tag.as_deref())
+            .bind(category_id)
             .bind(limit)
             .bind(offset)
             .fetch_all(&self.pool)
@@ -229,20 +272,20 @@ impl RouteRepository for PostgresRouteRepository {
         Ok(rows)
     }
 
-    #[tracing::instrument(skip(self), fields(?search, ?tag))]
-    async fn count_explore_shared(&self, search: Option<String>, tag: Option<String>) -> Result<i64, RepositoryError> {
+    #[tracing::instrument(skip(self), fields(?search, ?category_id))]
+    async fn count_explore_shared(&self, search: Option<String>, category_id: Option<Uuid>) -> Result<i64, RepositoryError> {
         tracing::debug!("counting explore shared routes");
 
         let count: (i64,) = sqlx::query_as(
             r#"
-            SELECT COUNT(*) FROM routes
-            WHERE share_token IS NOT NULL
-              AND ($1::text IS NULL OR name ILIKE '%' || $1 || '%')
-              AND ($2::text IS NULL OR tags @> ARRAY[$2])
+            SELECT COUNT(*) FROM routes r
+            WHERE r.share_token IS NOT NULL
+              AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
+              AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
             "#,
         )
         .bind(search.as_deref())
-        .bind(tag.as_deref())
+        .bind(category_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -272,11 +315,12 @@ impl RouteRepository for PostgresRouteRepository {
 
         let rows = sqlx::query_as::<_, AdminRouteRow>(
             r#"
-            SELECT id, user_id, name,
-                   jsonb_array_length(points)::bigint AS points_count,
-                   created_at, share_token, tags
-            FROM routes
-            ORDER BY created_at DESC
+            SELECT r.id, r.user_id, r.name,
+                   jsonb_array_length(r.points)::bigint AS points_count,
+                   r.created_at, r.share_token,
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+            FROM routes r
+            ORDER BY r.created_at DESC
             LIMIT $1 OFFSET $2
             "#,
         )
