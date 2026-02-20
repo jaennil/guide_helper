@@ -458,7 +458,7 @@ export default function ProfilePage() {
                       />
                       <div className="route-info">
                         <h3>{route.name}</h3>
-                        {route.category_ids.length > 0 && (
+                        {(route.category_ids?.length ?? 0) > 0 && (
                           <div className="route-tags">
                             {route.category_ids.map((id) => (
                               <span key={id} className="route-tag">{id}</span>

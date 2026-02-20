@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM rust:1.91.0-alpine AS builder
 
 RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
@@ -8,7 +9,10 @@ COPY Cargo.lock Cargo.toml ./
 COPY src src/
 COPY migrations migrations/
 
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --release && \
+    cp target/release/auth /app/auth_bin
 
 FROM alpine:latest
 
@@ -18,7 +22,7 @@ RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/auth ./app
+COPY --from=builder /app/auth_bin ./app
 COPY migrations ./migrations
 
 RUN chown -R app:app /app
