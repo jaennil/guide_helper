@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
@@ -54,6 +55,7 @@ function App() {
       </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
     </ErrorBoundary>
   );
 }

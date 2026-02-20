@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -162,7 +163,7 @@ export default function ProfilePage() {
       ));
       const link = `${window.location.origin}/shared/${share_token}`;
       await navigator.clipboard.writeText(link);
-      alert(t('profile.linkCopied'));
+      toast.success(t('profile.linkCopied'));
     } catch (err: any) {
       setRoutesError(err.response?.data || t('profile.shareFailed'));
     }
@@ -171,7 +172,7 @@ export default function ProfilePage() {
   const handleCopyLink = async (shareToken: string) => {
     const link = `${window.location.origin}/shared/${shareToken}`;
     await navigator.clipboard.writeText(link);
-    alert(t('profile.linkCopied'));
+    toast.success(t('profile.linkCopied'));
   };
 
   const handleUnshareRoute = async (routeId: string) => {
@@ -457,10 +458,10 @@ export default function ProfilePage() {
                       />
                       <div className="route-info">
                         <h3>{route.name}</h3>
-                        {route.tags.length > 0 && (
+                        {route.category_ids.length > 0 && (
                           <div className="route-tags">
-                            {route.tags.map((tag) => (
-                              <span key={tag} className="route-tag">{t(`tags.${tag}` as any)}</span>
+                            {route.category_ids.map((id) => (
+                              <span key={id} className="route-tag">{id}</span>
                             ))}
                           </div>
                         )}

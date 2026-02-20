@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -55,6 +57,9 @@ export default function AdminPage() {
   const [categoriesError, setCategoriesError] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Settings state
   const [thresholds, setThresholds] = useState<DifficultyThresholds>(DEFAULT_DIFFICULTY_THRESHOLDS);
@@ -196,7 +201,7 @@ export default function AdminPage() {
       if (authStats) loadStats();
     } catch (err: any) {
       console.error('Failed to update role:', err);
-      alert(err.response?.data || t('admin.roleUpdateFailed'));
+      toast.error(err.response?.data || t('admin.roleUpdateFailed'));
     }
   };
 
@@ -207,26 +212,36 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteRoute = async (routeId: string) => {
-    if (!window.confirm(t('admin.routes.confirmDelete'))) return;
-    try {
-      await routesApi.deleteRoute(routeId);
-      loadAdminRoutes();
-    } catch (err: any) {
-      console.error('Failed to delete route:', err);
-      alert(err.response?.data || t('admin.routes.deleteFailed'));
-    }
+  const handleDeleteRoute = (routeId: string) => {
+    setConfirmDialog({
+      message: t('admin.routes.confirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await routesApi.deleteRoute(routeId);
+          loadAdminRoutes();
+        } catch (err: any) {
+          console.error('Failed to delete route:', err);
+          toast.error(err.response?.data || t('admin.routes.deleteFailed'));
+        }
+      },
+    });
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!window.confirm(t('admin.comments.confirmDelete'))) return;
-    try {
-      await routesApi.deleteComment(commentId);
-      loadAdminComments();
-    } catch (err: any) {
-      console.error('Failed to delete comment:', err);
-      alert(err.response?.data || t('admin.comments.deleteFailed'));
-    }
+  const handleDeleteComment = (commentId: string) => {
+    setConfirmDialog({
+      message: t('admin.comments.confirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await routesApi.deleteComment(commentId);
+          loadAdminComments();
+        } catch (err: any) {
+          console.error('Failed to delete comment:', err);
+          toast.error(err.response?.data || t('admin.comments.deleteFailed'));
+        }
+      },
+    });
   };
 
   const handleAddCategory = async () => {
@@ -237,7 +252,7 @@ export default function AdminPage() {
       loadCategories();
     } catch (err: any) {
       console.error('Failed to create category:', err);
-      alert(err.response?.data || t('admin.categories.createFailed'));
+      toast.error(err.response?.data || t('admin.categories.createFailed'));
     }
   };
 
@@ -249,19 +264,24 @@ export default function AdminPage() {
       loadCategories();
     } catch (err: any) {
       console.error('Failed to update category:', err);
-      alert(err.response?.data || t('admin.categories.updateFailed'));
+      toast.error(err.response?.data || t('admin.categories.updateFailed'));
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!window.confirm(t('admin.categories.confirmDelete'))) return;
-    try {
-      await categoriesApi.deleteCategory(id);
-      loadCategories();
-    } catch (err: any) {
-      console.error('Failed to delete category:', err);
-      alert(err.response?.data || t('admin.categories.deleteFailed'));
-    }
+  const handleDeleteCategory = (id: string) => {
+    setConfirmDialog({
+      message: t('admin.categories.confirmDelete'),
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await categoriesApi.deleteCategory(id);
+          loadCategories();
+        } catch (err: any) {
+          console.error('Failed to delete category:', err);
+          toast.error(err.response?.data || t('admin.categories.deleteFailed'));
+        }
+      },
+    });
   };
 
   const handleThresholdChange = (field: keyof DifficultyThresholds, value: string) => {
@@ -296,6 +316,15 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page">
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+        />
+      )}
       <header className="admin-header">
         <h1>{t('admin.title')}</h1>
         <div className="header-actions">

@@ -46,7 +46,7 @@ export function SharedMapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
-  const [routeTags, setRouteTags] = useState<string[]>([]);
+  const [routeCategoryIds, setRouteCategoryIds] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,7 +64,7 @@ export function SharedMapPage() {
     try {
       const route = await routesApi.getSharedRoute(shareToken);
       setRouteName(route.name);
-      setRouteTags(route.tags);
+      setRouteCategoryIds(route.category_ids);
       setRouteInfo({ id: route.id, user_id: route.user_id });
 
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
@@ -124,10 +124,10 @@ export function SharedMapPage() {
       <div className="map-header">
         <div className="shared-route-title">
           <strong>{routeName}</strong>
-          {routeTags.length > 0 && (
+          {routeCategoryIds.length > 0 && (
             <div className="route-tags">
-              {routeTags.map((tag) => (
-                <span key={tag} className="route-tag">{t(`tags.${tag}` as any)}</span>
+              {routeCategoryIds.map((id) => (
+                <span key={id} className="route-tag">{id}</span>
               ))}
             </div>
           )}

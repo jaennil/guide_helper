@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, type ChangeEvent } from "react";
+import toast from "react-hot-toast";
 import exifr from "exifr";
 import {
   MapContainer,
@@ -318,7 +319,7 @@ function PointPopup({
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert(t("map.selectImageFile"));
+        toast.error(t("map.selectImageFile"));
         return;
       }
 
@@ -558,7 +559,7 @@ export function MapPage() {
       setShowSaveModal(false);
       setRouteName("");
       setSelectedCategoryIds([]);
-      alert(t("map.routeSaved"));
+      toast.success(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
     } finally {
@@ -679,7 +680,7 @@ export function MapPage() {
 
     if (parsed.length === 0) {
       console.log(`[photo-import] no photos with GPS data found`);
-      alert(t("map.noGpsPhotos"));
+      toast.error(t("map.noGpsPhotos"));
       if (photoImportRef.current) photoImportRef.current.value = "";
       return;
     }
@@ -734,7 +735,7 @@ export function MapPage() {
     if (skipped > 0) {
       message += "\n" + t("map.photosSkipped", { skipped });
     }
-    alert(message);
+    toast.success(message);
 
     console.log(
       `[photo-import] import complete: ${parsed.length} added, ${skipped} skipped`
