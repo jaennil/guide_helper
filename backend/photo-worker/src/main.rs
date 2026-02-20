@@ -68,9 +68,14 @@ async fn main() -> anyhow::Result<()> {
 
     // Create consumer for photo processing
     let stream = jetstream
-        .get_stream("PHOTOS")
+        .get_or_create_stream(async_nats::jetstream::stream::Config {
+            name: "PHOTOS".to_string(),
+            subjects: vec!["photos.process".to_string()],
+            retention: async_nats::jetstream::stream::RetentionPolicy::WorkQueue,
+            ..Default::default()
+        })
         .await
-        .context("failed to get PHOTOS stream")?;
+        .context("failed to get or create PHOTOS stream")?;
     tracing::info!("got PHOTOS stream");
 
     let consumer = stream
