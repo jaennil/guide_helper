@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
-import { categoriesApi } from '../api/categories';
+import { categoriesApi, type Category } from '../api/categories';
 import './ExplorePage.css';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
@@ -21,30 +21,28 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [tag, setTag] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [offset, setOffset] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
 
-  const [availableTags, setAvailableTags] = useState<string[]>(['hiking', 'cycling', 'historical', 'nature', 'urban']);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     categoriesApi.getCategories().then(cats => {
-      if (cats.length > 0) {
-        setAvailableTags(cats.map(c => c.name));
-      }
+      setAvailableCategories(cats);
     }).catch(err => console.error('Failed to load categories:', err));
   }, []);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const fetchRoutes = useCallback(async (searchValue: string, tagValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
+  const fetchRoutes = useCallback(async (searchValue: string, categoryIdValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
     setLoading(true);
     setError('');
     try {
       const data = await routesApi.exploreRoutes({
         search: searchValue || undefined,
-        tag: tagValue || undefined,
+        category_id: categoryIdValue || undefined,
         sort: sortValue,
         limit: PAGE_SIZE,
         offset: offsetValue,
@@ -63,11 +61,11 @@ export default function ExplorePage() {
     }
   }, [t]);
 
-  // Initial load, sort, and tag change
+  // Initial load, sort, and category change
   useEffect(() => {
     setOffset(0);
-    fetchRoutes(search, tag, sort, 0, false);
-  }, [sort, tag]);
+    fetchRoutes(search, categoryId, sort, 0, false);
+  }, [sort, categoryId]);
 
   // Search with debounce
   const handleSearchChange = (value: string) => {
@@ -75,14 +73,14 @@ export default function ExplorePage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setOffset(0);
-      fetchRoutes(value, tag, sort, 0, false);
+      fetchRoutes(value, categoryId, sort, 0, false);
     }, 400);
   };
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE;
     setOffset(newOffset);
-    fetchRoutes(search, tag, sort, newOffset, true);
+    fetchRoutes(search, categoryId, sort, newOffset, true);
   };
 
   const formatDate = (dateString: string) => {
@@ -120,13 +118,13 @@ export default function ExplorePage() {
           />
           <select
             className="explore-tag-filter"
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
           >
             <option value="">{t('explore.allTags')}</option>
-            {availableTags.map((t_tag) => (
-              <option key={t_tag} value={t_tag}>
-                {t(`tags.${t_tag}` as any)}
+            {availableCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {t(`tags.${cat.name}` as any) || cat.name}
               </option>
             ))}
           </select>
@@ -174,11 +172,12 @@ export default function ExplorePage() {
                       </span>
                     )}
                   </div>
-                  {route.tags.length > 0 && (
+                  {route.category_ids.length > 0 && (
                     <div className="route-tags">
-                      {route.tags.map((tag) => (
-                        <span key={tag} className="route-tag">{t(`tags.${tag}` as any)}</span>
-                      ))}
+                      {route.category_ids.map((id) => {
+                        const cat = availableCategories.find(c => c.id === id);
+                        return <span key={id} className="route-tag">{cat ? (t(`tags.${cat.name}` as any) || cat.name) : id}</span>;
+                      })}
                     </div>
                   )}
                 </div>

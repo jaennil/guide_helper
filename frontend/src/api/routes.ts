@@ -25,7 +25,7 @@ export interface Route {
   created_at: string;
   updated_at: string;
   share_token?: string;
-  tags: string[];
+  category_ids: string[];
 }
 
 export interface Comment {
@@ -79,7 +79,7 @@ export interface ExploreRoute {
   likes_count: number;
   avg_rating: number;
   ratings_count: number;
-  tags: string[];
+  category_ids: string[];
 }
 
 export interface ExploreResponse {
@@ -89,7 +89,7 @@ export interface ExploreResponse {
 
 export interface ExploreParams {
   search?: string;
-  tag?: string;
+  category_id?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -98,12 +98,13 @@ export interface ExploreParams {
 export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
-  tags: string[];
+  category_ids: string[];
 }
 
 export interface UpdateRouteRequest {
   name?: string;
   points?: RoutePoint[];
+  category_ids?: string[];
 }
 
 const getAuthHeader = () => {

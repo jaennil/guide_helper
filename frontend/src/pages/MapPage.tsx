@@ -18,7 +18,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData } from "../api/routes";
-import { categoriesApi } from "../api/categories";
+import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
@@ -387,7 +387,7 @@ export function MapPage() {
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
@@ -400,19 +400,17 @@ export function MapPage() {
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
-  const [availableTags, setAvailableTags] = useState<string[]>(['hiking', 'cycling', 'historical', 'nature', 'urban']);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     categoriesApi.getCategories().then(cats => {
-      if (cats.length > 0) {
-        setAvailableTags(cats.map(c => c.name));
-      }
+      setAvailableCategories(cats);
     }).catch(err => console.error('Failed to load categories:', err));
   }, []);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : prev.length < 5 ? [...prev, tag] : prev
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategoryIds(prev =>
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : prev.length < 5 ? [...prev, categoryId] : prev
     );
   };
 
@@ -555,11 +553,11 @@ export function MapPage() {
       await routesApi.createRoute({
         name: routeName.trim(),
         points: pointsToSave,
-        tags: selectedTags,
+        category_ids: selectedCategoryIds,
       });
       setShowSaveModal(false);
       setRouteName("");
-      setSelectedTags([]);
+      setSelectedCategoryIds([]);
       alert(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
@@ -1028,14 +1026,14 @@ export function MapPage() {
               <div className="tag-selector">
                 <label>{t("map.selectTags")}</label>
                 <div className="tag-selector-buttons">
-                  {availableTags.map((tag) => (
+                  {availableCategories.map((cat) => (
                     <button
-                      key={tag}
+                      key={cat.id}
                       type="button"
-                      className={`tag-button${selectedTags.includes(tag) ? " active" : ""}`}
-                      onClick={() => toggleTag(tag)}
+                      className={`tag-button${selectedCategoryIds.includes(cat.id) ? " active" : ""}`}
+                      onClick={() => toggleCategory(cat.id)}
                     >
-                      {t(`tags.${tag}` as any)}
+                      {t(`tags.${cat.name}` as any) || cat.name}
                     </button>
                   ))}
                 </div>
