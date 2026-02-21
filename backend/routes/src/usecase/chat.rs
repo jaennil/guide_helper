@@ -209,7 +209,7 @@ where
 
                 messages.push(OpenAIMessage {
                     role: resp_message.role.clone(),
-                    content: resp_message.content.clone(),
+                    content: Some(resp_message.content.clone().unwrap_or_default()),
                     name: resp_message.name.clone(),
                     function_call: Some(OpenAIFunctionCallRef {
                         name: function_call.name.clone(),
