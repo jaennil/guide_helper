@@ -91,7 +91,7 @@ interface RoutingControlData {
   toLatLng: L.LatLng;
 }
 
-export function RoutingControl({
+export const RoutingControl = React.memo(function RoutingControl({
   waypoints,
   routeSegments,
   color = "#3388ff",
@@ -213,7 +213,7 @@ export function RoutingControl({
   }, [map]);
 
   return null;
-}
+});
 
 export function ManualRoutes({
   waypoints,
@@ -304,7 +304,7 @@ function createColoredMarkerIcon(color: string, photo?: PhotoData): L.DivIcon {
   });
 }
 
-function PointPopup({
+const PointPopup = React.memo(function PointPopup({
   point,
   index,
   onPhotoChange,
@@ -380,7 +380,7 @@ function PointPopup({
       </div>
     </div>
   );
-}
+});
 
 export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
@@ -606,11 +606,11 @@ export function MapPage() {
     });
   };
 
-  const handlePhotoChange = (pointId: number, photo: PhotoData | undefined) => {
+  const handlePhotoChange = React.useCallback((pointId: number, photo: PhotoData | undefined) => {
     setRoutePoints((prev) =>
       prev.map((point) => (point.id === pointId ? { ...point, photo } : point))
     );
-  };
+  }, []);
 
   const handlePointDrag = (pointId: number, newLat: number, newLng: number) => {
     console.log(`[drag] point ${pointId} moved to ${newLat.toFixed(6)}, ${newLng.toFixed(6)}`);

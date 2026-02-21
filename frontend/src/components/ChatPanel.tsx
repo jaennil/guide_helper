@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { chatApi, type ChatAction, type ChatPoint, type ChatRouteRef, type ConversationSummary } from '../api/chat';
@@ -11,6 +11,117 @@ interface DisplayMessage {
   content: string;
   actions?: ChatAction[];
 }
+
+interface ChatMessageItemProps {
+  msg: DisplayMessage;
+  copiedId: string | null;
+  onCopy: (id: string, content: string) => void;
+  onDelete: (id: string) => void;
+  onShowPoints: (points: ChatPoint[]) => void;
+  onShowRoutes: (routes: ChatRouteRef[]) => void;
+  onNavigate: (path: string) => void;
+  tCopied: string;
+  tDeleteMessage: string;
+  tShowOnMap: string;
+  tGoTo: string;
+}
+
+const ChatMessageItem = memo(function ChatMessageItem({
+  msg,
+  copiedId,
+  onCopy,
+  onDelete,
+  onShowPoints,
+  onShowRoutes,
+  onNavigate,
+  tCopied,
+  tDeleteMessage,
+  tShowOnMap,
+  tGoTo,
+}: ChatMessageItemProps) {
+  return (
+    <div className={`chat-message ${msg.role}`}>
+      {msg.role === 'assistant' ? (
+        <div className="chat-message-markdown">
+          <ReactMarkdown>{msg.content}</ReactMarkdown>
+        </div>
+      ) : (
+        <div>{msg.content}</div>
+      )}
+      {msg.role === 'assistant' && msg.content && (
+        <button
+          className="chat-message-copy"
+          aria-label="Copy"
+          onClick={() => onCopy(msg.id, msg.content)}
+        >
+          {copiedId === msg.id ? tCopied : '\u2398'}
+        </button>
+      )}
+      <button
+        className="chat-message-delete"
+        aria-label={tDeleteMessage}
+        onClick={() => onDelete(msg.id)}
+      >
+        {tDeleteMessage}
+      </button>
+      {msg.actions && msg.actions.length > 0 && (
+        <div className="chat-message-actions">
+          {msg.actions.map((action, idx) => {
+            if (action.type === 'show_points' && action.points) {
+              return (
+                <button
+                  key={idx}
+                  className="chat-action-btn"
+                  onClick={() => onShowPoints(action.points!)}
+                >
+                  {tShowOnMap}
+                </button>
+              );
+            }
+            if (action.type === 'show_routes' && action.routes) {
+              return (
+                <div key={idx}>
+                  {action.routes.map((route) => (
+                    <div
+                      key={route.id}
+                      className="chat-route-card"
+                      onClick={() => onShowRoutes([route])}
+                    >
+                      <span className="chat-route-card-name">{route.name}</span>
+                      <span className="chat-route-card-meta">
+                        {(route.category_ids?.length ?? 0) > 0 && route.category_ids.join(', ')}
+                        {route.avg_rating > 0 && ` \u2022 ${route.avg_rating.toFixed(1)}\u2605`}
+                        {route.likes_count > 0 && ` \u2022 ${route.likes_count}\u2764`}
+                      </span>
+                    </div>
+                  ))}
+                  <button
+                    className="chat-action-btn"
+                    onClick={() => onShowRoutes(action.routes!)}
+                  >
+                    {tShowOnMap}
+                  </button>
+                </div>
+              );
+            }
+            if (action.type === 'navigate' && action.path) {
+              return (
+                <button
+                  key={idx}
+                  className="chat-action-btn chat-action-navigate"
+                  onClick={() => onNavigate(action.path!)}
+                >
+                  {tGoTo} {action.label || action.path}
+                </button>
+              );
+            }
+            return null;
+          })}
+        </div>
+      )}
+    </div>
+  );
+});
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -158,16 +269,16 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     setError('');
   };
 
-  const handleShowPoints = (points: ChatPoint[]) => {
+  const handleShowPoints = useCallback((points: ChatPoint[]) => {
     onShowPoints(points);
-  };
+  }, [onShowPoints]);
 
-  const handleShowRoutes = (routes: ChatRouteRef[]) => {
+  const handleShowRoutes = useCallback((routes: ChatRouteRef[]) => {
     const ids = routes.map((r) => r.id);
     onShowRoutes(ids);
-  };
+  }, [onShowRoutes]);
 
-  const handleCopy = async (msgId: string, content: string) => {
+  const handleCopy = useCallback(async (msgId: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
       setCopiedId(msgId);
@@ -175,9 +286,9 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     } catch {
       // clipboard API may not be available
     }
-  };
+  }, []);
 
-  const handleDeleteMessage = async (msgId: string) => {
+  const handleDeleteMessage = useCallback(async (msgId: string) => {
     if (!conversationId) return;
     try {
       await chatApi.deleteMessage(conversationId, msgId);
@@ -185,7 +296,12 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     } catch {
       // ignore
     }
-  };
+  }, [conversationId]);
+
+  const handleNavigate = useCallback((path: string) => {
+    navigate(path);
+    onClose();
+  }, [navigate, onClose]);
 
   const handleShowHistory = async () => {
     setShowHistory(true);
@@ -299,86 +415,20 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
 
       <div className="chat-messages" role="log" aria-live="polite" aria-label="Messages">
         {messages.map((msg) => (
-          <div key={msg.id} className={`chat-message ${msg.role}`}>
-            {msg.role === 'assistant' ? (
-              <div className="chat-message-markdown">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-              </div>
-            ) : (
-              <div>{msg.content}</div>
-            )}
-            {msg.role === 'assistant' && msg.content && (
-              <button
-                className="chat-message-copy"
-                aria-label="Copy"
-                onClick={() => handleCopy(msg.id, msg.content)}
-              >
-                {copiedId === msg.id ? t('chat.copied') : '\u2398'}
-              </button>
-            )}
-            <button
-              className="chat-message-delete"
-              aria-label={t('chat.deleteMessage')}
-              onClick={() => handleDeleteMessage(msg.id)}
-            >
-              {t('chat.deleteMessage')}
-            </button>
-            {msg.actions && msg.actions.length > 0 && (
-              <div className="chat-message-actions">
-                {msg.actions.map((action, idx) => {
-                  if (action.type === 'show_points' && action.points) {
-                    return (
-                      <button
-                        key={idx}
-                        className="chat-action-btn"
-                        onClick={() => handleShowPoints(action.points!)}
-                      >
-                        {t('chat.showOnMap')}
-                      </button>
-                    );
-                  }
-                  if (action.type === 'show_routes' && action.routes) {
-                    return (
-                      <div key={idx}>
-                        {action.routes.map((route) => (
-                          <div
-                            key={route.id}
-                            className="chat-route-card"
-                            onClick={() => handleShowRoutes([route])}
-                          >
-                            <span className="chat-route-card-name">{route.name}</span>
-                            <span className="chat-route-card-meta">
-                              {(route.category_ids?.length ?? 0) > 0 && route.category_ids.join(', ')}
-                              {route.avg_rating > 0 && ` \u2022 ${route.avg_rating.toFixed(1)}\u2605`}
-                              {route.likes_count > 0 && ` \u2022 ${route.likes_count}\u2764`}
-                            </span>
-                          </div>
-                        ))}
-                        <button
-                          className="chat-action-btn"
-                          onClick={() => handleShowRoutes(action.routes!)}
-                        >
-                          {t('chat.showOnMap')}
-                        </button>
-                      </div>
-                    );
-                  }
-                  if (action.type === 'navigate' && action.path) {
-                    return (
-                      <button
-                        key={idx}
-                        className="chat-action-btn chat-action-navigate"
-                        onClick={() => { navigate(action.path!); onClose(); }}
-                      >
-                        {t('chat.goTo')} {action.label || action.path}
-                      </button>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            )}
-          </div>
+          <ChatMessageItem
+            key={msg.id}
+            msg={msg}
+            copiedId={copiedId}
+            onCopy={handleCopy}
+            onDelete={handleDeleteMessage}
+            onShowPoints={handleShowPoints}
+            onShowRoutes={handleShowRoutes}
+            onNavigate={handleNavigate}
+            tCopied={t('chat.copied')}
+            tDeleteMessage={t('chat.deleteMessage')}
+            tShowOnMap={t('chat.showOnMap')}
+            tGoTo={t('chat.goTo')}
+          />
         ))}
         {loading && (
           <div className="chat-typing">
