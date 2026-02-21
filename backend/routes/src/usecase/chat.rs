@@ -6,17 +6,27 @@ use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
 use crate::usecase::openai::{
-    OpenAIFunction, OpenAIFunctionCallPolicy, OpenAIFunctionCallRef, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
+    OpenAIFunction, OpenAITool, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
 };
 
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
 You help users find routes, plan trips, search the route catalog, and answer questions about places.
 Always respond in the same language the user writes in.
-You have access to tools for geocoding places and searching the route catalog.
-When the user asks about a place or location, use the geocode tool.
-When the user asks to find or search routes, use the search_routes tool.
-When the user asks about a specific route by ID, use the get_route_details tool.
-Be concise and helpful. When showing results, summarize them naturally."#;
+
+You have access to these tools:
+- geocode: Look up coordinates for any place name or address. Calling this tool automatically displays the location as a marker on the interactive map.
+- search_routes: Search the route catalog for shared routes by text query, category, or sort order.
+- get_route_details: Get detailed information about a specific route by its ID.
+
+Rules for tool usage — follow these strictly:
+1. When the user asks to SHOW, FIND, MARK, or DISPLAY a location — call geocode for that location.
+2. When the user asks to BUILD A ROUTE, PLAN A TRIP, or GO FROM one place TO another — call geocode for EACH location mentioned (start, end, and any waypoints), then describe the route between them. Do NOT give text-only directions; always geocode the places first.
+3. When the user asks to search or browse routes in the catalog — use search_routes.
+4. When the user mentions a specific route ID — use get_route_details.
+5. NEVER say you cannot display maps or show locations on the map. You CAN show locations by calling the geocode tool — it will place markers on the map automatically.
+6. If the user names two or more places, call geocode separately for each one.
+
+Be concise and helpful. After calling tools, summarize the results naturally."#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -166,19 +176,19 @@ where
         let mut messages = vec![OpenAIMessage {
             role: "system".to_string(),
             content: Some(SYSTEM_PROMPT.to_string()),
-            name: None,
-            function_call: None,
+            tool_call_id: None,
+            tool_calls: None,
         }];
         for msg in &history {
             messages.push(OpenAIMessage {
                 role: msg.role.clone(),
                 content: Some(msg.content.clone()),
-                name: None,
-                function_call: None,
+                tool_call_id: None,
+                tool_calls: None,
             });
         }
 
-        let functions = build_functions();
+        let tools = build_tools();
         let mut actions: Vec<ChatAction> = Vec::new();
 
         for iteration in 0..self.max_tool_iterations {
@@ -187,8 +197,8 @@ where
             let request = OpenAIChatRequest {
                 model: assistant.model().to_string(),
                 messages: messages.clone(),
-                functions: Some(functions.clone()),
-                function_call: Some(OpenAIFunctionCallPolicy::Auto),
+                tools: Some(tools.clone()),
+                tool_choice: Some("auto".to_string()),
             };
 
             let response = assistant.chat(request).await?;
@@ -200,35 +210,43 @@ where
                 )?;
             let resp_message = choice.message.clone();
 
-            if let Some(function_call) = resp_message.function_call.clone() {
+            if !resp_message.tool_calls.is_empty() {
                 tracing::info!(
                     iteration,
-                    tool_name = %function_call.name,
-                    "LLM requested function call"
+                    tool_count = resp_message.tool_calls.len(),
+                    "LLM requested tool calls"
                 );
 
+                // Add the assistant message (with tool_calls) to history
                 messages.push(OpenAIMessage {
                     role: resp_message.role.clone(),
-                    content: Some(resp_message.content.clone().unwrap_or_default()),
-                    name: resp_message.name.clone(),
-                    function_call: Some(OpenAIFunctionCallRef {
-                        name: function_call.name.clone(),
-                        arguments: function_call.arguments.clone(),
-                    }),
+                    content: resp_message.content.clone(),
+                    tool_call_id: None,
+                    tool_calls: Some(resp_message.tool_calls.clone()),
                 });
 
-                let tool_args = parse_function_arguments(&function_call.arguments);
-                let (result_text, new_actions) =
-                    self.execute_tool(&function_call.name, &tool_args).await;
+                // Execute each tool call and add results
+                for tool_call in &resp_message.tool_calls {
+                    tracing::info!(
+                        iteration,
+                        tool_name = %tool_call.function.name,
+                        tool_call_id = %tool_call.id,
+                        "executing tool call"
+                    );
 
-                actions.extend(new_actions);
+                    let tool_args = parse_function_arguments(&tool_call.function.arguments);
+                    let (result_text, new_actions) =
+                        self.execute_tool(&tool_call.function.name, &tool_args).await;
 
-                messages.push(OpenAIMessage {
-                    role: "function".to_string(),
-                    content: Some(result_text.clone()),
-                    name: Some(function_call.name.clone()),
-                    function_call: None,
-                });
+                    actions.extend(new_actions);
+
+                    messages.push(OpenAIMessage {
+                        role: "tool".to_string(),
+                        content: Some(result_text),
+                        tool_call_id: Some(tool_call.id.clone()),
+                        tool_calls: None,
+                    });
+                }
             } else {
                 let assistant_text = resp_message.content.clone().unwrap_or_default();
                 tracing::info!(
@@ -599,62 +617,71 @@ struct NominatimResult {
     display_name: String,
 }
 
-fn build_functions() -> Vec<OpenAIFunction> {
+fn build_tools() -> Vec<OpenAITool> {
     vec![
-        OpenAIFunction {
-            name: "geocode".to_string(),
-            description: "Geocode a place name or address to get its latitude and longitude coordinates. Use this when the user asks about the location of a place.".to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The place name or address to geocode"
-                    }
-                },
-                "required": ["query"]
-            }),
+        OpenAITool {
+            tool_type: "function".to_string(),
+            function: OpenAIFunction {
+                name: "geocode".to_string(),
+                description: "Geocode a place name or address to get its latitude and longitude. Calling this tool places a marker for the location on the interactive map. Call it once per location when building routes or showing places.".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The place name or address to geocode"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+            },
         },
-        OpenAIFunction {
-            name: "search_routes".to_string(),
-            description: "Search the route catalog for shared routes. Can filter by text query, category UUID, and sort order.".to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Text search query for route names"
+        OpenAITool {
+            tool_type: "function".to_string(),
+            function: OpenAIFunction {
+                name: "search_routes".to_string(),
+                description: "Search the route catalog for shared routes. Can filter by text query, category UUID, and sort order.".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Text search query for route names"
+                        },
+                        "category_id": {
+                            "type": "string",
+                            "description": "Filter by category UUID"
+                        },
+                        "sort": {
+                            "type": "string",
+                            "enum": ["newest", "oldest", "popular", "top_rated"],
+                            "description": "Sort order for results"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of results (1-10)"
+                        }
                     },
-                    "category_id": {
-                        "type": "string",
-                        "description": "Filter by category UUID"
-                    },
-                    "sort": {
-                        "type": "string",
-                        "enum": ["newest", "oldest", "popular", "top_rated"],
-                        "description": "Sort order for results"
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of results (1-10)"
-                    }
-                },
-                "required": []
-            }),
+                    "required": []
+                }),
+            },
         },
-        OpenAIFunction {
-            name: "get_route_details".to_string(),
-            description: "Get detailed information about a specific route by its ID.".to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "route_id": {
-                        "type": "string",
-                        "description": "The UUID of the route"
-                    }
-                },
-                "required": ["route_id"]
-            }),
+        OpenAITool {
+            tool_type: "function".to_string(),
+            function: OpenAIFunction {
+                name: "get_route_details".to_string(),
+                description: "Get detailed information about a specific route by its ID.".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "route_id": {
+                            "type": "string",
+                            "description": "The UUID of the route"
+                        }
+                    },
+                    "required": ["route_id"]
+                }),
+            },
         },
     ]
 }
@@ -1084,10 +1111,10 @@ mod tests {
 
     #[test]
     fn test_build_tools_returns_three_tools() {
-        let functions = build_functions();
-        assert_eq!(functions.len(), 3);
+        let tools = build_tools();
+        assert_eq!(tools.len(), 3);
 
-        let names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
+        let names: Vec<&str> = tools.iter().map(|t| t.function.name.as_str()).collect();
         assert!(names.contains(&"geocode"));
         assert!(names.contains(&"search_routes"));
         assert!(names.contains(&"get_route_details"));
@@ -1095,9 +1122,10 @@ mod tests {
 
     #[test]
     fn test_build_tools_all_function_type() {
-        let functions = build_functions();
-        for function in &functions {
-            assert!(!function.name.is_empty());
+        let tools = build_tools();
+        for tool in &tools {
+            assert_eq!(tool.tool_type, "function");
+            assert!(!tool.function.name.is_empty());
         }
     }
 

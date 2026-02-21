@@ -2,21 +2,13 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct OpenAIFunctionCallRef {
-    pub name: String,
-    pub arguments: String,
-}
+// ── Request types ──────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
-pub struct OpenAIMessage {
-    pub role: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<OpenAIFunctionCallRef>,
+pub struct OpenAITool {
+    #[serde(rename = "type")]
+    pub tool_type: String, // always "function"
+    pub function: OpenAIFunction,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -27,9 +19,31 @@ pub struct OpenAIFunction {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum OpenAIFunctionCallPolicy {
-    Auto,
+pub struct OpenAIMessage {
+    pub role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// Present when role == "tool" — links back to the tool_call that triggered this result
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    /// Present when role == "assistant" and the model wants to call tools
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAIToolCall>>,
+}
+
+/// A tool-call record stored inside an assistant message (outbound, serialised)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAIToolCall {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub call_type: String, // always "function"
+    pub function: OpenAIToolCallFunction,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAIToolCallFunction {
+    pub name: String,
+    pub arguments: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,10 +51,12 @@ pub struct OpenAIChatRequest {
     pub model: String,
     pub messages: Vec<OpenAIMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub functions: Option<Vec<OpenAIFunction>>,
+    pub tools: Option<Vec<OpenAITool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<OpenAIFunctionCallPolicy>,
+    pub tool_choice: Option<String>, // "auto" | "none" | "required"
 }
+
+// ── Response types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 pub struct OpenAIChatResponse {
@@ -56,16 +72,12 @@ pub struct OpenAIChoice {
 pub struct OpenAIResponseMessage {
     pub role: String,
     pub content: Option<String>,
-    pub name: Option<String>,
-    #[serde(rename = "function_call")]
-    pub function_call: Option<OpenAIFunctionCall>,
+    /// Non-empty when the model requested one or more tool calls
+    #[serde(default)]
+    pub tool_calls: Vec<OpenAIToolCall>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct OpenAIFunctionCall {
-    pub name: String,
-    pub arguments: String,
-}
+// ── Client ─────────────────────────────────────────────────────────────────────
 
 pub struct OpenAIClient {
     http_client: reqwest::Client,
