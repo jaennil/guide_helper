@@ -12,7 +12,7 @@ export interface ChatPoint {
 export interface ChatRouteRef {
   id: string;
   name: string;
-  tags: string[];
+  category_ids: string[];
   avg_rating: number;
   likes_count: number;
 }
