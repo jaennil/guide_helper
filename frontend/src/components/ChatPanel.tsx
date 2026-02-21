@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
 import { chatApi, type ChatAction, type ChatPoint, type ChatRouteRef, type ConversationSummary } from '../api/chat';
 import { useLanguage } from '../context/LanguageContext';
 import './ChatPanel.css';
@@ -31,6 +32,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -359,6 +361,17 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
                           {t('chat.showOnMap')}
                         </button>
                       </div>
+                    );
+                  }
+                  if (action.type === 'navigate' && action.path) {
+                    return (
+                      <button
+                        key={idx}
+                        className="chat-action-btn chat-action-navigate"
+                        onClick={() => { navigate(action.path!); onClose(); }}
+                      >
+                        {t('chat.goTo')} {action.label || action.path}
+                      </button>
                     );
                   }
                   return null;

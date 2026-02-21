@@ -110,6 +110,16 @@
   border-color: var(--accent-color, #3b82f6);
 }
 
+.chat-action-navigate {
+  border-color: var(--accent-color, #3b82f6);
+  color: var(--accent-color, #3b82f6);
+}
+
+.chat-action-navigate:hover {
+  background: var(--accent-color, #3b82f6);
+  color: #fff;
+}
+
 .chat-route-card {
   display: flex;
   flex-direction: column;

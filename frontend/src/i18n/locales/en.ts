@@ -253,4 +253,5 @@ export const en = {
   "chat.backToChat": "Back",
   "chat.rateLimited": "Too many messages. Please wait.",
   "chat.deleteMessage": "Delete",
+  "chat.goTo": "Go to",
 } as const;

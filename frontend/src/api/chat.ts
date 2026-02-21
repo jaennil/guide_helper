@@ -18,9 +18,11 @@ export interface ChatRouteRef {
 }
 
 export interface ChatAction {
-  type: 'show_points' | 'show_routes';
+  type: 'show_points' | 'show_routes' | 'navigate';
   points?: ChatPoint[];
   routes?: ChatRouteRef[];
+  path?: string;
+  label?: string;
 }
 
 export interface ChatMessageResponse {

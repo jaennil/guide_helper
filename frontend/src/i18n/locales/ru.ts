@@ -253,4 +253,5 @@ export const ru = {
   "chat.backToChat": "Назад",
   "chat.rateLimited": "Слишком много сообщений. Подождите.",
   "chat.deleteMessage": "Удалить",
+  "chat.goTo": "Перейти",
 } as const;

@@ -17,6 +17,7 @@ You have access to these tools:
 - geocode: Look up coordinates for any place name or address. Calling this tool automatically displays the location as a marker on the interactive map.
 - search_routes: Search the route catalog for shared routes by text query, category, or sort order.
 - get_route_details: Get detailed information about a specific route by its ID.
+- navigate: Open a specific page in the application (map, profile/settings, route catalog, admin panel).
 
 Rules for tool usage — follow these strictly:
 1. When the user asks to SHOW, FIND, MARK, or DISPLAY a location — call geocode for that location.
@@ -25,6 +26,15 @@ Rules for tool usage — follow these strictly:
 4. When the user mentions a specific route ID — use get_route_details.
 5. NEVER say you cannot display maps or show locations on the map. You CAN show locations by calling the geocode tool — it will place markers on the map automatically.
 6. If the user names two or more places, call geocode separately for each one.
+7. When the user says anything that means OPENING or NAVIGATING to a section of this app — ALWAYS call navigate immediately without asking for clarification. Do not ask "what do you want to configure" — just navigate.
+
+Page mapping (use navigate tool with these paths):
+- /profile → when user says: "открой профиль", "профиль", "настройки", "открой настройки", "open settings", "go to profile", "мои настройки", "мой профиль", "settings", "profile"
+- /map → when user says: "открой карту", "перейди на карту", "на карту", "go to map", "open map", "карта"
+- /explore → when user says: "открой каталог", "каталог маршрутов", "explore", "посмотреть маршруты", "open catalog", "route catalog"
+- /admin → when user says: "открой админку", "панель администратора", "admin", "admin panel", "администрирование"
+
+CRITICAL: For ALL navigation requests, call navigate IMMEDIATELY. Never ask clarifying questions about navigation. If the user wants to open any page or section, use the navigate tool.
 
 Be concise and helpful. After calling tools, summarize the results naturally."#;
 
@@ -35,6 +45,8 @@ pub enum ChatAction {
     ShowPoints { points: Vec<ChatPoint> },
     #[serde(rename = "show_routes")]
     ShowRoutes { routes: Vec<ChatRouteRef> },
+    #[serde(rename = "navigate")]
+    Navigate { path: String, label: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -352,6 +364,7 @@ where
             "geocode" => self.tool_geocode(args).await,
             "search_routes" => self.tool_search_routes(args).await,
             "get_route_details" => self.tool_get_route_details(args).await,
+            "navigate" => self.tool_navigate(args).await,
             _ => {
                 tracing::warn!(%name, "unknown tool called");
                 (format!("Unknown tool: {}", name), vec![])
@@ -532,6 +545,45 @@ where
         }
     }
 
+    async fn tool_navigate(
+        &self,
+        args: &std::collections::HashMap<String, serde_json::Value>,
+    ) -> (String, Vec<ChatAction>) {
+        let path = args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+
+        tracing::info!(%path, "executing navigate tool");
+
+        let allowed: &[(&str, &str)] = &[
+            ("/map", "Map"),
+            ("/profile", "Profile & Settings"),
+            ("/explore", "Route Catalog"),
+            ("/admin", "Admin Panel"),
+        ];
+
+        if let Some(&(p, label)) = allowed.iter().find(|(p, _)| *p == path) {
+            tracing::info!(%path, %label, "navigate action created");
+            (
+                format!("Navigating to {}", label),
+                vec![ChatAction::Navigate {
+                    path: p.to_string(),
+                    label: label.to_string(),
+                }],
+            )
+        } else {
+            tracing::warn!(%path, "navigate called with unknown path");
+            (
+                format!(
+                    "Unknown page '{}'. Available: /map, /profile, /explore, /admin",
+                    path
+                ),
+                vec![],
+            )
+        }
+    }
+
     #[tracing::instrument(skip(self), fields(user_id = %user_id, conversation_id = %conversation_id))]
     pub async fn get_history(
         &self,
@@ -680,6 +732,24 @@ fn build_tools() -> Vec<OpenAITool> {
                         }
                     },
                     "required": ["route_id"]
+                }),
+            },
+        },
+        OpenAITool {
+            tool_type: "function".to_string(),
+            function: OpenAIFunction {
+                name: "navigate".to_string(),
+                description: "Navigate to a specific page in the application. Use when the user asks to open, go to, or navigate to a page.".to_string(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "enum": ["/map", "/profile", "/explore", "/admin"],
+                            "description": "Page path: /map (main map), /profile (profile & settings), /explore (route catalog), /admin (admin panel)"
+                        }
+                    },
+                    "required": ["path"]
                 }),
             },
         },
@@ -1110,14 +1180,15 @@ mod tests {
     // --- build_tools ---
 
     #[test]
-    fn test_build_tools_returns_three_tools() {
+    fn test_build_tools_returns_four_tools() {
         let tools = build_tools();
-        assert_eq!(tools.len(), 3);
+        assert_eq!(tools.len(), 4);
 
         let names: Vec<&str> = tools.iter().map(|t| t.function.name.as_str()).collect();
         assert!(names.contains(&"geocode"));
         assert!(names.contains(&"search_routes"));
         assert!(names.contains(&"get_route_details"));
+        assert!(names.contains(&"navigate"));
     }
 
     #[test]
@@ -1127,6 +1198,55 @@ mod tests {
             assert_eq!(tool.tool_type, "function");
             assert!(!tool.function.name.is_empty());
         }
+    }
+
+    // --- tool_navigate ---
+
+    #[tokio::test]
+    async fn test_tool_navigate_profile() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+        let mut args = std::collections::HashMap::new();
+        args.insert("path".to_string(), serde_json::Value::String("/profile".to_string()));
+        let (text, actions) = uc.tool_navigate(&args).await;
+        assert!(text.contains("Profile & Settings"));
+        assert_eq!(actions.len(), 1);
+        match &actions[0] {
+            ChatAction::Navigate { path, label } => {
+                assert_eq!(path, "/profile");
+                assert_eq!(label, "Profile & Settings");
+            }
+            _ => panic!("expected Navigate action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tool_navigate_unknown_path() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
+        let mut args = std::collections::HashMap::new();
+        args.insert("path".to_string(), serde_json::Value::String("/unknown".to_string()));
+        let (text, actions) = uc.tool_navigate(&args).await;
+        assert!(text.contains("Unknown page"));
+        assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn test_chat_action_navigate_serialization() {
+        let action = ChatAction::Navigate {
+            path: "/profile".to_string(),
+            label: "Profile & Settings".to_string(),
+        };
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["type"], "navigate");
+        assert_eq!(json["path"], "/profile");
+        assert_eq!(json["label"], "Profile & Settings");
     }
 
     // --- ChatAction serialization ---
