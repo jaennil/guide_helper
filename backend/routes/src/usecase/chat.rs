@@ -6,7 +6,7 @@ use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
 use crate::usecase::openai::{
-    OpenAIFunction, OpenAIFunctionCallPolicy, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
+    OpenAIFunction, OpenAIFunctionCallPolicy, OpenAIFunctionCallRef, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
 };
 
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
@@ -167,12 +167,14 @@ where
             role: "system".to_string(),
             content: Some(SYSTEM_PROMPT.to_string()),
             name: None,
+            function_call: None,
         }];
         for msg in &history {
             messages.push(OpenAIMessage {
                 role: msg.role.clone(),
                 content: Some(msg.content.clone()),
                 name: None,
+                function_call: None,
             });
         }
 
@@ -209,6 +211,10 @@ where
                     role: resp_message.role.clone(),
                     content: resp_message.content.clone(),
                     name: resp_message.name.clone(),
+                    function_call: Some(OpenAIFunctionCallRef {
+                        name: function_call.name.clone(),
+                        arguments: function_call.arguments.clone(),
+                    }),
                 });
 
                 let tool_args = parse_function_arguments(&function_call.arguments);
@@ -221,6 +227,7 @@ where
                     role: "function".to_string(),
                     content: Some(result_text.clone()),
                     name: Some(function_call.name.clone()),
+                    function_call: None,
                 });
             } else {
                 let assistant_text = resp_message.content.clone().unwrap_or_default();

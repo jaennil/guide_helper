@@ -3,12 +3,20 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize)]
+pub struct OpenAIFunctionCallRef {
+    pub name: String,
+    pub arguments: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct OpenAIMessage {
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_call: Option<OpenAIFunctionCallRef>,
 }
 
 #[derive(Debug, Clone, Serialize)]
