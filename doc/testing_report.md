@@ -83,6 +83,7 @@
 | ID | Требование | Статус | Комментарий |
 |---|---|---|---|
 | FR-36 | AI-чат с поиском маршрутов | ✅ | "Show me all routes" → нашёл Test Route 1 (Rating: 3.0, Likes: 1), "Show on map" отображает маршрут на карте |
+| FR-36 (geo) | AI-чат: геокодинг и построение маршрута | ✅ | "Построй маршрут от Москвы до Санкт-Петербурга" → geocode вызван для обоих городов (55.6°N/37.6°E и 59.9°N/30.2°E), "Show on map" добавляет точки, дистанция 667.8 км |
 
 ---
 
@@ -130,6 +131,7 @@
 | 6 | OpenAI: "content: null" в assistant-сообщении при function_call | ✅ | openai.rs: OpenAIFunctionCallRef; chat.rs: unwrap_or_default() |
 | 7 | AI-чат недоступен (Ollama → OpenAI миграция) | ✅ | usecase/openai.rs: новый HTTP-клиент для OpenAI API |
 | 8 | OpenAI API 403 (геоблок РФ) | ✅ | docker-compose .env: OPENAI_BASE_URL=https://api.aiguoguo199.com/v1 |
+| 9 | AI не использовал инструменты geocode/show_points при запросах на построение маршрутов | ✅ | openai.rs: мигрировано с deprecated functions/function_call на tools/tool_calls API; system prompt дополнен явными инструкциями по геокодингу |
 
 ---
 
