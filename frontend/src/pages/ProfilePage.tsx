@@ -11,6 +11,7 @@ import type { Route, RoutePoint } from '../api/routes';
 import { totalDistance, formatDistance } from '../utils/geo';
 import { exportAsGpx, exportAsKml } from '../utils/exportRoute';
 import { NotificationBell } from '../components/NotificationBell';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import L from 'leaflet';
@@ -125,6 +126,7 @@ export default function ProfilePage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
+  const [confirmDeleteRouteId, setConfirmDeleteRouteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -271,11 +273,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeleteRoute = async (routeId: string) => {
-    if (!confirm(t('profile.confirmDelete'))) {
-      return;
-    }
+  const handleDeleteRoute = (routeId: string) => {
+    setConfirmDeleteRouteId(routeId);
+  };
 
+  const handleConfirmDeleteRoute = async () => {
+    if (!confirmDeleteRouteId) return;
+    const routeId = confirmDeleteRouteId;
+    setConfirmDeleteRouteId(null);
     try {
       await routesApi.deleteRoute(routeId);
       setRoutes(routes.filter(r => r.id !== routeId));
@@ -336,6 +341,7 @@ export default function ProfilePage() {
   };
 
   return (
+    <>
     <div className="profile-page">
       <header className="profile-header">
         <h1>{t('profile.title')}</h1>
@@ -638,5 +644,16 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+
+    {confirmDeleteRouteId && (
+      <ConfirmDialog
+        message={t('profile.confirmDelete')}
+        confirmLabel={t('profile.delete')}
+        cancelLabel={t('map.cancel')}
+        onConfirm={handleConfirmDeleteRoute}
+        onCancel={() => setConfirmDeleteRouteId(null)}
+      />
+    )}
+    </>
   );
 }

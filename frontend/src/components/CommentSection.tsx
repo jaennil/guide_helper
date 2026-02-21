@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { routesApi } from '../api/routes';
 import type { Comment } from '../api/routes';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface CommentSectionProps {
   routeId: string;
@@ -18,6 +19,7 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null);
 
   useEffect(() => {
     loadComments();
@@ -56,9 +58,14 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
     }
   };
 
-  const handleDelete = async (commentId: string) => {
-    if (!confirm(t('comments.confirmDelete'))) return;
+  const handleDelete = (commentId: string) => {
+    setConfirmDeleteCommentId(commentId);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteCommentId) return;
+    const commentId = confirmDeleteCommentId;
+    setConfirmDeleteCommentId(null);
     try {
       await routesApi.deleteComment(commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -90,6 +97,7 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
   };
 
   return (
+    <>
     <div className="comment-section">
       <div className="comment-section-header">
         <h3>{t('comments.title')} ({comments.length})</h3>
@@ -144,5 +152,16 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
         <div className="comment-login-hint">{t('comments.loginToComment')}</div>
       )}
     </div>
+
+    {confirmDeleteCommentId && (
+      <ConfirmDialog
+        message={t('comments.confirmDelete')}
+        confirmLabel={t('comments.delete')}
+        cancelLabel={t('map.cancel')}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteCommentId(null)}
+      />
+    )}
+    </>
   );
 }

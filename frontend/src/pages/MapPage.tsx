@@ -32,6 +32,7 @@ import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
 import { NotificationBell } from "../components/NotificationBell";
 import { ChatPanel } from "../components/ChatPanel";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 
 type RouteMode = "auto" | "manual";
@@ -398,6 +399,7 @@ export function MapPage() {
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -568,9 +570,14 @@ export function MapPage() {
   };
 
   const handleClearRoute = () => {
-    if ((routePoints.length > 0 || overlayRoutes.length > 0) && !confirm(t("map.clearAllPoints"))) {
+    if (routePoints.length > 0 || overlayRoutes.length > 0) {
+      setShowConfirmClear(true);
       return;
     }
+    doClearRoute();
+  };
+
+  const doClearRoute = () => {
     setRoutePoints([]);
     setRouteSegments([]);
     setOverlayRoutes([]);
@@ -1174,6 +1181,15 @@ export function MapPage() {
         onShowPoints={handleChatShowPoints}
         onShowRoutes={handleChatShowRoutes}
       />
+      {showConfirmClear && (
+        <ConfirmDialog
+          message={t("map.clearAllPoints")}
+          confirmLabel={t("map.clear")}
+          cancelLabel={t("map.cancel")}
+          onConfirm={() => { setShowConfirmClear(false); doClearRoute(); }}
+          onCancel={() => setShowConfirmClear(false)}
+        />
+      )}
     </div>
   );
 }

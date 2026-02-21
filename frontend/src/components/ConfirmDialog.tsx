@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface ConfirmDialogProps {
   message: string;
@@ -15,6 +15,38 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel = 'OK',
   cancelLabel = 'Cancel',
 }) => {
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus the cancel button when dialog opens
+  useEffect(() => {
+    cancelBtnRef.current?.focus();
+  }, []);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+      // Trap focus within the dialog
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+          e.preventDefault();
+          (e.shiftKey ? last : first).focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   return (
     <div
       style={{
@@ -27,8 +59,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         zIndex: 9999,
       }}
       onClick={onCancel}
+      aria-hidden="false"
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-message"
         style={{
           background: '#fff',
           borderRadius: 8,
@@ -39,9 +76,15 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         }}
         onClick={e => e.stopPropagation()}
       >
-        <p style={{ margin: '0 0 20px', fontSize: 16, color: '#222' }}>{message}</p>
+        <p
+          id="confirm-dialog-message"
+          style={{ margin: '0 0 20px', fontSize: 16, color: '#222' }}
+        >
+          {message}
+        </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
+            ref={cancelBtnRef}
             onClick={onCancel}
             style={{
               padding: '8px 18px',
@@ -55,6 +98,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {cancelLabel}
           </button>
           <button
+            ref={confirmBtnRef}
             onClick={onConfirm}
             style={{
               padding: '8px 18px',
