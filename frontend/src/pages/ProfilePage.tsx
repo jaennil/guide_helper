@@ -14,7 +14,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import L from 'leaflet';
-import { MapPin, ArrowLeftRight, MessageCircle, Heart, Star } from 'lucide-react';
+import { MapPin, ArrowLeftRight, ArrowRight, MessageCircle, Heart, Star } from 'lucide-react';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -31,6 +31,28 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function getCategoryColor(name: string): string {
   return CATEGORY_COLORS[name.toLowerCase()] ?? '#4CAF50';
+}
+
+const geocodeCache = new Map<string, string>();
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  if (geocodeCache.has(key)) return geocodeCache.get(key)!;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
+      { headers: { 'User-Agent': 'GuideHelper/1.0' } },
+    );
+    const data = await res.json();
+    const addr = data.address || {};
+    const name = addr.suburb || addr.neighbourhood || addr.village ||
+      addr.town || addr.city || data.display_name?.split(',')[0] || '';
+    geocodeCache.set(key, name);
+    return name;
+  } catch {
+    return '';
+  }
 }
 
 function RouteMapPreview({ points, color }: { points: RoutePoint[]; color: string }) {
@@ -123,6 +145,7 @@ export default function ProfilePage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
+  const [routeLocations, setRouteLocations] = useState<Record<string, { from: string; to: string }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -150,6 +173,25 @@ export default function ProfilePage() {
       const map: Record<string, string> = {};
       categories.forEach((c) => { map[c.id] = c.name; });
       setCategoryMap(map);
+
+      // Lazily load start/end place names via reverse geocoding (1 req/sec Nominatim limit)
+      (async () => {
+        for (const route of data) {
+          if (route.points.length < 1) continue;
+          const first = route.points[0];
+          const last = route.points[route.points.length - 1];
+          const isSame = first.lat === last.lat && first.lng === last.lng;
+
+          const fromName = first.name || await reverseGeocode(first.lat, first.lng);
+          await sleep(1100);
+          const toName = isSame ? fromName : (last.name || await reverseGeocode(last.lat, last.lng));
+          if (!isSame) await sleep(1100);
+
+          if (fromName || toName) {
+            setRouteLocations(prev => ({ ...prev, [route.id]: { from: fromName, to: toName } }));
+          }
+        }
+      })();
 
       // Load comment counts, like counts, and rating aggregates in parallel
       const counts: Record<string, number> = {};
@@ -550,19 +592,26 @@ export default function ProfilePage() {
                                 ))}
                               </div>
                             )}
+                            {routeLocations[route.id] && (
+                              <div className="route-card-location">
+                                <span className="route-loc-name">{routeLocations[route.id].from}</span>
+                                <ArrowRight size={12} className="route-loc-arrow" />
+                                <span className="route-loc-name">{routeLocations[route.id].to}</span>
+                              </div>
+                            )}
                             <div className="route-card-stats">
-                              <span className="route-stat"><MapPin size={13} />{route.points.length}</span>
+                              <span className="route-stat"><MapPin size={15} color={accentColor} />{route.points.length}</span>
                               {route.points.length >= 2 && (
-                                <span className="route-stat"><ArrowLeftRight size={13} />{formatDistance(totalDistance(route.points))}</span>
+                                <span className="route-stat"><ArrowLeftRight size={15} color="#60a5fa" />{formatDistance(totalDistance(route.points))}</span>
                               )}
                               {commentCounts[route.id] != null && (
-                                <span className="route-stat"><MessageCircle size={13} />{commentCounts[route.id]}</span>
+                                <span className="route-stat"><MessageCircle size={15} color="#a78bfa" />{commentCounts[route.id]}</span>
                               )}
                               {likeCounts[route.id] != null && (
-                                <span className="route-stat"><Heart size={13} />{likeCounts[route.id]}</span>
+                                <span className="route-stat"><Heart size={15} color="#f87171" />{likeCounts[route.id]}</span>
                               )}
                               {ratingAggregates[route.id]?.count > 0 && (
-                                <span className="route-stat"><Star size={13} />{ratingAggregates[route.id].average.toFixed(1)}</span>
+                                <span className="route-stat"><Star size={15} color="#fbbf24" />{ratingAggregates[route.id].average.toFixed(1)}</span>
                               )}
                             </div>
                             <div className="route-card-date">{t('profile.created')} {formatDate(route.created_at)}</div>
