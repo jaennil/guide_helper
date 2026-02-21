@@ -5,6 +5,9 @@
 % Титульный лист
 \input{titlepage}
 
+% Нумерация: титульный лист = стр. 1 (без номера), далее со стр. 2
+\setcounter{page}{2}
+
 % Содержание
 \tableofcontents
 \clearpage
@@ -19,7 +22,7 @@
 % \input{chapters/03-deployment}
 
 % Библиография
-\printbibliography[heading=bibheading, title={СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}]
+\printbibliography[heading=bibliography, title={СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}]
 
 % Приложения
 % \appendix
