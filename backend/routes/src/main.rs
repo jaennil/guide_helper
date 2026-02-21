@@ -40,7 +40,7 @@ use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::notifications::NotificationsUseCase;
 use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
-use crate::usecase::ollama::OllamaClient;
+use crate::usecase::openai::OpenAIClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
 use crate::usecase::settings::SettingsUseCase;
@@ -125,21 +125,24 @@ async fn main() -> anyhow::Result<()> {
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
-    // Create Ollama client (optional — chat works without it)
-    let ollama_client = {
-        let client = OllamaClient::new(config.ollama_url.clone(), config.ollama_model.clone());
-        tracing::info!(
-            ollama_url = %config.ollama_url,
-            ollama_model = %config.ollama_model,
-            "OllamaClient configured"
+    let assistant_client = config.openai_api_key.as_ref().filter(|key| !key.trim().is_empty()).map(|key| {
+        let client = OpenAIClient::new(
+            config.openai_base_url.clone(),
+            config.openai_model.clone(),
+            key.clone(),
         );
-        Some(client)
-    };
+        tracing::info!(
+            openai_base_url = %config.openai_base_url,
+            openai_model = %config.openai_model,
+            "OpenAI client configured"
+        );
+        client
+    });
 
     let chat_usecase = ChatUseCase::new(
         chat_message_repository,
         route_repository_for_chat,
-        ollama_client,
+        assistant_client,
         config.nominatim_url.clone(),
         config.chat_max_tool_iterations,
         config.chat_max_message_length,

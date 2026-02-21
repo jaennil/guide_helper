@@ -7,7 +7,7 @@ pub mod geojson_import;
 pub mod jwt;
 pub mod likes;
 pub mod notifications;
-pub mod ollama;
+pub mod openai;
 pub mod photo_tasks;
 pub mod ratings;
 pub mod routes;

@@ -18,10 +18,12 @@ pub struct AppConfig {
     pub telemetry_otlp_endpoint: String,
     #[serde(default = "default_nats_url")]
     pub nats_url: String,
-    #[serde(default = "default_ollama_url")]
-    pub ollama_url: String,
-    #[serde(default = "default_ollama_model")]
-    pub ollama_model: String,
+    #[serde(default)]
+    pub openai_api_key: Option<String>,
+    #[serde(default = "default_openai_base_url")]
+    pub openai_base_url: String,
+    #[serde(default = "default_openai_model")]
+    pub openai_model: String,
     #[serde(default = "default_chat_rate_limit_max")]
     pub chat_rate_limit_max: u32,
     #[serde(default = "default_chat_rate_limit_window_secs")]
@@ -38,12 +40,12 @@ fn default_nats_url() -> String {
     "nats://localhost:4222".to_string()
 }
 
-fn default_ollama_url() -> String {
-    "http://ollama:11434".to_string()
+fn default_openai_base_url() -> String {
+    "https://api.openai.com/v1".to_string()
 }
 
-fn default_ollama_model() -> String {
-    "llama3.2".to_string()
+fn default_openai_model() -> String {
+    "gpt-4o-mini".to_string()
 }
 
 fn default_chat_rate_limit_max() -> u32 {
