@@ -1025,7 +1025,7 @@ export function MapPage() {
                 autoFocus
               />
               <div className="tag-selector">
-                <label>{t("map.selectTags")}</label>
+                <label>{t("map.selectCategories")}</label>
                 <div className="tag-selector-buttons">
                   {availableCategories.map((cat) => (
                     <button

@@ -35,7 +35,7 @@ export interface AdminRoute {
   points_count: number;
   created_at: string;
   share_token: string | null;
-  tags: string[];
+  category_ids: string[];
 }
 
 export interface AdminRoutesListResponse {

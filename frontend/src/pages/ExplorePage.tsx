@@ -121,7 +121,7 @@ export default function ExplorePage() {
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
-            <option value="">{t('explore.allTags')}</option>
+            <option value="">{t('explore.allCategories')}</option>
             {availableCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {t(`tags.${cat.name}` as any) || cat.name}

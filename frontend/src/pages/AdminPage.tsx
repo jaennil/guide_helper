@@ -481,7 +481,7 @@ export default function AdminPage() {
                         <th>{t('admin.routes.points')}</th>
                         <th>{t('admin.routes.created')}</th>
                         <th>{t('admin.routes.shared')}</th>
-                        <th>{t('admin.routes.tags')}</th>
+                        <th>{t('admin.routes.categories')}</th>
                         <th>{t('admin.routes.delete')}</th>
                       </tr>
                     </thead>
@@ -492,7 +492,7 @@ export default function AdminPage() {
                           <td>{r.points_count}</td>
                           <td>{new Date(r.created_at).toLocaleDateString()}</td>
                           <td>{r.share_token ? '\u2713' : '\u2014'}</td>
-                          <td>{r.tags.join(', ') || '\u2014'}</td>
+                          <td>{r.category_ids.length || '\u2014'}</td>
                           <td>
                             <button
                               className="btn-danger-sm"
