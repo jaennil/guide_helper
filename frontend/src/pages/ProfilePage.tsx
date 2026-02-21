@@ -7,15 +7,89 @@ import { useTheme } from '../context/ThemeContext';
 import type { Locale } from '../i18n';
 import { profileApi } from '../api/profile';
 import { routesApi } from '../api/routes';
-import type { Route } from '../api/routes';
+import type { Route, RoutePoint } from '../api/routes';
 import { totalDistance, formatDistance } from '../utils/geo';
 import { exportAsGpx, exportAsKml } from '../utils/exportRoute';
 import { NotificationBell } from '../components/NotificationBell';
 import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
+import L from 'leaflet';
+import { MapPin, ArrowLeftRight, MessageCircle, Heart, Star } from 'lucide-react';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
+
+const CATEGORY_COLORS: Record<string, string> = {
+  cycling: '#3b82f6',
+  hiking: '#22c55e',
+  historical: '#f59e0b',
+  nature: '#14b8a6',
+  urban: '#a855f7',
+  running: '#ef4444',
+  walking: '#84cc16',
+};
+
+function getCategoryColor(name: string): string {
+  return CATEGORY_COLORS[name.toLowerCase()] ?? '#4CAF50';
+}
+
+function RouteMapPreview({ points, color }: { points: RoutePoint[]; color: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || points.length < 1) return;
+
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    });
+
+    L.tileLayer(
+      'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+      { maxZoom: 18 },
+    ).addTo(map);
+
+    const latlngs = points.map(p => [p.lat, p.lng] as [number, number]);
+    const polyline = L.polyline(latlngs, { color, weight: 3, opacity: 0.9 }).addTo(map);
+
+    L.circleMarker(latlngs[0], {
+      radius: 4, color: '#4CAF50', fillColor: '#4CAF50', fillOpacity: 1, weight: 0,
+    }).addTo(map);
+    L.circleMarker(latlngs[latlngs.length - 1], {
+      radius: 4, color: '#f44336', fillColor: '#f44336', fillOpacity: 1, weight: 0,
+    }).addTo(map);
+
+    map.fitBounds(polyline.getBounds(), { padding: [8, 8] });
+    mapRef.current = map;
+
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (points.length < 1) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className="route-map-preview"
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
 
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
@@ -457,85 +531,97 @@ export default function ProfilePage() {
 
               {routes.length > 0 && (
                 <div className="routes-list">
-                  {routes.map((route) => (
-                    <div key={route.id} className="route-card">
-                      <input
-                        type="checkbox"
-                        className="route-checkbox"
-                        checked={selectedRouteIds.has(route.id)}
-                        onChange={() => toggleRouteSelection(route.id)}
-                      />
-                      <div className="route-info">
-                        <h3>{route.name}</h3>
-                        {(route.category_ids?.length ?? 0) > 0 && (
-                          <div className="route-tags">
-                            {route.category_ids.map((id) => (
-                              <span key={id} className="route-tag">{categoryMap[id] || id}</span>
-                            ))}
+                  {routes.map((route) => {
+                    const firstCatName = (route.category_ids?.[0] && categoryMap[route.category_ids[0]]) || '';
+                    const accentColor = getCategoryColor(firstCatName);
+                    return (
+                      <div
+                        key={route.id}
+                        className={`route-card ${selectedRouteIds.has(route.id) ? 'selected' : ''}`}
+                        style={{ '--card-accent': accentColor } as React.CSSProperties}
+                      >
+                        <div className="route-card-body" onClick={() => toggleRouteSelection(route.id)}>
+                          <div className="route-card-info">
+                            <h3 className="route-card-title">{route.name}</h3>
+                            {(route.category_ids?.length ?? 0) > 0 && (
+                              <div className="route-tags">
+                                {route.category_ids.map((id) => (
+                                  <span key={id} className="route-tag">{categoryMap[id] || id}</span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="route-card-stats">
+                              <span className="route-stat"><MapPin size={13} />{route.points.length}</span>
+                              {route.points.length >= 2 && (
+                                <span className="route-stat"><ArrowLeftRight size={13} />{formatDistance(totalDistance(route.points))}</span>
+                              )}
+                              {commentCounts[route.id] != null && (
+                                <span className="route-stat"><MessageCircle size={13} />{commentCounts[route.id]}</span>
+                              )}
+                              {likeCounts[route.id] != null && (
+                                <span className="route-stat"><Heart size={13} />{likeCounts[route.id]}</span>
+                              )}
+                              {ratingAggregates[route.id]?.count > 0 && (
+                                <span className="route-stat"><Star size={13} />{ratingAggregates[route.id].average.toFixed(1)}</span>
+                              )}
+                            </div>
+                            <div className="route-card-date">{t('profile.created')} {formatDate(route.created_at)}</div>
                           </div>
-                        )}
-                        <p>
-                          {t('profile.pointsCount', { count: route.points.length })}
-                          {route.points.length >= 2 && ` · ${formatDistance(totalDistance(route.points))}`}
-                          {commentCounts[route.id] != null && ` · ${t('comments.count', { count: commentCounts[route.id] })}`}
-                          {likeCounts[route.id] != null && ` · ${t('likes.count', { count: likeCounts[route.id] })}`}
-                          {ratingAggregates[route.id] != null && ratingAggregates[route.id].count > 0 && ` · ${t('rating.average', { value: ratingAggregates[route.id].average.toFixed(1) })}`}
-                        </p>
-                        <p className="route-date">
-                          {t('profile.created')} {formatDate(route.created_at)}
-                        </p>
-                      </div>
-                      <div className="route-actions">
-                        <button
-                          onClick={() => navigate(`/map?route=${route.id}`)}
-                          className="btn-secondary"
-                        >
-                          {t('profile.view')}
-                        </button>
-                        {route.share_token ? (
-                          <>
-                            <button
-                              onClick={() => handleCopyLink(route.share_token!)}
-                              className="btn-secondary"
-                            >
-                              {t('profile.copyLink')}
-                            </button>
-                            <button
-                              onClick={() => handleUnshareRoute(route.id)}
-                              className="btn-secondary"
-                            >
-                              {t('profile.unshare')}
-                            </button>
-                          </>
-                        ) : (
+                          <RouteMapPreview points={route.points} color={accentColor} />
+                          {selectedRouteIds.has(route.id) && <div className="route-selected-badge">✓</div>}
+                        </div>
+                        <div className="route-card-footer">
                           <button
-                            onClick={() => handleShareRoute(route.id)}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/map?route=${route.id}`); }}
                             className="btn-secondary"
                           >
-                            {t('profile.share')}
+                            {t('profile.view')}
                           </button>
-                        )}
-                        <button
-                          onClick={() => exportAsGpx(route.name, route.points)}
-                          className="btn-secondary"
-                        >
-                          {t('export.gpx')}
-                        </button>
-                        <button
-                          onClick={() => exportAsKml(route.name, route.points)}
-                          className="btn-secondary"
-                        >
-                          {t('export.kml')}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRoute(route.id)}
-                          className="btn-danger"
-                        >
-                          {t('profile.delete')}
-                        </button>
+                          {route.share_token ? (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCopyLink(route.share_token!); }}
+                                className="btn-secondary"
+                              >
+                                {t('profile.copyLink')}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleUnshareRoute(route.id); }}
+                                className="btn-secondary"
+                              >
+                                {t('profile.unshare')}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleShareRoute(route.id); }}
+                              className="btn-secondary"
+                            >
+                              {t('profile.share')}
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); exportAsGpx(route.name, route.points); }}
+                            className="btn-secondary"
+                          >
+                            {t('export.gpx')}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); exportAsKml(route.name, route.points); }}
+                            className="btn-secondary"
+                          >
+                            {t('export.kml')}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteRoute(route.id); }}
+                            className="btn-danger"
+                          >
+                            {t('profile.delete')}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
