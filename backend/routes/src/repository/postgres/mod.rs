@@ -13,6 +13,7 @@ use crate::{
     usecase::contracts::{CategoryRepository, ChatMessageRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
+#[derive(Clone)]
 pub struct PostgresRouteRepository {
     pool: PgPool,
 }
@@ -73,7 +74,8 @@ impl RouteRepository for PostgresRouteRepository {
         let route = sqlx::query_as::<_, Route>(
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
-                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                   r.start_location, r.end_location
             FROM routes r
             WHERE r.id = $1
             "#
@@ -93,7 +95,8 @@ impl RouteRepository for PostgresRouteRepository {
         let routes = sqlx::query_as::<_, Route>(
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
-                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                   r.start_location, r.end_location
             FROM routes r
             WHERE r.user_id = $1
             ORDER BY r.created_at DESC
@@ -191,7 +194,8 @@ impl RouteRepository for PostgresRouteRepository {
         let route = sqlx::query_as::<_, Route>(
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
-                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                   r.start_location, r.end_location
             FROM routes r
             WHERE r.share_token = $1
             "#
@@ -332,6 +336,31 @@ impl RouteRepository for PostgresRouteRepository {
 
         tracing::debug!(count = rows.len(), "admin routes listed");
         Ok(rows)
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %id))]
+    async fn update_locations(
+        &self,
+        id: Uuid,
+        start_location: Option<String>,
+        end_location: Option<String>,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!(?start_location, ?end_location, "updating route locations");
+
+        sqlx::query(
+            r#"
+            UPDATE routes SET start_location = $2, end_location = $3 WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(&start_location)
+        .bind(&end_location)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(route_id = %id, "route locations updated");
+        Ok(())
     }
 }
 

@@ -1,26 +1,65 @@
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::domain::route::{ExploreRouteRow, Route, RoutePoint};
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
+use crate::usecase::nominatim::NominatimClient;
 
 pub struct RoutesUseCase<R>
 where
     R: RouteRepository,
 {
-    route_repository: R,
+    route_repository: Arc<R>,
+    nominatim: Option<Arc<NominatimClient>>,
 }
 
 impl<R> RoutesUseCase<R>
 where
-    R: RouteRepository,
+    R: RouteRepository + Send + Sync + 'static,
 {
     pub fn new(route_repository: R) -> Self {
-        Self { route_repository }
+        Self {
+            route_repository: Arc::new(route_repository),
+            nominatim: None,
+        }
+    }
+
+    pub fn with_nominatim(mut self, nominatim: NominatimClient) -> Self {
+        self.nominatim = Some(Arc::new(nominatim));
+        self
     }
 
     pub fn route_repository(&self) -> &R {
         &self.route_repository
+    }
+
+    /// Spawns a background task to geocode route start/end and persist to DB.
+    fn spawn_geocoding(&self, route_id: Uuid, points: Vec<RoutePoint>) {
+        if points.is_empty() {
+            return;
+        }
+        let Some(nominatim) = self.nominatim.clone() else {
+            return;
+        };
+        let repo = Arc::clone(&self.route_repository);
+
+        tokio::spawn(async move {
+            let first = &points[0];
+            let last = &points[points.len() - 1];
+
+            let (start, end) = nominatim
+                .resolve_route_locations((first.lat, first.lng), (last.lat, last.lng))
+                .await;
+
+            let start = if start.is_empty() { None } else { Some(start) };
+            let end = if end.is_empty() { None } else { Some(end) };
+
+            if let Err(e) = repo.update_locations(route_id, start, end).await {
+                tracing::warn!(error = %e, %route_id, "failed to save geocoded route locations");
+            }
+        });
     }
 
     #[tracing::instrument(skip(self, points), fields(user_id = %user_id, name = %name, point_count = points.len()))]
@@ -33,8 +72,10 @@ where
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, "creating new route");
 
-        let route = Route::new(user_id, name, points, category_ids);
+        let route = Route::new(user_id, name, points.clone(), category_ids);
         self.route_repository.create(&route).await?;
+
+        self.spawn_geocoding(route.id, points);
 
         tracing::debug!(route_id = %route.id, "route created successfully");
         Ok(route)
@@ -65,6 +106,11 @@ where
 
         let routes = self.route_repository.find_by_user_id(user_id).await?;
 
+        // Backfill locations for any routes missing them
+        for route in routes.iter().filter(|r| r.start_location.is_none()) {
+            self.spawn_geocoding(route.id, route.points.clone());
+        }
+
         tracing::debug!(%user_id, count = routes.len(), "retrieved user routes");
         Ok(routes)
     }
@@ -92,8 +138,13 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
+        let points_changed = points.is_some();
         route.update(name, points, category_ids);
         self.route_repository.update(&route).await?;
+
+        if points_changed {
+            self.spawn_geocoding(route.id, route.points.clone());
+        }
 
         tracing::debug!(%route_id, "route updated successfully");
         Ok(route)
@@ -230,6 +281,21 @@ mod tests {
     use super::*;
     use crate::usecase::contracts::MockRouteRepository;
 
+    fn make_route(user_id: Uuid, route_id: Uuid) -> Route {
+        Route {
+            id: route_id,
+            user_id,
+            name: "Test".to_string(),
+            points: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            share_token: None,
+            category_ids: vec![],
+            start_location: None,
+            end_location: None,
+        }
+    }
+
     #[tokio::test]
     async fn test_create_route() {
         let mut mock_repo = MockRouteRepository::new();
@@ -261,16 +327,7 @@ mod tests {
         let mut mock_repo = MockRouteRepository::new();
         let user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id,
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: None,
-            category_ids: vec![],
-        };
+        let route = make_route(user_id, route_id);
         let route_clone = route.clone();
 
         mock_repo
@@ -309,16 +366,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let other_user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id: other_user_id, // Different user
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: None,
-            category_ids: vec![],
-        };
+        let route = make_route(other_user_id, route_id);
         let route_clone = route.clone();
 
         mock_repo
@@ -338,16 +386,7 @@ mod tests {
         let mut mock_repo = MockRouteRepository::new();
         let user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id,
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: None,
-            category_ids: vec![],
-        };
+        let route = make_route(user_id, route_id);
         let route_clone = route.clone();
 
         mock_repo
@@ -373,16 +412,7 @@ mod tests {
         let mut mock_repo = MockRouteRepository::new();
         let user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id,
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: None,
-            category_ids: vec![],
-        };
+        let route = make_route(user_id, route_id);
         let route_clone = route.clone();
 
         mock_repo
@@ -408,16 +438,8 @@ mod tests {
         let user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
         let existing_token = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id,
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: Some(existing_token),
-            category_ids: vec![],
-        };
+        let mut route = make_route(user_id, route_id);
+        route.share_token = Some(existing_token);
         let route_clone = route.clone();
 
         mock_repo
@@ -438,16 +460,8 @@ mod tests {
         let mut mock_repo = MockRouteRepository::new();
         let user_id = Uuid::new_v4();
         let route_id = Uuid::new_v4();
-        let route = Route {
-            id: route_id,
-            user_id,
-            name: "Test".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: Some(Uuid::new_v4()),
-            category_ids: vec![],
-        };
+        let mut route = make_route(user_id, route_id);
+        route.share_token = Some(Uuid::new_v4());
         let route_clone = route.clone();
 
         mock_repo
@@ -471,16 +485,9 @@ mod tests {
     async fn test_get_shared_route() {
         let mut mock_repo = MockRouteRepository::new();
         let token = Uuid::new_v4();
-        let route = Route {
-            id: Uuid::new_v4(),
-            user_id: Uuid::new_v4(),
-            name: "Shared".to_string(),
-            points: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            share_token: Some(token),
-            category_ids: vec![],
-        };
+        let mut route = make_route(Uuid::new_v4(), Uuid::new_v4());
+        route.name = "Shared".to_string();
+        route.share_token = Some(token);
         let route_clone = route.clone();
 
         mock_repo

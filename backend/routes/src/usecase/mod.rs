@@ -1,5 +1,6 @@
 pub mod categories;
 pub mod chat;
+pub mod nominatim;
 pub mod comments;
 pub mod contracts;
 pub mod error;

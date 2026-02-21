@@ -26,6 +26,8 @@ export interface Route {
   updated_at: string;
   share_token?: string;
   category_ids: string[];
+  start_location?: string;
+  end_location?: string;
 }
 
 export interface Comment {

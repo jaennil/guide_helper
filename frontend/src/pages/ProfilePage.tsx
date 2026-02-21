@@ -15,6 +15,7 @@ import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import L from 'leaflet';
 import { MapPin, ArrowLeftRight, ArrowRight, MessageCircle, Heart, Star } from 'lucide-react';
+
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -33,33 +34,6 @@ function getCategoryColor(name: string): string {
   return CATEGORY_COLORS[name.toLowerCase()] ?? '#4CAF50';
 }
 
-const geocodeCache = new Map<string, string>();
-const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
-
-// zoom 14 = suburb, 16 = street, 18 = building
-async function reverseGeocodeAtZoom(lat: number, lng: number, zoom: number): Promise<string> {
-  const key = `${lat.toFixed(4)},${lng.toFixed(4)},z${zoom}`;
-  if (geocodeCache.has(key)) return geocodeCache.get(key)!;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru&zoom=${zoom}`,
-      { headers: { 'User-Agent': 'GuideHelper/1.0' } },
-    );
-    const data = await res.json();
-    const addr = data.address || {};
-    let name = '';
-    if (zoom >= 16) {
-      name = addr.road || addr.suburb || addr.neighbourhood || addr.city_district || addr.city || '';
-    } else {
-      name = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city || '';
-    }
-    if (!name) name = data.display_name?.split(',')[0] || '';
-    geocodeCache.set(key, name);
-    return name;
-  } catch {
-    return '';
-  }
-}
 
 function RouteMapPreview({ points, color }: { points: RoutePoint[]; color: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -151,7 +125,6 @@ export default function ProfilePage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
-  const [routeLocations, setRouteLocations] = useState<Record<string, { from: string; to: string }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -179,34 +152,6 @@ export default function ProfilePage() {
       const map: Record<string, string> = {};
       categories.forEach((c) => { map[c.id] = c.name; });
       setCategoryMap(map);
-
-      // Lazily load start/end place names via reverse geocoding (1 req/sec Nominatim limit).
-      // If both names resolve to the same string, zoom in (suburb → street → building) until they differ.
-      (async () => {
-        for (const route of data) {
-          if (route.points.length < 1) continue;
-          const first = route.points[0];
-          const last = route.points[route.points.length - 1];
-          const coordsMatch = first.lat === last.lat && first.lng === last.lng;
-
-          let fromName = '';
-          let toName = '';
-
-          for (const zoom of [14, 16, 18]) {
-            fromName = first.name || await reverseGeocodeAtZoom(first.lat, first.lng, zoom);
-            await sleep(1100);
-            toName = coordsMatch ? fromName : (last.name || await reverseGeocodeAtZoom(last.lat, last.lng, zoom));
-            if (!coordsMatch) await sleep(1100);
-
-            // Stop as soon as names differ, or if coords are identical (will never differ)
-            if (fromName !== toName || coordsMatch) break;
-          }
-
-          if (fromName || toName) {
-            setRouteLocations(prev => ({ ...prev, [route.id]: { from: fromName, to: toName } }));
-          }
-        }
-      })();
 
       // Load comment counts, like counts, and rating aggregates in parallel
       const counts: Record<string, number> = {};
@@ -607,11 +552,11 @@ export default function ProfilePage() {
                                 ))}
                               </div>
                             )}
-                            {routeLocations[route.id] && (
+                            {(route.start_location || route.end_location) && (
                               <div className="route-card-location">
-                                <span className="route-loc-name">{routeLocations[route.id].from}</span>
+                                <span className="route-loc-name">{route.start_location}</span>
                                 <ArrowRight size={12} className="route-loc-arrow" />
-                                <span className="route-loc-name">{routeLocations[route.id].to}</span>
+                                <span className="route-loc-name">{route.end_location}</span>
                               </div>
                             )}
                             <div className="route-card-stats">

@@ -117,7 +117,8 @@ async fn main() -> anyhow::Result<()> {
     let chat_message_repository = PostgresChatMessageRepository::new(pool.clone());
     let route_repository_for_chat = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
-    let routes_usecase = RoutesUseCase::new(route_repository);
+    let nominatim_client = crate::usecase::nominatim::NominatimClient::new(config.nominatim_url.clone());
+    let routes_usecase = RoutesUseCase::new(route_repository).with_nominatim(nominatim_client);
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
     let likes_usecase = LikesUseCase::new(like_repository, route_repository_for_likes);
     let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);

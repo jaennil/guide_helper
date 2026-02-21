@@ -84,6 +84,8 @@ mod tests {
             updated_at: chrono::Utc::now(),
             share_token: None,
             category_ids: vec![],
+            start_location: None,
+            end_location: None,
         };
 
         let task = PhotoProcessTask::from_route(&route).unwrap();
@@ -108,6 +110,8 @@ mod tests {
             updated_at: chrono::Utc::now(),
             share_token: None,
             category_ids: vec![],
+            start_location: None,
+            end_location: None,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());
@@ -134,6 +138,8 @@ mod tests {
             updated_at: chrono::Utc::now(),
             share_token: None,
             category_ids: vec![],
+            start_location: None,
+            end_location: None,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());

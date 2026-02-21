@@ -30,6 +30,10 @@ pub struct RouteResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub share_token: Option<String>,
     pub category_ids: Vec<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_location: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -60,6 +64,8 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         updated_at: r.updated_at,
         share_token: r.share_token.map(|t| t.to_string()),
         category_ids: r.category_ids,
+        start_location: r.start_location,
+        end_location: r.end_location,
     }
 }
 
@@ -458,6 +464,8 @@ mod tests {
             updated_at: Utc::now(),
             share_token: None,
             category_ids: vec![],
+            start_location: None,
+            end_location: None,
         };
 
         let json = serde_json::to_string(&response).unwrap();

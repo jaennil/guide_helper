@@ -107,6 +107,8 @@ mod tests {
             updated_at: chrono::Utc::now(),
             share_token: None,
             category_ids: vec![],
+            start_location: None,
+            end_location: None,
         }
     }
 

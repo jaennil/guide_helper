@@ -39,6 +39,12 @@ pub trait RouteRepository: Send + Sync {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<AdminRouteRow>, RepositoryError>;
+    fn update_locations(
+        &self,
+        id: Uuid,
+        start_location: Option<String>,
+        end_location: Option<String>,
+    ) -> impl std::future::Future<Output = Result<(), RepositoryError>> + Send;
 }
 
 #[cfg_attr(test, mockall::automock)]

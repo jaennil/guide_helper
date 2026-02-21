@@ -67,6 +67,8 @@ pub struct Route {
     pub updated_at: DateTime<Utc>,
     pub share_token: Option<Uuid>,
     pub category_ids: Vec<Uuid>,
+    pub start_location: Option<String>,
+    pub end_location: Option<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -105,6 +107,8 @@ impl Route {
             updated_at: now,
             share_token: None,
             category_ids,
+            start_location: None,
+            end_location: None,
         }
     }
 
