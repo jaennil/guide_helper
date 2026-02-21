@@ -348,7 +348,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
                           >
                             <span className="chat-route-card-name">{route.name}</span>
                             <span className="chat-route-card-meta">
-                              {route.category_ids.length > 0 && route.category_ids.join(', ')}
+                              {(route.category_ids?.length ?? 0) > 0 && route.category_ids.join(', ')}
                               {route.avg_rating > 0 && ` \u2022 ${route.avg_rating.toFixed(1)}\u2605`}
                               {route.likes_count > 0 && ` \u2022 ${route.likes_count}\u2764`}
                             </span>

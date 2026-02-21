@@ -11,6 +11,8 @@ import type { Route } from '../api/routes';
 import { totalDistance, formatDistance } from '../utils/geo';
 import { exportAsGpx, exportAsKml } from '../utils/exportRoute';
 import { NotificationBell } from '../components/NotificationBell';
+import { categoriesApi } from '../api/categories';
+import type { Category } from '../api/categories';
 import './ProfilePage.css';
 
 type TabType = 'profile' | 'security' | 'routes';
@@ -46,6 +48,7 @@ export default function ProfilePage() {
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
+  const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -65,8 +68,14 @@ export default function ProfilePage() {
     setRoutesLoading(true);
     setRoutesError('');
     try {
-      const data = await routesApi.getRoutes();
+      const [data, categories] = await Promise.all([
+        routesApi.getRoutes(),
+        categoriesApi.getCategories().catch(() => [] as Category[]),
+      ]);
       setRoutes(data);
+      const map: Record<string, string> = {};
+      categories.forEach((c) => { map[c.id] = c.name; });
+      setCategoryMap(map);
 
       // Load comment counts, like counts, and rating aggregates in parallel
       const counts: Record<string, number> = {};
@@ -461,7 +470,7 @@ export default function ProfilePage() {
                         {(route.category_ids?.length ?? 0) > 0 && (
                           <div className="route-tags">
                             {route.category_ids.map((id) => (
-                              <span key={id} className="route-tag">{id}</span>
+                              <span key={id} className="route-tag">{categoryMap[id] || id}</span>
                             ))}
                           </div>
                         )}
