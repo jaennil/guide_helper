@@ -67,18 +67,19 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         aria-modal="true"
         aria-labelledby="confirm-dialog-message"
         style={{
-          background: '#fff',
+          background: 'var(--bg-primary)',
           borderRadius: 8,
           padding: '24px 32px',
           maxWidth: 400,
           width: '90%',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+          boxShadow: '0 4px 24px var(--color-shadow)',
+          border: '1px solid var(--border-color)',
         }}
         onClick={e => e.stopPropagation()}
       >
         <p
           id="confirm-dialog-message"
-          style={{ margin: '0 0 20px', fontSize: 16, color: '#222' }}
+          style={{ margin: '0 0 20px', fontSize: 16, color: 'var(--text-primary)' }}
         >
           {message}
         </p>
@@ -88,9 +89,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             onClick={onCancel}
             style={{
               padding: '8px 18px',
-              border: '1px solid #ccc',
+              border: '1px solid var(--border-color)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--bg-card)',
+              color: 'var(--text-primary)',
               cursor: 'pointer',
               fontSize: 14,
             }}
@@ -104,7 +106,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               padding: '8px 18px',
               border: 'none',
               borderRadius: 6,
-              background: '#e53e3e',
+              background: 'var(--color-danger)',
               color: '#fff',
               cursor: 'pointer',
               fontSize: 14,
