@@ -10,12 +10,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        skipWaiting: true,
-        clientsClaim: true,
-      },
+      selfDestroying: true,
       manifest: {
         name: 'Guide Helper',
         short_name: 'Guide Helper',
