@@ -1266,7 +1266,9 @@ body {
     color: var(--color-brand);
 }
 
-/* Push Leaflet zoom control below the floating map header */
+/* Move Leaflet zoom control to top-right below header buttons */
 .App .leaflet-top.leaflet-left {
     top: 60px;
+    left: auto;
+    right: 10px;
 }
