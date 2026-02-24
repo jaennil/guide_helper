@@ -1,6 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
+    domain::bookmark::RouteBookmark,
     domain::category::Category,
     domain::chat_message::{ChatMessage, ConversationSummary},
     domain::comment::Comment,
@@ -135,6 +136,22 @@ pub trait ChatMessageRepository: Send + Sync {
         user_id: Uuid,
         message_id: Uuid,
     ) -> Result<(), RepositoryError>;
+}
+
+#[cfg_attr(test, mockall::automock)]
+pub trait BookmarkRepository: Send + Sync {
+    async fn create(&self, bookmark: &RouteBookmark) -> Result<(), RepositoryError>;
+    async fn delete_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RepositoryError>;
+    async fn find_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<RouteBookmark>, RepositoryError>;
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<ExploreRouteRow>, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]

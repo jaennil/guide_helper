@@ -1,3 +1,4 @@
+pub mod bookmark;
 pub mod category;
 pub mod chat_message;
 pub mod comment;

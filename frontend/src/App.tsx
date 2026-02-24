@@ -12,6 +12,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminPage from './pages/AdminPage';
+import BookmarksPage from './pages/BookmarksPage';
 import './App.css';
 
 function App() {
@@ -48,6 +49,14 @@ function App() {
             }
           />
           <Route path="/explore" element={<ExplorePage />} />
+          <Route
+            path="/bookmarks"
+            element={
+              <ProtectedRoute>
+                <BookmarksPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/shared/:token" element={<SharedMapPage />} />
           <Route path="/" element={<Navigate to="/map" replace />} />
         </Routes>

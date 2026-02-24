@@ -2,6 +2,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use uuid::Uuid;
 
 use crate::{
+    domain::bookmark::RouteBookmark,
     domain::category::Category,
     domain::chat_message::{ChatMessage, ConversationSummary},
     domain::comment::Comment,
@@ -10,7 +11,7 @@ use crate::{
     domain::rating::RouteRating,
     domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{CategoryRepository, ChatMessageRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
+    usecase::contracts::{BookmarkRepository, CategoryRepository, ChatMessageRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
 };
 
 #[derive(Clone)]
@@ -1208,6 +1209,123 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
 
         tracing::debug!(user_id = %user_id, count = count.0, "counted conversations");
         Ok(count.0)
+    }
+}
+
+pub struct PostgresBookmarkRepository {
+    pool: PgPool,
+}
+
+impl PostgresBookmarkRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl BookmarkRepository for PostgresBookmarkRepository {
+    #[tracing::instrument(skip(self, bookmark), fields(bookmark_id = %bookmark.id, route_id = %bookmark.route_id, user_id = %bookmark.user_id))]
+    async fn create(&self, bookmark: &RouteBookmark) -> Result<(), RepositoryError> {
+        tracing::debug!("creating route bookmark");
+
+        sqlx::query(
+            r#"
+            INSERT INTO route_bookmarks (id, route_id, user_id, created_at)
+            VALUES ($1, $2, $3, $4)
+            "#,
+        )
+        .bind(bookmark.id)
+        .bind(bookmark.route_id)
+        .bind(bookmark.user_id)
+        .bind(bookmark.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(bookmark_id = %bookmark.id, "route bookmark created successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn delete_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RepositoryError> {
+        tracing::debug!("deleting route bookmark");
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM route_bookmarks
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        tracing::debug!("route bookmark deleted successfully");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(route_id = %route_id, user_id = %user_id))]
+    async fn find_by_route_and_user(
+        &self,
+        route_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<RouteBookmark>, RepositoryError> {
+        tracing::debug!("finding route bookmark by route and user");
+
+        let bookmark = sqlx::query_as::<_, RouteBookmark>(
+            r#"
+            SELECT id, route_id, user_id, created_at
+            FROM route_bookmarks
+            WHERE route_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(route_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(bookmark)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id))]
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<ExploreRouteRow>, RepositoryError> {
+        tracing::debug!("finding bookmarked routes by user_id");
+
+        let rows = sqlx::query_as::<_, ExploreRouteRow>(
+            r#"
+            SELECT
+                r.id,
+                r.name,
+                jsonb_array_length(r.points) AS points_count,
+                r.created_at,
+                r.share_token,
+                COALESCE((SELECT COUNT(*) FROM route_likes WHERE route_id = r.id), 0) AS likes_count,
+                COALESCE((SELECT AVG(rating::float8) FROM route_ratings WHERE route_id = r.id), 0.0) AS avg_rating,
+                COALESCE((SELECT COUNT(*) FROM route_ratings WHERE route_id = r.id), 0) AS ratings_count,
+                COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+            FROM route_bookmarks rb
+            JOIN routes r ON r.id = rb.route_id
+            WHERE rb.user_id = $1
+            ORDER BY rb.created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!(user_id = %user_id, count = rows.len(), "found bookmarked routes");
+        Ok(rows)
     }
 }
 

@@ -250,4 +250,25 @@ export const routesApi = {
       headers: getAuthHeader(),
     });
   },
+
+  async toggleBookmark(routeId: string): Promise<{ bookmarked: boolean }> {
+    const response = await axios.post(`${ROUTES_URL}/${routeId}/bookmark`, {}, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async getUserBookmarkStatus(routeId: string): Promise<{ bookmarked: boolean }> {
+    const response = await axios.get(`${ROUTES_URL}/${routeId}/bookmark/me`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async getBookmarks(): Promise<ExploreRoute[]> {
+    const response = await axios.get(`${API_BASE_URL}/api/v1/bookmarks`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
 };

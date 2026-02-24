@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -28,6 +28,7 @@ import { LikeRatingBar } from "../components/LikeRatingBar";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
+import { useAuth } from "../context/AuthContext";
 
 type RouteMode = "auto" | "manual";
 
@@ -52,11 +53,43 @@ export function SharedMapPage() {
   const [error, setError] = useState("");
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
   const [playbackActive, setPlaybackActive] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!token) return;
     loadSharedRoute(token);
   }, [token]);
+
+  const loadBookmarkStatus = useCallback(async (routeId: string) => {
+    if (!user) return;
+    try {
+      const data = await routesApi.getUserBookmarkStatus(routeId);
+      setBookmarked(data.bookmarked);
+      console.log(`[SharedMapPage] bookmark status for route ${routeId}: ${data.bookmarked}`);
+    } catch (err) {
+      console.error('[SharedMapPage] failed to load bookmark status:', err);
+    }
+  }, [user]);
+
+  const handleToggleBookmark = async () => {
+    if (!routeInfo) return;
+    if (!user) {
+      console.log('[SharedMapPage] user not logged in, cannot bookmark');
+      return;
+    }
+    setBookmarkLoading(true);
+    try {
+      const data = await routesApi.toggleBookmark(routeInfo.id);
+      setBookmarked(data.bookmarked);
+      console.log(`[SharedMapPage] bookmark toggled: ${data.bookmarked}`);
+    } catch (err) {
+      console.error('[SharedMapPage] failed to toggle bookmark:', err);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
 
   const loadSharedRoute = async (shareToken: string) => {
     setLoading(true);
@@ -66,6 +99,7 @@ export function SharedMapPage() {
       setRouteName(route.name);
       setRouteCategoryIds(route.category_ids);
       setRouteInfo({ id: route.id, user_id: route.user_id });
+      loadBookmarkStatus(route.id);
 
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
@@ -166,6 +200,16 @@ export function SharedMapPage() {
                 {t("playback.button")}
               </button>
             </>
+          )}
+          {user && routeInfo && (
+            <button
+              onClick={handleToggleBookmark}
+              disabled={bookmarkLoading}
+              className={`btn-secondary${bookmarked ? ' bookmarked' : ''}`}
+              title={bookmarked ? t('bookmarks.bookmarked') : t('bookmarks.bookmark')}
+            >
+              {bookmarked ? '\u2605' : '\u2606'} {bookmarked ? t('bookmarks.bookmarked') : t('bookmarks.bookmark')}
+            </button>
           )}
           <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
             {theme === "light" ? "\u263D" : "\u2600"}

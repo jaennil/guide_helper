@@ -1,0 +1,110 @@
+.bookmarks-page {
+  min-height: 100vh;
+  background-color: var(--bg-page);
+}
+
+.bookmarks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: var(--bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bookmarks-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.bookmarks-content {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.bookmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.bookmarks-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.bookmarks-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.bookmarks-card-name {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmarks-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 0.75rem;
+}
+
+.bookmarks-card-date {
+  color: var(--text-dim);
+}
+
+.bookmarks-card-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.bookmarks-card-likes {
+  color: var(--color-like);
+}
+
+.bookmarks-card-rating {
+  color: var(--color-rating);
+}
+
+.bookmarks-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bookmarks-loading {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-light);
+}
+
+@media (max-width: 600px) {
+  .bookmarks-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .bookmarks-grid {
+    grid-template-columns: 1fr;
+  }
+}

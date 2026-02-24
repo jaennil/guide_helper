@@ -215,6 +215,12 @@ body {
     border-color: var(--border-dark);
 }
 
+/* Bookmark active state */
+.header-actions button.bookmarked {
+    color: var(--color-rating);
+    border-color: var(--color-rating);
+}
+
 /* Logout — subtle danger accent */
 .logout-btn {
     color: var(--color-danger) !important;

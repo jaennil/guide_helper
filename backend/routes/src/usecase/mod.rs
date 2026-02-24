@@ -1,3 +1,4 @@
+pub mod bookmarks;
 pub mod categories;
 pub mod chat;
 pub mod nominatim;

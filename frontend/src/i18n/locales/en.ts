@@ -254,4 +254,13 @@ export const en = {
   "chat.rateLimited": "Too many messages. Please wait.",
   "chat.deleteMessage": "Delete",
   "chat.goTo": "Go to",
+  "bookmarks.title": "Bookmarks",
+  "bookmarks.backToMap": "Back to Map",
+  "bookmarks.empty": "No saved routes yet",
+  "bookmarks.loadFailed": "Failed to load bookmarks",
+  "bookmarks.pointsCount": "{{count}} points",
+  "bookmarks.bookmark": "Bookmark",
+  "bookmarks.bookmarked": "Bookmarked",
+  "bookmarks.toggleFailed": "Failed to update bookmark",
+  "bookmarks.loginToBookmark": "Log in to bookmark",
 } as const;

@@ -893,6 +893,9 @@ export function MapPage() {
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
           </button>
+          <button onClick={() => navigate("/bookmarks")} className="btn-secondary explore-nav-btn">
+            {t("bookmarks.title")}
+          </button>
           <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
             {t("chat.toggle")}
           </button>
@@ -956,6 +959,9 @@ export function MapPage() {
           </button>
           <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
             {t("explore.catalog")}
+          </button>
+          <button onClick={() => navigate("/bookmarks")} className="btn-secondary explore-nav-btn">
+            {t("bookmarks.title")}
           </button>
           <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
             {t("chat.toggle")}

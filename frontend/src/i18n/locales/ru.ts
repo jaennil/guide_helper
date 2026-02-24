@@ -254,4 +254,13 @@ export const ru = {
   "chat.rateLimited": "Слишком много сообщений. Подождите.",
   "chat.deleteMessage": "Удалить",
   "chat.goTo": "Перейти",
+  "bookmarks.title": "Закладки",
+  "bookmarks.backToMap": "Назад к карте",
+  "bookmarks.empty": "Нет сохранённых маршрутов",
+  "bookmarks.loadFailed": "Не удалось загрузить закладки",
+  "bookmarks.pointsCount": "{{count}} точек",
+  "bookmarks.bookmark": "В закладки",
+  "bookmarks.bookmarked": "В закладках",
+  "bookmarks.toggleFailed": "Не удалось обновить закладку",
+  "bookmarks.loginToBookmark": "Войдите, чтобы добавить в закладки",
 } as const;

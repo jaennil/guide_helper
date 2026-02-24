@@ -23,6 +23,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
+use crate::delivery::http::v1::bookmarks::{toggle_bookmark, get_user_bookmark_status, list_bookmarks};
 use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
 use crate::delivery::http::v1::chat::{send_chat_message, send_chat_message_stream, get_chat_history, list_conversations, delete_conversation, delete_message, chat_health};
 use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
@@ -33,7 +34,8 @@ use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
 use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
 use crate::delivery::http::v1::ws::websocket_handler;
-use crate::repository::postgres::{create_pool, PostgresCategoryRepository, PostgresChatMessageRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
+use crate::repository::postgres::{create_pool, PostgresBookmarkRepository, PostgresCategoryRepository, PostgresChatMessageRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
+use crate::usecase::bookmarks::BookmarksUseCase;
 use crate::usecase::categories::CategoriesUseCase;
 use crate::usecase::chat::ChatUseCase;
 use crate::usecase::comments::CommentsUseCase;
@@ -50,6 +52,7 @@ pub struct AppState {
     pub comments_usecase: CommentsUseCase<PostgresCommentRepository, PostgresRouteRepository>,
     pub likes_usecase: LikesUseCase<PostgresLikeRepository, PostgresRouteRepository>,
     pub ratings_usecase: RatingsUseCase<PostgresRatingRepository, PostgresRouteRepository>,
+    pub bookmarks_usecase: BookmarksUseCase<PostgresBookmarkRepository, PostgresRouteRepository>,
     pub settings_usecase: SettingsUseCase<PostgresSettingsRepository>,
     pub categories_usecase: CategoriesUseCase<PostgresCategoryRepository>,
     pub notifications_usecase: NotificationsUseCase<PostgresNotificationRepository>,
@@ -111,6 +114,8 @@ async fn main() -> anyhow::Result<()> {
     let route_repository_for_likes = PostgresRouteRepository::new(pool.clone());
     let rating_repository = PostgresRatingRepository::new(pool.clone());
     let route_repository_for_ratings = PostgresRouteRepository::new(pool.clone());
+    let bookmark_repository = PostgresBookmarkRepository::new(pool.clone());
+    let route_repository_for_bookmarks = PostgresRouteRepository::new(pool.clone());
     let settings_repository = PostgresSettingsRepository::new(pool.clone());
     let category_repository = PostgresCategoryRepository::new(pool.clone());
     let notification_repository = PostgresNotificationRepository::new(pool.clone());
@@ -122,6 +127,7 @@ async fn main() -> anyhow::Result<()> {
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
     let likes_usecase = LikesUseCase::new(like_repository, route_repository_for_likes);
     let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);
+    let bookmarks_usecase = BookmarksUseCase::new(bookmark_repository, route_repository_for_bookmarks);
     let settings_usecase = SettingsUseCase::new(settings_repository);
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
@@ -189,6 +195,7 @@ async fn main() -> anyhow::Result<()> {
         comments_usecase,
         likes_usecase,
         ratings_usecase,
+        bookmarks_usecase,
         settings_usecase,
         categories_usecase,
         notifications_usecase,
@@ -319,6 +326,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/routes/{route_id}/like/me", get(get_user_like_status))
         .route("/api/v1/routes/{route_id}/rating", put(set_rating).delete(remove_rating))
         .route("/api/v1/routes/{route_id}/rating/me", get(get_user_rating))
+        .route("/api/v1/routes/{route_id}/bookmark", post(toggle_bookmark))
+        .route("/api/v1/routes/{route_id}/bookmark/me", get(get_user_bookmark_status))
+        .route("/api/v1/bookmarks", get(list_bookmarks))
         .route("/api/v1/admin/routes/stats", get(get_routes_stats))
         .route("/api/v1/admin/routes", get(list_admin_routes))
         .route("/api/v1/admin/comments", get(list_admin_comments))
