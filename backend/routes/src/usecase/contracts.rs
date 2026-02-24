@@ -25,6 +25,7 @@ pub trait RouteRepository: Send + Sync {
         &self,
         search: Option<String>,
         category_id: Option<Uuid>,
+        season: Option<String>,
         order_clause: &str,
         limit: i64,
         offset: i64,
@@ -33,6 +34,7 @@ pub trait RouteRepository: Send + Sync {
         &self,
         search: Option<String>,
         category_id: Option<Uuid>,
+        season: Option<String>,
     ) -> Result<i64, RepositoryError>;
     async fn count_all(&self) -> Result<i64, RepositoryError>;
     async fn find_all_admin(

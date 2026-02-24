@@ -34,6 +34,7 @@ pub struct RouteResponse {
     pub start_location: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_location: Option<String>,
+    pub seasons: Vec<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -44,6 +45,8 @@ pub struct CreateRouteRequest {
     pub points: Vec<RoutePoint>,
     #[serde(default)]
     pub category_ids: Vec<Uuid>,
+    #[serde(default)]
+    pub seasons: Vec<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -52,6 +55,7 @@ pub struct UpdateRouteRequest {
     pub name: Option<String>,
     pub points: Option<Vec<RoutePoint>>,
     pub category_ids: Option<Vec<Uuid>>,
+    pub seasons: Option<Vec<String>>,
 }
 
 fn route_to_response(r: DomainRoute) -> RouteResponse {
@@ -66,6 +70,7 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         category_ids: r.category_ids,
         start_location: r.start_location,
         end_location: r.end_location,
+        seasons: r.seasons,
     }
 }
 
@@ -112,7 +117,7 @@ pub async fn create_route(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, payload.name, payload.points, payload.category_ids)
+        .create_route(user.user_id, payload.name, payload.points, payload.category_ids, payload.seasons)
         .await?;
 
     tracing::debug!(route_id = %route.id, "route created successfully");
@@ -136,7 +141,7 @@ pub async fn update_route(
 
     let route = state
         .routes_usecase
-        .update_route(user.user_id, route_id, payload.name, payload.points, payload.category_ids)
+        .update_route(user.user_id, route_id, payload.name, payload.points, payload.category_ids, payload.seasons)
         .await?;
 
     tracing::debug!(%route_id, "route updated successfully");
@@ -219,7 +224,7 @@ pub async fn import_route_from_geojson(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, name, points, vec![])
+        .create_route(user.user_id, name, points, vec![], vec![])
         .await?;
 
     tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
@@ -288,6 +293,7 @@ pub async fn get_shared_route(
 pub struct ExploreQuery {
     pub search: Option<String>,
     pub category_id: Option<Uuid>,
+    pub season: Option<String>,
     pub sort: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -304,6 +310,7 @@ pub struct ExploreRouteResponse {
     pub avg_rating: f64,
     pub ratings_count: i64,
     pub category_ids: Vec<Uuid>,
+    pub seasons: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -319,15 +326,16 @@ pub async fn explore_routes(
 ) -> Result<impl IntoResponse, UsecaseError> {
     let search = params.search.filter(|s| !s.is_empty());
     let category_id = params.category_id;
+    let season = params.season.filter(|s| !s.is_empty());
     let sort = params.sort.as_deref().unwrap_or("newest");
     let limit = params.limit.unwrap_or(20).min(50).max(1);
     let offset = params.offset.unwrap_or(0).max(0);
 
-    tracing::debug!(?search, ?category_id, %sort, %limit, %offset, "handling explore routes request");
+    tracing::debug!(?search, ?category_id, ?season, %sort, %limit, %offset, "handling explore routes request");
 
     let (rows, total) = state
         .routes_usecase
-        .explore_routes(search, category_id, sort, limit, offset)
+        .explore_routes(search, category_id, season, sort, limit, offset)
         .await?;
 
     let routes: Vec<ExploreRouteResponse> = rows
@@ -342,6 +350,7 @@ pub async fn explore_routes(
             avg_rating: r.avg_rating,
             ratings_count: r.ratings_count,
             category_ids: r.category_ids,
+            seasons: r.seasons,
         })
         .collect();
 

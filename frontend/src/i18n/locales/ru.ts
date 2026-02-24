@@ -268,4 +268,11 @@ export const ru = {
   "qr.download": "Скачать PNG",
   "qr.close": "Закрыть",
   "qr.scanHint": "Отсканируйте камерой для открытия маршрута",
+  "seasons.label": "Сезоны",
+  "seasons.winter": "Зима",
+  "seasons.spring": "Весна",
+  "seasons.summer": "Лето",
+  "seasons.autumn": "Осень",
+  "seasons.all": "Все сезоны",
+  "seasons.current": "Сейчас актуально",
 } as const;

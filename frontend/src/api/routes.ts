@@ -28,6 +28,7 @@ export interface Route {
   category_ids: string[];
   start_location?: string;
   end_location?: string;
+  seasons: string[];
 }
 
 export interface Comment {
@@ -82,6 +83,7 @@ export interface ExploreRoute {
   avg_rating: number;
   ratings_count: number;
   category_ids: string[];
+  seasons: string[];
 }
 
 export interface ExploreResponse {
@@ -92,6 +94,7 @@ export interface ExploreResponse {
 export interface ExploreParams {
   search?: string;
   category_id?: string;
+  season?: string;
   sort?: string;
   limit?: number;
   offset?: number;
@@ -101,12 +104,14 @@ export interface CreateRouteRequest {
   name: string;
   points: RoutePoint[];
   category_ids: string[];
+  seasons: string[];
 }
 
 export interface UpdateRouteRequest {
   name?: string;
   points?: RoutePoint[];
   category_ids?: string[];
+  seasons?: string[];
 }
 
 const getAuthHeader = () => {

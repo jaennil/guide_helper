@@ -1,0 +1,1 @@
+ALTER TABLE routes ADD COLUMN seasons TEXT[] NOT NULL DEFAULT '{}';

@@ -69,6 +69,7 @@ pub struct Route {
     pub category_ids: Vec<Uuid>,
     pub start_location: Option<String>,
     pub end_location: Option<String>,
+    pub seasons: Vec<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -82,6 +83,7 @@ pub struct ExploreRouteRow {
     pub avg_rating: f64,
     pub ratings_count: i64,
     pub category_ids: Vec<Uuid>,
+    pub seasons: Vec<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -96,7 +98,7 @@ pub struct AdminRouteRow {
 }
 
 impl Route {
-    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, category_ids: Vec<Uuid>) -> Self {
+    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, category_ids: Vec<Uuid>, seasons: Vec<String>) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -109,10 +111,11 @@ impl Route {
             category_ids,
             start_location: None,
             end_location: None,
+            seasons,
         }
     }
 
-    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>) {
+    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>, seasons: Option<Vec<String>>) {
         if let Some(n) = name {
             self.name = n;
         }
@@ -121,6 +124,9 @@ impl Route {
         }
         if let Some(c) = category_ids {
             self.category_ids = c;
+        }
+        if let Some(s) = seasons {
+            self.seasons = s;
         }
         self.updated_at = Utc::now();
     }

@@ -268,4 +268,11 @@ export const en = {
   "qr.download": "Download PNG",
   "qr.close": "Close",
   "qr.scanHint": "Scan with camera to open the route",
+  "seasons.label": "Seasons",
+  "seasons.winter": "Winter",
+  "seasons.spring": "Spring",
+  "seasons.summer": "Summer",
+  "seasons.autumn": "Autumn",
+  "seasons.all": "All seasons",
+  "seasons.current": "Relevant now",
 } as const;

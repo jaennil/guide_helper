@@ -69,10 +69,11 @@ where
         name: String,
         points: Vec<RoutePoint>,
         category_ids: Vec<Uuid>,
+        seasons: Vec<String>,
     ) -> Result<Route, UsecaseError> {
-        tracing::debug!(?category_ids, "creating new route");
+        tracing::debug!(?category_ids, ?seasons, "creating new route");
 
-        let route = Route::new(user_id, name, points.clone(), category_ids);
+        let route = Route::new(user_id, name, points.clone(), category_ids, seasons);
         self.route_repository.create(&route).await?;
 
         self.spawn_geocoding(route.id, points);
@@ -123,8 +124,9 @@ where
         name: Option<String>,
         points: Option<Vec<RoutePoint>>,
         category_ids: Option<Vec<Uuid>>,
+        seasons: Option<Vec<String>>,
     ) -> Result<Route, UsecaseError> {
-        tracing::debug!(?category_ids, "updating route");
+        tracing::debug!(?category_ids, ?seasons, "updating route");
 
         let mut route = self
             .route_repository
@@ -139,7 +141,7 @@ where
         }
 
         let points_changed = points.is_some();
-        route.update(name, points, category_ids);
+        route.update(name, points, category_ids, seasons);
         self.route_repository.update(&route).await?;
 
         if points_changed {
@@ -222,6 +224,7 @@ where
         &self,
         search: Option<String>,
         category_id: Option<Uuid>,
+        season: Option<String>,
         sort: &str,
         limit: i64,
         offset: i64,
@@ -237,11 +240,11 @@ where
 
         let routes = self
             .route_repository
-            .explore_shared(search.clone(), category_id, order_clause, limit, offset)
+            .explore_shared(search.clone(), category_id, season.clone(), order_clause, limit, offset)
             .await?;
         let total = self
             .route_repository
-            .count_explore_shared(search, category_id)
+            .count_explore_shared(search, category_id, season)
             .await?;
 
         tracing::debug!(count = routes.len(), total, "explored shared routes");

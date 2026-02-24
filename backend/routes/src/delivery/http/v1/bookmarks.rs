@@ -82,6 +82,7 @@ pub async fn list_bookmarks(
             avg_rating: r.avg_rating,
             ratings_count: r.ratings_count,
             category_ids: r.category_ids,
+            seasons: r.seasons,
         })
         .collect();
 

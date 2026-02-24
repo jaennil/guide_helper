@@ -489,6 +489,11 @@ body {
     white-space: nowrap;
 }
 
+.season-tag.season-winter { background: #5b8fd6; color: #fff; }
+.season-tag.season-spring  { background: #6abf6a; color: #fff; }
+.season-tag.season-summer  { background: #e6a817; color: #fff; }
+.season-tag.season-autumn  { background: #d4672a; color: #fff; }
+
 /* Overlay legend */
 .overlay-legend {
     position: absolute;

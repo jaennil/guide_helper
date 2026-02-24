@@ -22,8 +22,17 @@ export default function ExplorePage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [season, setSeason] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [offset, setOffset] = useState(0);
+
+  const getCurrentSeason = (): string => {
+    const month = new Date().getMonth() + 1;
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter';
+  };
   const [initialLoad, setInitialLoad] = useState(true);
 
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
@@ -36,13 +45,14 @@ export default function ExplorePage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const fetchRoutes = useCallback(async (searchValue: string, categoryIdValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
+  const fetchRoutes = useCallback(async (searchValue: string, categoryIdValue: string, seasonValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
     setLoading(true);
     setError('');
     try {
       const data = await routesApi.exploreRoutes({
         search: searchValue || undefined,
         category_id: categoryIdValue || undefined,
+        season: seasonValue || undefined,
         sort: sortValue,
         limit: PAGE_SIZE,
         offset: offsetValue,
@@ -61,11 +71,11 @@ export default function ExplorePage() {
     }
   }, [t]);
 
-  // Initial load, sort, and category change
+  // Initial load, sort, category and season change
   useEffect(() => {
     setOffset(0);
-    fetchRoutes(search, categoryId, sort, 0, false);
-  }, [sort, categoryId]);
+    fetchRoutes(search, categoryId, season, sort, 0, false);
+  }, [sort, categoryId, season]);
 
   // Search with debounce
   const handleSearchChange = (value: string) => {
@@ -73,14 +83,14 @@ export default function ExplorePage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setOffset(0);
-      fetchRoutes(value, categoryId, sort, 0, false);
+      fetchRoutes(value, categoryId, season, sort, 0, false);
     }, 400);
   };
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE;
     setOffset(newOffset);
-    fetchRoutes(search, categoryId, sort, newOffset, true);
+    fetchRoutes(search, categoryId, season, sort, newOffset, true);
   };
 
   const formatDate = (dateString: string) => {
@@ -128,6 +138,23 @@ export default function ExplorePage() {
               </option>
             ))}
           </select>
+          <select
+            className="explore-tag-filter"
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+          >
+            <option value="">{t('seasons.all')}</option>
+            <option value="winter">{t('seasons.winter')}</option>
+            <option value="spring">{t('seasons.spring')}</option>
+            <option value="summer">{t('seasons.summer')}</option>
+            <option value="autumn">{t('seasons.autumn')}</option>
+          </select>
+          <button
+            className={`btn-secondary${season === getCurrentSeason() ? ' active' : ''}`}
+            onClick={() => setSeason(s => s === getCurrentSeason() ? '' : getCurrentSeason())}
+          >
+            {t('seasons.current')}
+          </button>
           <select
             className="explore-sort"
             value={sort}
@@ -178,6 +205,13 @@ export default function ExplorePage() {
                         const cat = availableCategories.find(c => c.id === id);
                         return <span key={id} className="route-tag">{cat ? (t(`tags.${cat.name}` as any) || cat.name) : id}</span>;
                       })}
+                    </div>
+                  )}
+                  {route.seasons.length > 0 && (
+                    <div className="route-tags">
+                      {route.seasons.map((s) => (
+                        <span key={s} className={`route-tag season-tag season-${s}`}>{t(`seasons.${s}` as any)}</span>
+                      ))}
                     </div>
                   )}
                 </div>

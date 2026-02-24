@@ -390,6 +390,7 @@ export function MapPage() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
@@ -414,6 +415,14 @@ export function MapPage() {
   const toggleCategory = (categoryId: string) => {
     setSelectedCategoryIds(prev =>
       prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : prev.length < 5 ? [...prev, categoryId] : prev
+    );
+  };
+
+  const ALL_SEASONS = ['winter', 'spring', 'summer', 'autumn'] as const;
+
+  const toggleSeason = (season: string) => {
+    setSelectedSeasons(prev =>
+      prev.includes(season) ? prev.filter(s => s !== season) : [...prev, season]
     );
   };
 
@@ -557,10 +566,12 @@ export function MapPage() {
         name: routeName.trim(),
         points: pointsToSave,
         category_ids: selectedCategoryIds,
+        seasons: selectedSeasons,
       });
       setShowSaveModal(false);
       setRouteName("");
       setSelectedCategoryIds([]);
+      setSelectedSeasons([]);
       toast.success(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
@@ -1048,6 +1059,21 @@ export function MapPage() {
                       onClick={() => toggleCategory(cat.id)}
                     >
                       {t(`tags.${cat.name}` as any) || cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="tag-selector">
+                <label>{t("seasons.label")}</label>
+                <div className="tag-selector-buttons">
+                  {ALL_SEASONS.map((season) => (
+                    <button
+                      key={season}
+                      type="button"
+                      className={`tag-button${selectedSeasons.includes(season) ? " active" : ""}`}
+                      onClick={() => toggleSeason(season)}
+                    >
+                      {t(`seasons.${season}` as any)}
                     </button>
                   ))}
                 </div>

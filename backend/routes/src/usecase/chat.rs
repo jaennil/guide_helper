@@ -465,7 +465,7 @@ where
 
         match self
             .route_repo
-            .explore_shared(search, category_id, order_clause, limit, 0)
+            .explore_shared(search, category_id, None, order_clause, limit, 0)
             .await
         {
             Ok(routes) => {

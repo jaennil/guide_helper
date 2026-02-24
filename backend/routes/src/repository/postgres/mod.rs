@@ -34,8 +34,8 @@ impl RouteRepository for PostgresRouteRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO routes (id, user_id, name, points, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, seasons)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#
         )
         .bind(route.id)
@@ -44,6 +44,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.created_at)
         .bind(route.updated_at)
+        .bind(&route.seasons)
         .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -76,7 +77,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location
+                   r.start_location, r.end_location, r.seasons
             FROM routes r
             WHERE r.id = $1
             "#
@@ -97,7 +98,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location
+                   r.start_location, r.end_location, r.seasons
             FROM routes r
             WHERE r.user_id = $1
             ORDER BY r.created_at DESC
@@ -121,7 +122,7 @@ impl RouteRepository for PostgresRouteRepository {
         let result = sqlx::query(
             r#"
             UPDATE routes
-            SET name = $2, points = $3, updated_at = $4
+            SET name = $2, points = $3, updated_at = $4, seasons = $5
             WHERE id = $1
             "#
         )
@@ -129,6 +130,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(&route.name)
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.updated_at)
+        .bind(&route.seasons)
         .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -196,7 +198,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location
+                   r.start_location, r.end_location, r.seasons
             FROM routes r
             WHERE r.share_token = $1
             "#
@@ -237,6 +239,7 @@ impl RouteRepository for PostgresRouteRepository {
         &self,
         search: Option<String>,
         category_id: Option<Uuid>,
+        season: Option<String>,
         order_clause: &str,
         limit: i64,
         offset: i64,
@@ -251,15 +254,17 @@ impl RouteRepository for PostgresRouteRepository {
                    COALESCE(l.likes_count, 0) AS likes_count,
                    COALESCE(rt.avg_rating, 0.0) AS avg_rating,
                    COALESCE(rt.ratings_count, 0) AS ratings_count,
-                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                   r.seasons
             FROM routes r
             LEFT JOIN (SELECT route_id, COUNT(*) AS likes_count FROM route_likes GROUP BY route_id) l ON l.route_id = r.id
             LEFT JOIN (SELECT route_id, AVG(rating::float8) AS avg_rating, COUNT(*) AS ratings_count FROM route_ratings GROUP BY route_id) rt ON rt.route_id = r.id
             WHERE r.share_token IS NOT NULL
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
               AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
+              AND ($3::text IS NULL OR $3 = ANY(r.seasons))
             ORDER BY {}
-            LIMIT $3 OFFSET $4
+            LIMIT $4 OFFSET $5
             "#,
             order_clause
         );
@@ -267,6 +272,7 @@ impl RouteRepository for PostgresRouteRepository {
         let rows = sqlx::query_as::<_, ExploreRouteRow>(&query)
             .bind(search.as_deref())
             .bind(category_id)
+            .bind(season.as_deref())
             .bind(limit)
             .bind(offset)
             .fetch_all(&self.pool)
@@ -278,7 +284,7 @@ impl RouteRepository for PostgresRouteRepository {
     }
 
     #[tracing::instrument(skip(self), fields(?search, ?category_id))]
-    async fn count_explore_shared(&self, search: Option<String>, category_id: Option<Uuid>) -> Result<i64, RepositoryError> {
+    async fn count_explore_shared(&self, search: Option<String>, category_id: Option<Uuid>, season: Option<String>) -> Result<i64, RepositoryError> {
         tracing::debug!("counting explore shared routes");
 
         let count: (i64,) = sqlx::query_as(
@@ -287,10 +293,12 @@ impl RouteRepository for PostgresRouteRepository {
             WHERE r.share_token IS NOT NULL
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
               AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
+              AND ($3::text IS NULL OR $3 = ANY(r.seasons))
             "#,
         )
         .bind(search.as_deref())
         .bind(category_id)
+        .bind(season.as_deref())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;

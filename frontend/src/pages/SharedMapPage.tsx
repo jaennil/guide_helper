@@ -49,6 +49,7 @@ export function SharedMapPage() {
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
   const [routeCategoryIds, setRouteCategoryIds] = useState<string[]>([]);
+  const [routeSeasons, setRouteSeasons] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -100,6 +101,7 @@ export function SharedMapPage() {
       const route = await routesApi.getSharedRoute(shareToken);
       setRouteName(route.name);
       setRouteCategoryIds(route.category_ids);
+      setRouteSeasons(route.seasons ?? []);
       setRouteInfo({ id: route.id, user_id: route.user_id });
       loadBookmarkStatus(route.id);
 
@@ -164,6 +166,13 @@ export function SharedMapPage() {
             <div className="route-tags">
               {routeCategoryIds.map((id) => (
                 <span key={id} className="route-tag">{id}</span>
+              ))}
+            </div>
+          )}
+          {routeSeasons.length > 0 && (
+            <div className="route-tags">
+              {routeSeasons.map((s) => (
+                <span key={s} className={`route-tag season-tag season-${s}`}>{t(`seasons.${s}` as any)}</span>
               ))}
             </div>
           )}
