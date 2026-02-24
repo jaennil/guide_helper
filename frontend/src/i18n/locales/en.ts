@@ -263,4 +263,9 @@ export const en = {
   "bookmarks.bookmarked": "Bookmarked",
   "bookmarks.toggleFailed": "Failed to update bookmark",
   "bookmarks.loginToBookmark": "Log in to bookmark",
+  "qr.button": "QR Code",
+  "qr.title": "Route QR Code",
+  "qr.download": "Download PNG",
+  "qr.close": "Close",
+  "qr.scanHint": "Scan with camera to open the route",
 } as const;

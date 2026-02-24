@@ -29,6 +29,7 @@ import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
 import { useAuth } from "../context/AuthContext";
+import { QRCodeModal } from "../components/QRCodeModal";
 
 type RouteMode = "auto" | "manual";
 
@@ -55,6 +56,7 @@ export function SharedMapPage() {
   const [playbackActive, setPlaybackActive] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -199,6 +201,12 @@ export function SharedMapPage() {
               >
                 {t("playback.button")}
               </button>
+              <button
+                onClick={() => setQrOpen(true)}
+                className="btn-secondary"
+              >
+                {t("qr.button")}
+              </button>
             </>
           )}
           {user && routeInfo && (
@@ -279,6 +287,13 @@ export function SharedMapPage() {
             routeOwnerId={routeInfo.user_id}
           />
         </>
+      )}
+      {qrOpen && token && (
+        <QRCodeModal
+          url={`${window.location.origin}/shared/${token}`}
+          routeName={routeName}
+          onClose={() => setQrOpen(false)}
+        />
       )}
     </div>
   );

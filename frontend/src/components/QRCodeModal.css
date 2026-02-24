@@ -1,0 +1,56 @@
+.qr-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.qr-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+}
+
+.qr-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+.qr-route-name {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qr-canvas-wrapper {
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.qr-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}

@@ -263,4 +263,9 @@ export const ru = {
   "bookmarks.bookmarked": "В закладках",
   "bookmarks.toggleFailed": "Не удалось обновить закладку",
   "bookmarks.loginToBookmark": "Войдите, чтобы добавить в закладки",
+  "qr.button": "QR-код",
+  "qr.title": "QR-код маршрута",
+  "qr.download": "Скачать PNG",
+  "qr.close": "Закрыть",
+  "qr.scanHint": "Отсканируйте камерой для открытия маршрута",
 } as const;
