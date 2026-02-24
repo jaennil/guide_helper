@@ -1306,7 +1306,7 @@ impl BookmarkRepository for PostgresBookmarkRepository {
             SELECT
                 r.id,
                 r.name,
-                jsonb_array_length(r.points) AS points_count,
+                jsonb_array_length(r.points)::bigint AS points_count,
                 r.created_at,
                 r.share_token,
                 COALESCE((SELECT COUNT(*) FROM route_likes WHERE route_id = r.id), 0) AS likes_count,
