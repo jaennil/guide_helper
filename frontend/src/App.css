@@ -1265,3 +1265,8 @@ body {
 [data-theme="dark"] .leaflet-control-attribution a {
     color: var(--color-brand);
 }
+
+/* Push Leaflet zoom control below the floating map header */
+.App .leaflet-top.leaflet-left {
+    top: 60px;
+}

@@ -74,7 +74,7 @@ export function EmbedMapPage() {
   return (
     <div style={{ width: "100%", height: "100vh", position: "relative" }}>
       <div style={{
-        position: "absolute", top: 8, left: 8, zIndex: 1000,
+        position: "absolute", bottom: 24, left: 8, zIndex: 1000,
         background: "rgba(0,0,0,0.6)", color: "#fff",
         padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 600,
         maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
