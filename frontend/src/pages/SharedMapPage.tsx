@@ -58,6 +58,8 @@ export function SharedMapPage() {
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -216,6 +218,12 @@ export function SharedMapPage() {
               >
                 {t("qr.button")}
               </button>
+              <button
+                onClick={() => setEmbedOpen(true)}
+                className="btn-secondary"
+              >
+                {t("embed.button")}
+              </button>
             </>
           )}
           {user && routeInfo && (
@@ -303,6 +311,39 @@ export function SharedMapPage() {
           routeName={routeName}
           onClose={() => setQrOpen(false)}
         />
+      )}
+      {embedOpen && token && (
+        <div className="modal-overlay" onClick={() => setEmbedOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <h3>{t("embed.title")}</h3>
+            <p style={{ color: "var(--text-secondary)", marginBottom: 12 }}>{t("embed.hint")}</p>
+            <textarea
+              readOnly
+              value={`<iframe src="${window.location.origin}/embed/${token}" width="100%" height="450" style="border:none;border-radius:8px;" allowfullscreen loading="lazy"></iframe>`}
+              style={{
+                width: "100%", height: 80, resize: "none", fontFamily: "monospace", fontSize: 12,
+                background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)",
+                borderRadius: 6, padding: 8, boxSizing: "border-box",
+              }}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(`<iframe src="${window.location.origin}/embed/${token}" width="100%" height="450" style="border:none;border-radius:8px;" allowfullscreen loading="lazy"></iframe>`);
+                  setEmbedCopied(true);
+                  setTimeout(() => setEmbedCopied(false), 2000);
+                }}
+              >
+                {embedCopied ? t("embed.copied") : t("embed.copy")}
+              </button>
+              <button className="btn-secondary" onClick={() => setEmbedOpen(false)}>
+                {t("embed.close")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

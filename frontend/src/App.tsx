@@ -8,6 +8,7 @@ import { MapPage } from './pages/MapPage';
 import ProfilePage from './pages/ProfilePage';
 import ExplorePage from './pages/ExplorePage';
 import { SharedMapPage } from './pages/SharedMapPage';
+import { EmbedMapPage } from './pages/EmbedMapPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -58,6 +59,7 @@ function App() {
             }
           />
           <Route path="/shared/:token" element={<SharedMapPage />} />
+          <Route path="/embed/:token" element={<EmbedMapPage />} />
           <Route path="/" element={<Navigate to="/map" replace />} />
         </Routes>
       </AuthProvider>
