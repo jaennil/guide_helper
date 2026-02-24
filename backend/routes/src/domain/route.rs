@@ -70,6 +70,7 @@ pub struct Route {
     pub start_location: Option<String>,
     pub end_location: Option<String>,
     pub seasons: Vec<String>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -112,10 +113,11 @@ impl Route {
             start_location: None,
             end_location: None,
             seasons,
+            description: None,
         }
     }
 
-    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>, seasons: Option<Vec<String>>) {
+    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>, seasons: Option<Vec<String>>, description: Option<String>) {
         if let Some(n) = name {
             self.name = n;
         }
@@ -127,6 +129,9 @@ impl Route {
         }
         if let Some(s) = seasons {
             self.seasons = s;
+        }
+        if description.is_some() {
+            self.description = description;
         }
         self.updated_at = Utc::now();
     }
@@ -160,7 +165,7 @@ mod tests {
             },
         ];
 
-        let route = Route::new(user_id, "Test Route".to_string(), points.clone(), vec![]);
+        let route = Route::new(user_id, "Test Route".to_string(), points.clone(), vec![], vec![]);
 
         assert_eq!(route.user_id, user_id);
         assert_eq!(route.name, "Test Route");
@@ -179,7 +184,7 @@ mod tests {
             segment_mode: None,
             photo: None,
         }];
-        let mut route = Route::new(user_id, "Original".to_string(), points, vec![]);
+        let mut route = Route::new(user_id, "Original".to_string(), points, vec![], vec![]);
         let original_updated_at = route.updated_at;
 
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -200,7 +205,7 @@ mod tests {
                 photo: None,
             },
         ];
-        route.update(Some("Updated".to_string()), Some(new_points), None);
+        route.update(Some("Updated".to_string()), Some(new_points), None, None, None);
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);

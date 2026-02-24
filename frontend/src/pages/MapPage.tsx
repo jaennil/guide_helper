@@ -401,6 +401,10 @@ export function MapPage() {
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -532,6 +536,39 @@ export function MapPage() {
 
     console.log("Loaded overlay routes:", loaded.length);
     setOverlayRoutes(loaded);
+  };
+
+  const handleGenerateAiDescription = async () => {
+    if (!loadedRouteInfo) return;
+    setAiGenerating(true);
+    try {
+      const result = await routesApi.generateDescription(loadedRouteInfo.id);
+      setAiDescription(result.description);
+      setShowAiModal(true);
+      console.log("AI description generated for route:", loadedRouteInfo.id);
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.response?.data || t("ai.unavailable");
+      toast.error(msg);
+      console.error("Failed to generate AI description:", err);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleSaveAiDescription = async () => {
+    if (!loadedRouteInfo) return;
+    setAiSaving(true);
+    try {
+      await routesApi.saveDescription(loadedRouteInfo.id, aiDescription);
+      setShowAiModal(false);
+      toast.success(t("map.routeSaved"));
+      console.log("AI description saved for route:", loadedRouteInfo.id);
+    } catch (err: any) {
+      toast.error(t("map.saveFailed"));
+      console.error("Failed to save AI description:", err);
+    } finally {
+      setAiSaving(false);
+    }
   };
 
   const handleSaveRoute = async () => {
@@ -880,6 +917,13 @@ export function MapPage() {
               >
                 {t("export.kml")}
               </button>
+              <button
+                onClick={handleGenerateAiDescription}
+                disabled={aiGenerating}
+                className="btn-secondary"
+              >
+                {aiGenerating ? t("ai.generating") : t("ai.generateButton")}
+              </button>
             </>
           )}
           {routePoints.length >= 2 && (
@@ -946,6 +990,13 @@ export function MapPage() {
                 className="btn-secondary"
               >
                 {t("export.kml")}
+              </button>
+              <button
+                onClick={handleGenerateAiDescription}
+                disabled={aiGenerating}
+                className="btn-secondary"
+              >
+                {aiGenerating ? t("ai.generating") : t("ai.generateButton")}
               </button>
             </>
           )}
@@ -1032,6 +1083,29 @@ export function MapPage() {
               onChange={(e) => setHistoricalOpacity(Number(e.target.value) / 100)}
               className="historical-opacity-slider"
             />
+          </div>
+        </div>
+      )}
+
+      {showAiModal && (
+        <div className="modal-overlay" onClick={() => setShowAiModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{t("ai.modalTitle")}</h2>
+            <div className="modal-form">
+              <p style={{ fontSize: "0.85em", color: "var(--text-secondary)", marginBottom: "8px" }}>{t("ai.hint")}</p>
+              <textarea
+                value={aiDescription}
+                onChange={(e) => setAiDescription(e.target.value)}
+                rows={8}
+                style={{ width: "100%", resize: "vertical", padding: "8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text-primary)", fontSize: "0.9em" }}
+              />
+              <div className="modal-actions">
+                <button onClick={() => setShowAiModal(false)} className="modal-cancel">{t("ai.cancel")}</button>
+                <button onClick={handleSaveAiDescription} disabled={aiSaving} className="modal-save">
+                  {aiSaving ? t("map.saving") : t("ai.save")}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

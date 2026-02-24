@@ -32,7 +32,7 @@ use crate::delivery::http::v1::comments::{count_comments, create_comment, delete
 use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
 use crate::delivery::http::v1::middleware::auth_middleware;
 use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
-use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, get_route, get_shared_route, import_route_from_geojson, list_routes, update_route};
+use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, generate_description, get_route, get_shared_route, import_route_from_geojson, list_routes, save_description, update_route};
 use crate::delivery::http::v1::ws::websocket_handler;
 use crate::repository::postgres::{create_pool, PostgresBookmarkRepository, PostgresCategoryRepository, PostgresChatMessageRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
 use crate::usecase::bookmarks::BookmarksUseCase;
@@ -123,7 +123,23 @@ async fn main() -> anyhow::Result<()> {
     let route_repository_for_chat = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let nominatim_client = crate::usecase::nominatim::NominatimClient::new(config.nominatim_url.clone());
-    let routes_usecase = RoutesUseCase::new(route_repository).with_nominatim(nominatim_client);
+    let ollama_client = config.ollama_base_url.as_ref().map(|base_url| {
+        tracing::info!(%base_url, model = %config.ollama_vision_model, "Ollama vision client configured");
+        OpenAIClient::new(
+            format!("{}/v1", base_url.trim_end_matches('/')),
+            config.ollama_vision_model.clone(),
+            "ollama".to_string(),
+        )
+    });
+
+    let routes_usecase = {
+        let uc = RoutesUseCase::new(route_repository).with_nominatim(nominatim_client);
+        if let Some(client) = ollama_client {
+            uc.with_ollama(client, config.ollama_vision_model.clone())
+        } else {
+            uc
+        }
+    };
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
     let likes_usecase = LikesUseCase::new(like_repository, route_repository_for_likes);
     let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);
@@ -326,6 +342,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/routes/{route_id}/like/me", get(get_user_like_status))
         .route("/api/v1/routes/{route_id}/rating", put(set_rating).delete(remove_rating))
         .route("/api/v1/routes/{route_id}/rating/me", get(get_user_rating))
+        .route("/api/v1/routes/{route_id}/description/generate", post(generate_description))
+        .route("/api/v1/routes/{route_id}/description", post(save_description))
         .route("/api/v1/routes/{route_id}/bookmark", post(toggle_bookmark))
         .route("/api/v1/routes/{route_id}/bookmark/me", get(get_user_bookmark_status))
         .route("/api/v1/bookmarks", get(list_bookmarks))

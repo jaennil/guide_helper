@@ -77,6 +77,35 @@ pub struct OpenAIResponseMessage {
     pub tool_calls: Vec<OpenAIToolCall>,
 }
 
+// ── Vision request types ───────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VisionContentPart {
+    #[serde(rename = "type")]
+    pub part_type: String, // "text" or "image_url"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<VisionImageUrl>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VisionImageUrl {
+    pub url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VisionChatRequest {
+    pub model: String,
+    pub messages: Vec<VisionMessage>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VisionMessage {
+    pub role: String,
+    pub content: Vec<VisionContentPart>,
+}
+
 // ── Client ─────────────────────────────────────────────────────────────────────
 
 pub struct OpenAIClient {
@@ -141,6 +170,36 @@ impl OpenAIClient {
         serde_json::from_str::<OpenAIChatResponse>(&body).map_err(|e| {
             tracing::error!(error = %e, %body, "failed to parse OpenAI response");
             anyhow!("Failed to parse OpenAI response: {}", e)
+        })
+    }
+
+    pub async fn vision_chat(&self, request: VisionChatRequest) -> anyhow::Result<OpenAIChatResponse> {
+        let url = format!("{}/chat/completions", self.base_url);
+        tracing::debug!(%url, model = %request.model, "sending vision chat request");
+
+        let response = self
+            .http_client
+            .post(&url)
+            .bearer_auth(&self.api_key)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "failed to send vision request");
+                anyhow!("Vision request failed: {}", e)
+            })?;
+
+        let status = response.status();
+        let body = response.text().await.map_err(|e| anyhow!("Failed to read vision response: {}", e))?;
+
+        if !status.is_success() {
+            tracing::error!(%status, %body, "vision API returned error");
+            return Err(anyhow!("Vision API error ({}): {}", status, body));
+        }
+
+        serde_json::from_str::<OpenAIChatResponse>(&body).map_err(|e| {
+            tracing::error!(error = %e, %body, "failed to parse vision response");
+            anyhow!("Failed to parse vision response: {}", e)
         })
     }
 

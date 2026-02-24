@@ -34,6 +34,10 @@ pub struct AppConfig {
     pub nominatim_url: String,
     #[serde(default = "default_chat_max_message_length")]
     pub chat_max_message_length: usize,
+    #[serde(default)]
+    pub ollama_base_url: Option<String>,
+    #[serde(default = "default_ollama_vision_model")]
+    pub ollama_vision_model: String,
 }
 
 fn default_nats_url() -> String {
@@ -66,6 +70,10 @@ fn default_nominatim_url() -> String {
 
 fn default_chat_max_message_length() -> usize {
     2000
+}
+
+fn default_ollama_vision_model() -> String {
+    "llama3.2-vision".to_string()
 }
 
 fn default_telemetry_service_name() -> String {

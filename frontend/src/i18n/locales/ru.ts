@@ -281,4 +281,13 @@ export const ru = {
   "seasons.autumn": "Осень",
   "seasons.all": "Все сезоны",
   "seasons.current": "Сейчас актуально",
+  "ai.generateButton": "Сгенерировать описание (ИИ)",
+  "ai.generating": "Генерация...",
+  "ai.modalTitle": "Описание маршрута от ИИ",
+  "ai.hint": "Проверьте и отредактируйте описание, затем сохраните:",
+  "ai.save": "Сохранить",
+  "ai.cancel": "Отмена",
+  "ai.unavailable": "Генерация описаний недоступна (Ollama не настроен)",
+  "ai.noPhotos": "У маршрута нет обработанных фотографий",
+  "ai.description": "Описание",
 } as const;

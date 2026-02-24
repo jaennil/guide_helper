@@ -35,6 +35,8 @@ pub struct RouteResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_location: Option<String>,
     pub seasons: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -71,6 +73,7 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         start_location: r.start_location,
         end_location: r.end_location,
         seasons: r.seasons,
+        description: r.description,
     }
 }
 
@@ -358,6 +361,49 @@ pub async fn explore_routes(
     Ok((StatusCode::OK, Json(ExploreResponse { routes, total })))
 }
 
+#[derive(Serialize)]
+pub struct GenerateDescriptionResponse {
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct SaveDescriptionRequest {
+    pub description: String,
+}
+
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id, %route_id))]
+pub async fn generate_description(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(route_id): Path<Uuid>,
+) -> Result<impl IntoResponse, UsecaseError> {
+    tracing::info!("handling generate description request");
+
+    let description = state
+        .routes_usecase
+        .generate_description(user.user_id, route_id)
+        .await?;
+
+    Ok((StatusCode::OK, Json(GenerateDescriptionResponse { description })))
+}
+
+#[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id, %route_id))]
+pub async fn save_description(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(route_id): Path<Uuid>,
+    Json(payload): Json<SaveDescriptionRequest>,
+) -> Result<impl IntoResponse, UsecaseError> {
+    tracing::info!("handling save description request");
+
+    let route = state
+        .routes_usecase
+        .save_description(user.user_id, route_id, payload.description)
+        .await?;
+
+    Ok((StatusCode::OK, Json(route_to_response(route))))
+}
+
 async fn publish_photo_task(nats_client: &Option<async_nats::Client>, route: &DomainRoute) {
     if let Some(client) = nats_client {
         if let Some(task) = PhotoProcessTask::from_route(route) {
@@ -475,6 +521,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         };
 
         let json = serde_json::to_string(&response).unwrap();

@@ -29,6 +29,7 @@ export interface Route {
   start_location?: string;
   end_location?: string;
   seasons: string[];
+  description?: string;
 }
 
 export interface Comment {
@@ -272,6 +273,20 @@ export const routesApi = {
 
   async getBookmarks(): Promise<ExploreRoute[]> {
     const response = await axios.get(`${API_BASE_URL}/api/v1/bookmarks`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async generateDescription(routeId: string): Promise<{ description: string }> {
+    const response = await axios.post(`${ROUTES_URL}/${routeId}/description/generate`, {}, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  async saveDescription(routeId: string, description: string): Promise<Route> {
+    const response = await axios.post(`${ROUTES_URL}/${routeId}/description`, { description }, {
       headers: getAuthHeader(),
     });
     return response.data;

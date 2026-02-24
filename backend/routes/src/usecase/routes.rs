@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use crate::domain::route::{ExploreRouteRow, Route, RoutePoint};
+use crate::domain::route::{ExploreRouteRow, PhotoStatus, Route, RoutePoint};
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
 use crate::usecase::nominatim::NominatimClient;
+use crate::usecase::openai::{OpenAIClient, VisionChatRequest, VisionContentPart, VisionImageUrl, VisionMessage};
 
 pub struct RoutesUseCase<R>
 where
@@ -13,6 +14,8 @@ where
 {
     route_repository: Arc<R>,
     nominatim: Option<Arc<NominatimClient>>,
+    ollama_client: Option<Arc<OpenAIClient>>,
+    ollama_vision_model: String,
 }
 
 impl<R> RoutesUseCase<R>
@@ -23,11 +26,19 @@ where
         Self {
             route_repository: Arc::new(route_repository),
             nominatim: None,
+            ollama_client: None,
+            ollama_vision_model: "llama3.2-vision".to_string(),
         }
     }
 
     pub fn with_nominatim(mut self, nominatim: NominatimClient) -> Self {
         self.nominatim = Some(Arc::new(nominatim));
+        self
+    }
+
+    pub fn with_ollama(mut self, client: OpenAIClient, model: String) -> Self {
+        self.ollama_client = Some(Arc::new(client));
+        self.ollama_vision_model = model;
         self
     }
 
@@ -141,7 +152,7 @@ where
         }
 
         let points_changed = points.is_some();
-        route.update(name, points, category_ids, seasons);
+        route.update(name, points, category_ids, seasons, None);
         self.route_repository.update(&route).await?;
 
         if points_changed {
@@ -277,6 +288,98 @@ where
         tracing::debug!(%route_id, "route deleted successfully");
         Ok(())
     }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
+    pub async fn generate_description(&self, user_id: Uuid, route_id: Uuid) -> Result<String, UsecaseError> {
+        tracing::info!("generating AI description for route");
+
+        let client = self.ollama_client.as_ref().ok_or_else(|| {
+            tracing::warn!("Ollama client not configured");
+            UsecaseError::Internal("AI description generation is not configured".to_string())
+        })?;
+
+        let route = self
+            .route_repository
+            .find_by_id(route_id)
+            .await?
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
+
+        if route.user_id != user_id {
+            return Err(UsecaseError::NotFound("Route".to_string()));
+        }
+
+        let photo_urls: Vec<String> = route.points.iter()
+            .filter_map(|p| p.photo.as_ref())
+            .filter(|ph| ph.status == PhotoStatus::Done)
+            .map(|ph| ph.original.clone())
+            .collect();
+
+        if photo_urls.is_empty() {
+            return Err(UsecaseError::Validation("Route has no processed photos".to_string()));
+        }
+
+        tracing::info!(photo_count = photo_urls.len(), "sending photos to Ollama for description");
+
+        let mut content: Vec<VisionContentPart> = vec![
+            VisionContentPart {
+                part_type: "text".to_string(),
+                text: Some(format!(
+                    "Ты — помощник туристического гида. По фотографиям с маршрута «{}» напиши краткое описание маршрута на русском языке (3-5 предложений): что можно увидеть, какая атмосфера, для кого подходит.",
+                    route.name
+                )),
+                image_url: None,
+            },
+        ];
+
+        for url in &photo_urls {
+            content.push(VisionContentPart {
+                part_type: "image_url".to_string(),
+                text: None,
+                image_url: Some(VisionImageUrl { url: url.clone() }),
+            });
+        }
+
+        let request = VisionChatRequest {
+            model: self.ollama_vision_model.clone(),
+            messages: vec![VisionMessage {
+                role: "user".to_string(),
+                content,
+            }],
+        };
+
+        let response = client.vision_chat(request).await.map_err(|e| {
+            tracing::error!(error = %e, "Ollama vision call failed");
+            UsecaseError::Internal(format!("AI generation failed: {}", e))
+        })?;
+
+        let description = response
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|c| c.message.content)
+            .ok_or_else(|| UsecaseError::Internal("Empty response from Ollama".to_string()))?;
+
+        tracing::info!(desc_len = description.len(), "AI description generated successfully");
+        Ok(description)
+    }
+
+    pub async fn save_description(&self, user_id: Uuid, route_id: Uuid, description: String) -> Result<Route, UsecaseError> {
+        let mut route = self
+            .route_repository
+            .find_by_id(route_id)
+            .await?
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
+
+        if route.user_id != user_id {
+            return Err(UsecaseError::NotFound("Route".to_string()));
+        }
+
+        route.update(None, None, None, None, Some(description));
+        self.route_repository.update(&route).await?;
+
+        tracing::info!(%route_id, "route description saved");
+        Ok(route)
+    }
 }
 
 #[cfg(test)]
@@ -296,6 +399,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         }
     }
 
