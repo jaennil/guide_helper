@@ -66,7 +66,7 @@ function App() {
       </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+      <Toaster position="bottom-left" toastOptions={{ duration: 3000 }} />
     </ErrorBoundary>
   );
 }
