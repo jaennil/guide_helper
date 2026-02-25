@@ -1,0 +1,16 @@
+{
+  "name": "claude-proxy",
+  "version": "1.0.0",
+  "description": "HTTP proxy server that forwards queries to local Claude Code",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.56",
+    "@anthropic-ai/claude-code": "^0.2.108",
+    "express": "^4.21.2"
+  }
+}
