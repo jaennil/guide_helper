@@ -112,6 +112,17 @@ services:
     networks:
       - guide_helper_network
 
+  claude-proxy:
+    build:
+      context: ./claude-proxy
+      dockerfile: Dockerfile
+    container_name: guide_helper_claude_proxy
+    restart: unless-stopped
+    environment:
+      - PORT=3099
+    networks:
+      - guide_helper_network
+
   routes:
     build:
       context: ./backend/routes

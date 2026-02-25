@@ -182,6 +182,33 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # ── Claude Proxy (auth_request pattern) ──────────────────────────────────
+    # Internal subrequest to validate JWT against auth service.
+    # nginx sends the original Authorization header to /api/v1/auth/me;
+    # 200 → forward to claude-proxy, 401/403 → return error to client.
+    location = /_auth_validate {
+        internal;
+        proxy_pass http://auth:8080/api/v1/auth/me;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location /api/ai {
+        auth_request /_auth_validate;
+
+        proxy_pass http://claude-proxy:3099;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Claude Code can take a while to respond
+        proxy_read_timeout 120s;
+        proxy_connect_timeout 10s;
+    }
+
     # Fallback for other /api requests
     location /api {
         return 404;
