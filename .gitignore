@@ -22,3 +22,11 @@ Thumbs.db
 !**/k8s/*-secret.example.yaml
 **/k8s/overlays/*/secrets/*.txt
 !**/k8s/overlays/*/secrets/*.txt.example
+
+# claude-code-api
+claude-code-api/__pycache__/
+claude-code-api/**/__pycache__/
+claude-code-api/*.egg-info/
+claude-code-api/.venv/
+claude-code-api/workspace/
+claude-code-api/claude-config/

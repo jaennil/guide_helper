@@ -150,24 +150,23 @@ async fn main() -> anyhow::Result<()> {
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
+    // Priority: claude-code-api (via OPENAI_BASE_URL, default) → Anthropic API → disabled
     let assistant_client: Option<Arc<dyn AiChatClient>> =
         if let Some(key) = config.anthropic_api_key.as_ref().filter(|k| !k.trim().is_empty()) {
-            tracing::info!(model = %config.anthropic_model, "Anthropic client configured for AI chat");
+            tracing::info!(model = %config.anthropic_model, "Anthropic API client configured for AI chat");
             Some(Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key.clone())))
-        } else if let Some(key) = config.openai_api_key.as_ref().filter(|k| !k.trim().is_empty()) {
+        } else {
+            let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
             tracing::info!(
                 base_url = %config.openai_base_url,
                 model = %config.openai_model,
-                "OpenAI client configured for AI chat"
+                "OpenAI-compatible client configured for AI chat (claude-code-api or OpenAI)"
             );
             Some(Arc::new(OpenAIClient::new(
                 config.openai_base_url.clone(),
                 config.openai_model.clone(),
-                key.clone(),
+                key,
             )))
-        } else {
-            tracing::warn!("no AI provider configured (ANTHROPIC_API_KEY or OPENAI_API_KEY), AI chat disabled");
-            None
         };
 
     let chat_usecase = ChatUseCase::new(

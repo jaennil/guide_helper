@@ -112,6 +112,27 @@ services:
     networks:
       - guide_helper_network
 
+  claude-code-api:
+    build:
+      context: ./claude-code-api
+      dockerfile: docker/Dockerfile
+    container_name: guide_helper_claude_code_api
+    restart: unless-stopped
+    environment:
+      - USE_CLAUDE_MAX=true
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ${HOME}/.claude:/home/claudeuser/.claude:ro
+    networks:
+      - guide_helper_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   claude-proxy:
     build:
       context: ./claude-proxy
@@ -136,9 +157,9 @@ services:
       - DATABASE_MAX_CONNECTIONS=5
       - JWT_SECRET=${JWT_SECRET:-change_this_secret_key_in_production}
       - NATS_URL=nats://nats:4222
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://claude-code-api:8000/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
@@ -147,6 +168,8 @@ services:
       postgres:
         condition: service_healthy
       nats:
+        condition: service_healthy
+      claude-code-api:
         condition: service_healthy
     networks:
       - guide_helper_network
