@@ -1,13 +1,12 @@
 use futures::Stream;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::domain::chat_message::{ChatMessage, ConversationSummary};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
-use crate::usecase::openai::{
-    OpenAIFunction, OpenAITool, OpenAIChatRequest, OpenAIClient, OpenAIMessage,
-};
+use crate::usecase::ai_client::{AiChatClient, AiMessage, AiRole, AiTool};
 
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
 You help users find routes, plan trips, search the route catalog, and answer questions about places.
@@ -93,7 +92,7 @@ where
 {
     chat_repo: CM,
     route_repo: R,
-    assistant: Option<OpenAIClient>,
+    assistant: Option<Arc<dyn AiChatClient>>,
     http_client: reqwest::Client,
     nominatim_url: String,
     max_tool_iterations: usize,
@@ -108,7 +107,7 @@ where
     pub fn new(
         chat_repo: CM,
         route_repo: R,
-        assistant: Option<OpenAIClient>,
+        assistant: Option<Arc<dyn AiChatClient>>,
         nominatim_url: String,
         max_tool_iterations: usize,
         max_message_length: usize,
@@ -155,7 +154,7 @@ where
         match self.assistant.as_ref() {
             Some(client) => client.health_check().await,
             None => {
-                tracing::debug!("health check: OpenAI assistant not configured");
+                tracing::debug!("health check: AI assistant not configured");
                 false
             }
         }
@@ -185,18 +184,22 @@ where
             .await?;
         tracing::debug!(history_count = history.len(), "loaded conversation history");
 
-        let mut messages = vec![OpenAIMessage {
-            role: "system".to_string(),
+        let mut messages = vec![AiMessage {
+            role: AiRole::System,
             content: Some(SYSTEM_PROMPT.to_string()),
+            tool_calls: vec![],
             tool_call_id: None,
-            tool_calls: None,
         }];
         for msg in &history {
-            messages.push(OpenAIMessage {
-                role: msg.role.clone(),
+            let role = match msg.role.as_str() {
+                "assistant" => AiRole::Assistant,
+                _ => AiRole::User,
+            };
+            messages.push(AiMessage {
+                role,
                 content: Some(msg.content.clone()),
+                tool_calls: vec![],
                 tool_call_id: None,
-                tool_calls: None,
             });
         }
 
@@ -204,68 +207,55 @@ where
         let mut actions: Vec<ChatAction> = Vec::new();
 
         for iteration in 0..self.max_tool_iterations {
-            tracing::debug!(iteration, "sending request to OpenAI");
+            tracing::debug!(iteration, provider = %assistant.model(), "sending request to AI");
 
-            let request = OpenAIChatRequest {
-                model: assistant.model().to_string(),
-                messages: messages.clone(),
-                tools: Some(tools.clone()),
-                tool_choice: Some("auto".to_string()),
-            };
+            let resp = assistant.chat(&messages, &tools).await
+                .map_err(|e| UsecaseError::Internal(format!("AI request failed: {}", e)))?;
 
-            let response = assistant.chat(request).await?;
-            let choice = response
-                .choices
-                .get(0)
-                .ok_or_else(||
-                    UsecaseError::Internal("OpenAI returned no choices".to_string())
-                )?;
-            let resp_message = choice.message.clone();
-
-            if !resp_message.tool_calls.is_empty() {
+            if !resp.tool_calls.is_empty() {
                 tracing::info!(
                     iteration,
-                    tool_count = resp_message.tool_calls.len(),
+                    tool_count = resp.tool_calls.len(),
                     "LLM requested tool calls"
                 );
 
-                // Add the assistant message (with tool_calls) to history
-                messages.push(OpenAIMessage {
-                    role: resp_message.role.clone(),
-                    content: resp_message.content.clone(),
+                // Add assistant message with tool_calls
+                messages.push(AiMessage {
+                    role: AiRole::Assistant,
+                    content: resp.content.clone(),
+                    tool_calls: resp.tool_calls.clone(),
                     tool_call_id: None,
-                    tool_calls: Some(resp_message.tool_calls.clone()),
                 });
 
-                // Execute each tool call and add results
-                for tool_call in &resp_message.tool_calls {
+                // Execute each tool and append results
+                for tool_call in &resp.tool_calls {
                     tracing::info!(
                         iteration,
-                        tool_name = %tool_call.function.name,
+                        tool_name = %tool_call.name,
                         tool_call_id = %tool_call.id,
                         "executing tool call"
                     );
 
-                    let tool_args = parse_function_arguments(&tool_call.function.arguments);
+                    let tool_args = parse_function_arguments(&tool_call.arguments);
                     let (result_text, new_actions) =
-                        self.execute_tool(&tool_call.function.name, &tool_args).await;
+                        self.execute_tool(&tool_call.name, &tool_args).await;
 
                     actions.extend(new_actions);
 
-                    messages.push(OpenAIMessage {
-                        role: "tool".to_string(),
+                    messages.push(AiMessage {
+                        role: AiRole::Tool,
                         content: Some(result_text),
+                        tool_calls: vec![],
                         tool_call_id: Some(tool_call.id.clone()),
-                        tool_calls: None,
                     });
                 }
             } else {
-                let assistant_text = resp_message.content.clone().unwrap_or_default();
+                let assistant_text = resp.content.unwrap_or_default();
                 tracing::info!(
                     iteration,
                     response_len = assistant_text.len(),
                     actions_count = actions.len(),
-                    "OpenAI returned final text response"
+                    "AI returned final text response"
                 );
 
                 let actions_json = if actions.is_empty() {
@@ -669,89 +659,77 @@ struct NominatimResult {
     display_name: String,
 }
 
-fn build_tools() -> Vec<OpenAITool> {
+fn build_tools() -> Vec<AiTool> {
     vec![
-        OpenAITool {
-            tool_type: "function".to_string(),
-            function: OpenAIFunction {
-                name: "geocode".to_string(),
-                description: "Geocode a place name or address to get its latitude and longitude. Calling this tool places a marker for the location on the interactive map. Call it once per location when building routes or showing places.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The place name or address to geocode"
-                        }
-                    },
-                    "required": ["query"]
-                }),
-            },
+        AiTool {
+            name: "geocode".to_string(),
+            description: "Geocode a place name or address to get its latitude and longitude. Calling this tool places a marker for the location on the interactive map. Call it once per location when building routes or showing places.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The place name or address to geocode"
+                    }
+                },
+                "required": ["query"]
+            }),
         },
-        OpenAITool {
-            tool_type: "function".to_string(),
-            function: OpenAIFunction {
-                name: "search_routes".to_string(),
-                description: "Search the route catalog for shared routes. Can filter by text query, category UUID, and sort order.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Text search query for route names"
-                        },
-                        "category_id": {
-                            "type": "string",
-                            "description": "Filter by category UUID"
-                        },
-                        "sort": {
-                            "type": "string",
-                            "enum": ["newest", "oldest", "popular", "top_rated"],
-                            "description": "Sort order for results"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of results (1-10)"
-                        }
+        AiTool {
+            name: "search_routes".to_string(),
+            description: "Search the route catalog for shared routes. Can filter by text query, category UUID, and sort order.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Text search query for route names"
                     },
-                    "required": []
-                }),
-            },
+                    "category_id": {
+                        "type": "string",
+                        "description": "Filter by category UUID"
+                    },
+                    "sort": {
+                        "type": "string",
+                        "enum": ["newest", "oldest", "popular", "top_rated"],
+                        "description": "Sort order for results"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (1-10)"
+                    }
+                },
+                "required": []
+            }),
         },
-        OpenAITool {
-            tool_type: "function".to_string(),
-            function: OpenAIFunction {
-                name: "get_route_details".to_string(),
-                description: "Get detailed information about a specific route by its ID.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "route_id": {
-                            "type": "string",
-                            "description": "The UUID of the route"
-                        }
-                    },
-                    "required": ["route_id"]
-                }),
-            },
+        AiTool {
+            name: "get_route_details".to_string(),
+            description: "Get detailed information about a specific route by its ID.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "route_id": {
+                        "type": "string",
+                        "description": "The UUID of the route"
+                    }
+                },
+                "required": ["route_id"]
+            }),
         },
-        OpenAITool {
-            tool_type: "function".to_string(),
-            function: OpenAIFunction {
-                name: "navigate".to_string(),
-                description: "Navigate to a specific page in the application. Use when the user asks to open, go to, or navigate to a page.".to_string(),
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string",
-                            "enum": ["/map", "/profile", "/explore", "/admin"],
-                            "description": "Page path: /map (main map), /profile (profile & settings), /explore (route catalog), /admin (admin panel)"
-                        }
-                    },
-                    "required": ["path"]
-                }),
-            },
+        AiTool {
+            name: "navigate".to_string(),
+            description: "Navigate to a specific page in the application. Use when the user asks to open, go to, or navigate to a page.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "enum": ["/map", "/profile", "/explore", "/admin"],
+                        "description": "Page path: /map (main map), /profile (profile & settings), /explore (route catalog), /admin (admin panel)"
+                    }
+                },
+                "required": ["path"]
+            }),
         },
     ]
 }

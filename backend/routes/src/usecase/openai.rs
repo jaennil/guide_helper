@@ -2,6 +2,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use crate::usecase::ai_client::{AiChatClient, AiMessage, AiResponse, AiTool, AiToolCall};
+
 // ── Request types ──────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -140,7 +142,7 @@ impl OpenAIClient {
         &self.base_url
     }
 
-    pub async fn chat(&self, request: OpenAIChatRequest) -> anyhow::Result<OpenAIChatResponse> {
+    pub async fn raw_chat(&self, request: OpenAIChatRequest) -> anyhow::Result<OpenAIChatResponse> {
         let url = format!("{}/chat/completions", self.base_url);
         tracing::debug!(%url, model = %request.model, messages_count = request.messages.len(), "sending chat request to OpenAI");
 
@@ -225,5 +227,90 @@ impl OpenAIClient {
                 false
             }
         }
+    }
+}
+
+// ── AiChatClient impl for OpenAIClient ────────────────────────────────────────
+
+#[async_trait::async_trait]
+impl AiChatClient for OpenAIClient {
+    async fn chat(&self, messages: &[AiMessage], tools: &[AiTool]) -> anyhow::Result<AiResponse> {
+        let oai_tools: Vec<OpenAITool> = tools
+            .iter()
+            .map(|t| OpenAITool {
+                tool_type: "function".to_string(),
+                function: OpenAIFunction {
+                    name: t.name.clone(),
+                    description: t.description.clone(),
+                    parameters: t.parameters.clone(),
+                },
+            })
+            .collect();
+
+        let oai_messages: Vec<OpenAIMessage> = messages
+            .iter()
+            .map(|m| OpenAIMessage {
+                role: m.role.as_str().to_string(),
+                content: m.content.clone(),
+                tool_call_id: m.tool_call_id.clone(),
+                tool_calls: if m.tool_calls.is_empty() {
+                    None
+                } else {
+                    Some(
+                        m.tool_calls
+                            .iter()
+                            .map(|tc| OpenAIToolCall {
+                                id: tc.id.clone(),
+                                call_type: "function".to_string(),
+                                function: OpenAIToolCallFunction {
+                                    name: tc.name.clone(),
+                                    arguments: tc.arguments.clone(),
+                                },
+                            })
+                            .collect(),
+                    )
+                },
+            })
+            .collect();
+
+        let request = OpenAIChatRequest {
+            model: self.model.clone(),
+            messages: oai_messages,
+            tools: if oai_tools.is_empty() { None } else { Some(oai_tools) },
+            tool_choice: Some("auto".to_string()),
+        };
+
+        let resp = self.raw_chat(request).await?;
+        let choice = resp
+            .choices
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("OpenAI returned no choices"))?;
+
+        let msg = choice.message;
+        let stop = msg.tool_calls.is_empty();
+        let tool_calls: Vec<AiToolCall> = msg
+            .tool_calls
+            .into_iter()
+            .map(|tc| AiToolCall {
+                id: tc.id,
+                name: tc.function.name,
+                arguments: tc.function.arguments,
+            })
+            .collect();
+
+        Ok(AiResponse {
+            content: msg.content,
+            tool_calls,
+            stop,
+        })
+    }
+
+    fn model(&self) -> &str {
+        self.model()
+    }
+
+    async fn health_check(&self) -> bool {
+        self.health_check().await
     }
 }

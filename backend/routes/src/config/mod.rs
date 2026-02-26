@@ -38,6 +38,10 @@ pub struct AppConfig {
     pub ollama_base_url: Option<String>,
     #[serde(default = "default_ollama_vision_model")]
     pub ollama_vision_model: String,
+    #[serde(default)]
+    pub anthropic_api_key: Option<String>,
+    #[serde(default = "default_anthropic_model")]
+    pub anthropic_model: String,
 }
 
 fn default_nats_url() -> String {
@@ -74,6 +78,10 @@ fn default_chat_max_message_length() -> usize {
 
 fn default_ollama_vision_model() -> String {
     "llama3.2-vision".to_string()
+}
+
+fn default_anthropic_model() -> String {
+    "claude-haiku-4-5-20251001".to_string()
 }
 
 fn default_telemetry_service_name() -> String {

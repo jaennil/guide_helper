@@ -42,6 +42,8 @@ use crate::usecase::comments::CommentsUseCase;
 use crate::usecase::notifications::NotificationsUseCase;
 use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
+use crate::usecase::ai_client::AiChatClient;
+use crate::usecase::anthropic::AnthropicClient;
 use crate::usecase::openai::OpenAIClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
@@ -148,19 +150,25 @@ async fn main() -> anyhow::Result<()> {
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
-    let assistant_client = config.openai_api_key.as_ref().filter(|key| !key.trim().is_empty()).map(|key| {
-        let client = OpenAIClient::new(
-            config.openai_base_url.clone(),
-            config.openai_model.clone(),
-            key.clone(),
-        );
-        tracing::info!(
-            openai_base_url = %config.openai_base_url,
-            openai_model = %config.openai_model,
-            "OpenAI client configured"
-        );
-        client
-    });
+    let assistant_client: Option<Arc<dyn AiChatClient>> =
+        if let Some(key) = config.anthropic_api_key.as_ref().filter(|k| !k.trim().is_empty()) {
+            tracing::info!(model = %config.anthropic_model, "Anthropic client configured for AI chat");
+            Some(Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key.clone())))
+        } else if let Some(key) = config.openai_api_key.as_ref().filter(|k| !k.trim().is_empty()) {
+            tracing::info!(
+                base_url = %config.openai_base_url,
+                model = %config.openai_model,
+                "OpenAI client configured for AI chat"
+            );
+            Some(Arc::new(OpenAIClient::new(
+                config.openai_base_url.clone(),
+                config.openai_model.clone(),
+                key.clone(),
+            )))
+        } else {
+            tracing::warn!("no AI provider configured (ANTHROPIC_API_KEY or OPENAI_API_KEY), AI chat disabled");
+            None
+        };
 
     let chat_usecase = ChatUseCase::new(
         chat_message_repository,
