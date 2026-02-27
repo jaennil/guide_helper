@@ -49,7 +49,7 @@ Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
 Rel(routes, nominatim, "Геокодирование", "HTTPS")
 Rel(routes, openai, "AI-чат (function calling)", "HTTPS")
 
-' Left side: openai + openmeteo (слева от системы, у auth/postgres)
+' Left side: openai + openmeteo (слева от системы)
 Lay_L(auth, openai)
 Lay_L(postgres, openmeteo)
 Lay_D(openai, openmeteo)
