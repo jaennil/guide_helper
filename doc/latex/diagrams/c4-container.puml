@@ -7,27 +7,35 @@ title Диаграмма контейнеров системы Guide Helper
 Person(user, "Пользователь", "Гид, путешественник")
 
 System_Boundary(system, "Guide Helper") {
-  Container(frontend, "Frontend", "React 19, TypeScript,\nLeaflet", "SPA с интерактивными\nкартами, PWA")
+  Container(frontend, "Frontend", "React 19, TypeScript,\nLeaflet, PWA/Tauri", "SPA с интерактивными\nкартами, темами, PWA и\nдесктоп-оболочкой Tauri")
 
-  Container(auth, "Auth Service", "Rust, Axum", "Аутентификация,\nJWT, Argon2")
-  Container(routes, "Routes Service", "Rust, Axum", "Управление маршрутами,\nREST API, WebSocket")
-  Container(photoworker, "Photo Worker", "Rust", "Компрессия фото,\nгенерация миниатюр")
+  Container(auth, "Auth Service", "Rust, Axum", "Аутентификация,\nJWT, Argon2, роли\n(user/moderator/admin)")
+  Container(routes, "Routes Service", "Rust, Axum", "Управление маршрутами,\nREST API, WebSocket,\nAI-чат (OpenAI API),\nуведомления, категории")
+  Container(photoworker, "Photo Worker", "Rust", "Компрессия фото,\nгенерация миниатюр,\nAI-описание (OpenAI)")
   Container(cache, "Cache Service", "Go, Gin", "Кэширование тайлов\nкарт в Redis")
-  Container(tiles, "Tiles Service", "Go, Gin", "Проксирование тайлов\nOpenStreetMap")
+  Container(tiles, "Tiles Service", "Go, Gin", "Проксирование тайлов\nOpenStreetMap/Yandex")
+  Container(claudeproxy, "Claude Proxy", "Node.js, Express", "HTTP-прокси к\nClaude Code SDK\n(локальный AI-агент)")
 
-  ContainerDb(postgres, "PostgreSQL 16", "SQL", "auth_db, routes_db")
+  ContainerDb(postgres, "PostgreSQL 16", "SQL", "auth_db, routes_db\n(маршруты, категории,\nчат, уведомления,\nзакладки)")
   ContainerDb(redis, "Redis 7", "Key-Value", "Кэш тайлов карт")
   ContainerQueue(nats, "NATS JetStream", "Message Broker", "Очередь обработки\nфотографий")
   ContainerDb(minio, "MinIO", "S3 API", "Хранилище фотографий")
 }
 
-System_Ext(osm, "OpenStreetMap", "Тайлы карт")
-System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
+together {
+  System_Ext(openai, "OpenAI API", "GPT-4o-mini\nдля AI-чата и\nAI-описаний")
+  System_Ext(nominatim, "Nominatim", "Геокодирование")
+}
+together {
+  System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
+  System_Ext(osm, "OpenStreetMap / Yandex", "Тайлы карт")
+}
 
 Rel(user, frontend, "Использует", "HTTPS")
 Rel(frontend, auth, "Аутентификация", "REST API")
-Rel(frontend, routes, "CRUD маршрутов", "REST API / WebSocket")
+Rel(frontend, routes, "CRUD маршрутов,\nAI-чат", "REST API / WebSocket / SSE")
 Rel(frontend, tiles, "Тайлы карт", "HTTPS")
+Rel(frontend, claudeproxy, "AI-агент запросы", "REST API")
 
 Rel(auth, postgres, "Читает/пишет", "SQL")
 Rel(routes, postgres, "Читает/пишет", "SQL")
@@ -35,12 +43,19 @@ Rel(routes, nats, "Публикует задачи", "NATS")
 Rel(photoworker, nats, "Потребляет задачи", "NATS")
 Rel(photoworker, minio, "Загружает фото", "S3 API")
 Rel(photoworker, postgres, "Обновляет статус", "SQL")
+Rel(photoworker, openai, "AI-описание по фото", "HTTPS")
 
 Rel(tiles, cache, "Кэширование", "HTTP")
 Rel(cache, redis, "Читает/пишет", "Redis Protocol")
 Rel(tiles, osm, "Проксирует", "HTTPS")
 
 Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
+Rel(routes, nominatim, "Геокодирование", "HTTPS")
+Rel(routes, openai, "AI-чат (function calling)", "HTTPS")
+
+Lay_D(openai, openmeteo)
+Lay_D(nominatim, osm)
+Lay_R(openai, nominatim)
 
 legend right
   |<#08427B> <color:white>Человек</color> |
