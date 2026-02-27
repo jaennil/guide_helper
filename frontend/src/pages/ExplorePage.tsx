@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
+import { MapPin } from 'lucide-react';
 import './ExplorePage.css';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
@@ -76,6 +77,13 @@ export default function ExplorePage() {
     setOffset(0);
     fetchRoutes(search, categoryId, season, sort, 0, false);
   }, [sort, categoryId, season]);
+
+  // Refetch when another page updates a route (e.g. rename in ProfilePage)
+  useEffect(() => {
+    const handler = () => fetchRoutes(search, categoryId, season, sort, 0, false);
+    window.addEventListener('routeUpdated', handler);
+    return () => window.removeEventListener('routeUpdated', handler);
+  }, [fetchRoutes, search, categoryId, season, sort]);
 
   // Search with debounce
   const handleSearchChange = (value: string) => {
@@ -186,7 +194,7 @@ export default function ExplorePage() {
                 >
                   <h3 className="explore-card-name">{route.name}</h3>
                   <div className="explore-card-meta">
-                    <span>{t('explore.pointsCount', { count: route.points_count })}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} />{route.points_count}</span>
                     <span className="explore-card-date">{formatDate(route.created_at)}</span>
                   </div>
                   <div className="explore-card-stats">

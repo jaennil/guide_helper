@@ -127,6 +127,8 @@ export default function ProfilePage() {
   const [ratingAggregates, setRatingAggregates] = useState<Record<string, { average: number; count: number }>>({});
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const [confirmDeleteRouteId, setConfirmDeleteRouteId] = useState<string | null>(null);
+  const [renamingRouteId, setRenamingRouteId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -270,6 +272,24 @@ export default function ProfilePage() {
       ));
     } catch (err: any) {
       setRoutesError(err.response?.data || t('profile.unshareFailed'));
+    }
+  };
+
+  const handleStartRename = (route: Route) => {
+    setRenamingRouteId(route.id);
+    setRenameValue(route.name);
+  };
+
+  const handleConfirmRename = async (routeId: string) => {
+    const newName = renameValue.trim();
+    if (!newName) return;
+    try {
+      const updated = await routesApi.updateRoute(routeId, { name: newName });
+      setRoutes(routes.map(r => r.id === routeId ? { ...r, name: updated.name } : r));
+      setRenamingRouteId(null);
+      window.dispatchEvent(new CustomEvent('routeUpdated'));
+    } catch {
+      toast.error(t('profile.renameFailed'));
     }
   };
 
@@ -550,7 +570,24 @@ export default function ProfilePage() {
                       >
                         <div className="route-card-body" onClick={() => toggleRouteSelection(route.id)}>
                           <div className="route-card-info">
-                            <h3 className="route-card-title">{route.name}</h3>
+                            {renamingRouteId === route.id ? (
+                              <div className="route-rename-row" onClick={e => e.stopPropagation()}>
+                                <input
+                                  className="route-rename-input"
+                                  value={renameValue}
+                                  autoFocus
+                                  onChange={e => setRenameValue(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleConfirmRename(route.id);
+                                    if (e.key === 'Escape') setRenamingRouteId(null);
+                                  }}
+                                />
+                                <button className="btn-secondary" onClick={() => handleConfirmRename(route.id)}>{t('profile.renameSave')}</button>
+                                <button className="btn-secondary" onClick={() => setRenamingRouteId(null)}>{t('map.cancel')}</button>
+                              </div>
+                            ) : (
+                              <h3 className="route-card-title">{route.name}</h3>
+                            )}
                             {(route.category_ids?.length ?? 0) > 0 && (
                               <div className="route-tags">
                                 {route.category_ids.map((id) => (
@@ -591,6 +628,12 @@ export default function ProfilePage() {
                             className="btn-secondary"
                           >
                             {t('profile.view')}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleStartRename(route); }}
+                            className="btn-secondary"
+                          >
+                            {t('profile.rename')}
                           </button>
                           {route.share_token ? (
                             <>
