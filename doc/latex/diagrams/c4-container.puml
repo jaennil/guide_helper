@@ -22,14 +22,10 @@ System_Boundary(system, "Guide Helper") {
   ContainerDb(minio, "MinIO", "S3 API", "Хранилище фотографий")
 }
 
-together {
-  System_Ext(openai, "OpenAI API", "GPT-4o-mini\nдля AI-чата и\nAI-описаний")
-  System_Ext(nominatim, "Nominatim", "Геокодирование")
-}
-together {
-  System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
-  System_Ext(osm, "OpenStreetMap / Yandex", "Тайлы карт")
-}
+System_Ext(openai, "OpenAI API", "GPT-4o-mini\nдля AI-чата и\nAI-описаний")
+System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
+System_Ext(nominatim, "Nominatim", "Геокодирование")
+System_Ext(osm, "OpenStreetMap / Yandex", "Тайлы карт")
 
 Rel(user, frontend, "Использует", "HTTPS")
 Rel(frontend, auth, "Аутентификация", "REST API")
@@ -53,9 +49,15 @@ Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
 Rel(routes, nominatim, "Геокодирование", "HTTPS")
 Rel(routes, openai, "AI-чат (function calling)", "HTTPS")
 
+' Left side: openai + openmeteo (слева от системы, у auth/postgres)
+Lay_L(auth, openai)
+Lay_L(postgres, openmeteo)
 Lay_D(openai, openmeteo)
+
+' Right side: nominatim + osm (справа от системы, у tiles)
+Lay_R(tiles, nominatim)
+Lay_R(tiles, osm)
 Lay_D(nominatim, osm)
-Lay_R(openai, nominatim)
 
 legend right
   |<#08427B> <color:white>Человек</color> |
