@@ -94,25 +94,23 @@ class ClaudeProcess:
             logger.info(f"Starting Claude from directory: {src_dir}")
             logger.info(f"Command: {' '.join(safe_cmd)}")
 
-            # Start process asynchronously
+            # Remove CLAUDECODE to allow running inside another Claude session
+            proc_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+            # Use communicate() to avoid readline() blocking due to Node.js stdout buffering
             self.process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=src_dir,
+                env=proc_env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                stdin=asyncio.subprocess.PIPE,
+                stdin=asyncio.subprocess.DEVNULL,
             )
 
             self.is_running = True
 
-            # Start background tasks to read output
-            self._output_task = asyncio.create_task(self._read_output())
-            self._error_task = asyncio.create_task(self._read_error())
-
-            started = await self._verify_startup()
-            if not started:
-                await self.stop()
-                return False
+            # Single task reads both stdout/stderr via communicate()
+            self._output_task = asyncio.create_task(self._collect_output())
 
             return True
 
@@ -139,21 +137,41 @@ class ClaudeProcess:
         except json.JSONDecodeError:
             return {"type": "text", "content": line_text}
 
-    async def _read_output(self):
-        """Read stdout from process line by line."""
+    async def _collect_output(self):
+        """Wait for process to finish via communicate(), then parse stdout into the queue."""
         claude_session_id = None
-
         try:
-            while self.is_running and self.process:
-                line = await self.process.stdout.readline()
-                if not line:
-                    break
+            timeout = settings.streaming_timeout_seconds
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    self.process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Claude process timed out", session_id=self.session_id)
+                self.last_error = "Claude process timed out"
+                stdout = b""
+                stderr = b""
 
+            # Log stderr
+            for line in stderr.splitlines():
+                error_text = line.decode().strip()
+                if error_text:
+                    self._stderr_tail.append(error_text)
+                    self.last_error = error_text
+                    logger.warning("Claude stderr", message=error_text)
+
+            logger.info(
+                "Claude process finished",
+                session_id=self.session_id,
+                stdout_bytes=len(stdout),
+                return_code=self.process.returncode,
+            )
+
+            for line in stdout.splitlines():
                 data = self._decode_output_line(line)
                 if not data:
                     continue
 
-                # Extract Claude's session ID from the first message
                 if not claude_session_id and data.get("session_id"):
                     claude_session_id = data["session_id"]
                     logger.info(
@@ -164,33 +182,17 @@ class ClaudeProcess:
                         self._on_cli_session_id(claude_session_id)
 
                 await self.output_queue.put(data)
+
         except Exception as e:
-            logger.error("Error reading output", error=str(e))
+            logger.error("Error collecting output", error=str(e))
         finally:
             await self.output_queue.put(None)
             self.is_running = False
-
             logger.info(
                 "Claude process output stream ended", session_id=self.session_id
             )
             if self._on_end:
                 self._on_end(self)
-
-    async def _read_error(self):
-        """Read stderr from process."""
-        try:
-            while self.is_running and self.process:
-                line = await self.process.stderr.readline()
-                if not line:
-                    break
-
-                error_text = line.decode().strip()
-                if error_text:
-                    self._stderr_tail.append(error_text)
-                    self.last_error = error_text
-                    logger.warning("Claude stderr", message=error_text)
-        except Exception as e:
-            logger.error("Error reading stderr", error=str(e))
 
     async def _verify_startup(self) -> bool:
         """Detect early process failures so API can return actionable errors."""
