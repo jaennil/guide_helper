@@ -67,6 +67,12 @@ spec:
             secretKeyRef:
               name: openai-secret
               key: api-key
+        - name: UNLEASH_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: unleash-secret
+              key: api-token
+              optional: true
         envFrom:
         - configMapRef:
             name: routes-config

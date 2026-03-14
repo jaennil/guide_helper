@@ -12,3 +12,5 @@ data:
   TELEMETRY_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
   OPENAI_BASE_URL: "https://api.openai.com/v1"
   OPENAI_MODEL: "gpt-4o-mini"
+  AI_PROVIDER: "openai"
+  UNLEASH_URL: "http://unleash.unleash.svc.cluster.local:4242/api"
