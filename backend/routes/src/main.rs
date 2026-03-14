@@ -44,6 +44,7 @@ use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
 use crate::usecase::ai_client::AiChatClient;
 use crate::usecase::anthropic::AnthropicClient;
+use crate::usecase::dynamic_ai_client::{DynamicAiClient, UnleashFeatures};
 use crate::usecase::openai::OpenAIClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
@@ -150,24 +151,76 @@ async fn main() -> anyhow::Result<()> {
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
-    // Priority: claude-code-api (via OPENAI_BASE_URL, default) → Anthropic API → disabled
-    let assistant_client: Option<Arc<dyn AiChatClient>> =
-        if let Some(key) = config.anthropic_api_key.as_ref().filter(|k| !k.trim().is_empty()) {
-            tracing::info!(model = %config.anthropic_model, "Anthropic API client configured for AI chat");
-            Some(Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key.clone())))
-        } else {
-            let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
-            tracing::info!(
-                base_url = %config.openai_base_url,
-                model = %config.openai_model,
-                "OpenAI-compatible client configured for AI chat (claude-code-api or OpenAI)"
-            );
-            Some(Arc::new(OpenAIClient::new(
-                config.openai_base_url.clone(),
-                config.openai_model.clone(),
-                key,
-            )))
-        };
+    // Initialize all AI clients (each is optional based on config)
+    let openai_client: Option<Arc<dyn AiChatClient>> = {
+        let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
+        tracing::info!(base_url = %config.openai_base_url, model = %config.openai_model, "OpenAI-compatible client configured");
+        Some(Arc::new(OpenAIClient::new(
+            config.openai_base_url.clone(),
+            config.openai_model.clone(),
+            key,
+        )))
+    };
+
+    let anthropic_client: Option<Arc<dyn AiChatClient>> =
+        config.anthropic_api_key.as_ref().filter(|k| !k.trim().is_empty()).map(|key| {
+            tracing::info!(model = %config.anthropic_model, "Anthropic client configured");
+            Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key.clone())) as Arc<dyn AiChatClient>
+        });
+
+    // claude-code-api uses the same OpenAI-compatible client pointed at local URL
+    let claude_code_api_client: Option<Arc<dyn AiChatClient>> = {
+        let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
+        Some(Arc::new(OpenAIClient::new(
+            config.openai_base_url.clone(),
+            config.openai_model.clone(),
+            key,
+        )))
+    };
+
+    // Initialize Unleash client for dynamic feature flags
+    let unleash_client = match (&config.unleash_url, &config.unleash_api_token) {
+        (Some(url), Some(token)) => {
+            match unleash_api_client::client::ClientBuilder::default()
+                .into_client::<UnleashFeatures, reqwest::Client>(
+                    url,
+                    "guide-helper-routes",
+                    &uuid::Uuid::new_v4().to_string(),
+                    Some(token.clone()),
+                ) {
+                Ok(client) => {
+                    let client = Arc::new(client);
+                    let c = client.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = c.register().await {
+                            tracing::warn!(error = %e, "Unleash registration failed, feature flags will use defaults");
+                        } else {
+                            tracing::info!("Unleash registered, polling for feature flags");
+                            c.poll_for_updates().await;
+                        }
+                    });
+                    tracing::info!(%url, "Unleash client initialized");
+                    Some(client)
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to build Unleash client, using default provider");
+                    None
+                }
+            }
+        }
+        _ => {
+            tracing::info!(default_provider = %config.ai_provider, "Unleash not configured, using static AI_PROVIDER");
+            None
+        }
+    };
+
+    let assistant_client: Option<Arc<dyn AiChatClient>> = Some(Arc::new(DynamicAiClient::new(
+        unleash_client,
+        openai_client,
+        anthropic_client,
+        claude_code_api_client,
+        config.ai_provider.clone(),
+    )));
 
     let chat_usecase = ChatUseCase::new(
         chat_message_repository,
