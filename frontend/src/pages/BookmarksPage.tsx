@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
+import { MapPin } from 'lucide-react';
 import './BookmarksPage.css';
 
 export default function BookmarksPage() {
@@ -90,7 +91,7 @@ export default function BookmarksPage() {
               >
                 <h3 className="bookmarks-card-name">{route.name}</h3>
                 <div className="bookmarks-card-meta">
-                  <span>{t('bookmarks.pointsCount', { count: route.points_count })}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} />{route.points_count}</span>
                   <span className="bookmarks-card-date">{formatDate(route.created_at)}</span>
                 </div>
                 <div className="bookmarks-card-stats">

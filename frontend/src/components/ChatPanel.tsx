@@ -155,8 +155,6 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     }
   }, [isOpen, showHistory]);
 
-  if (!isOpen) return null;
-
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -302,6 +300,8 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
     navigate(path);
     onClose();
   }, [navigate, onClose]);
+
+  if (!isOpen) return null;
 
   const handleShowHistory = async () => {
     setShowHistory(true);

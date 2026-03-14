@@ -303,6 +303,25 @@
   text-overflow: ellipsis;
 }
 
+.route-rename-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.route-rename-input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  min-width: 0;
+}
+
 .route-card-location {
   display: flex;
   align-items: center;
