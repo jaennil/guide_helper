@@ -495,38 +495,33 @@ jobs:
           IMAGE_TAG="${GITHUB_SHA::7}"
           IS_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
 
-          # Update cache image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.cache }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          # Only update image tags for services whose merge job actually succeeded
+          if [ "${{ needs.merge-cache.result }}" == "success" ]; then
             kustomize edit set image \
               cache=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-cache:main-${IMAGE_TAG}
           fi
 
-          # Update tiles image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.tiles }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          if [ "${{ needs.merge-tiles.result }}" == "success" ]; then
             kustomize edit set image \
               tiles=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-tiles:main-${IMAGE_TAG}
           fi
 
-          # Update auth image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.auth }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          if [ "${{ needs.merge-auth.result }}" == "success" ]; then
             kustomize edit set image \
               auth=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-auth:main-${IMAGE_TAG}
           fi
 
-          # Update routes image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.routes }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          if [ "${{ needs.merge-routes.result }}" == "success" ]; then
             kustomize edit set image \
               routes=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-routes:main-${IMAGE_TAG}
           fi
 
-          # Update photo-worker image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.photo-worker }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          if [ "${{ needs.merge-photo-worker.result }}" == "success" ]; then
             kustomize edit set image \
               photo-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-photo-worker:main-${IMAGE_TAG}
           fi
 
-          # Update frontend image if changed or workflow_dispatch
-          if [ "${{ needs.changes.outputs.frontend }}" == "true" ] || [ "$IS_DISPATCH" == "true" ]; then
+          if [ "${{ needs.merge-frontend.result }}" == "success" ]; then
             kustomize edit set image \
               frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${IMAGE_TAG}
           fi
