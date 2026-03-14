@@ -198,7 +198,8 @@ server {
     location /api/ai {
         auth_request /_auth_validate;
 
-        proxy_pass http://claude-proxy:3099;
+        set $claude_proxy_upstream http://claude-proxy:3099;
+        proxy_pass $claude_proxy_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
