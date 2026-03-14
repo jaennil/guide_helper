@@ -67,6 +67,7 @@ spec:
             secretKeyRef:
               name: openai-secret
               key: api-key
+              optional: true
         - name: UNLEASH_API_TOKEN
           valueFrom:
             secretKeyRef:
