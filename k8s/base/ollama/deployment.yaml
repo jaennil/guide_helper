@@ -22,9 +22,10 @@ spec:
         - -c
         - |
           ollama serve &
+          OLLAMA_PID=$!
           sleep 5
           ollama pull $(OLLAMA_MODEL)
-          kill %1
+          kill $OLLAMA_PID 2>/dev/null || true
         env:
         - name: OLLAMA_MODEL
           valueFrom:
