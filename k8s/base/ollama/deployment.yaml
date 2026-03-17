@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
       - name: pull-model
-        image: ollama/ollama:latest
+        image: ghcr.io/jaennil/ollama:latest
         command:
         - sh
         - -c
@@ -43,7 +43,7 @@ spec:
             cpu: "2000m"
       containers:
       - name: ollama
-        image: ollama/ollama:latest
+        image: ghcr.io/jaennil/ollama:latest
         ports:
         - containerPort: 11434
           name: http
