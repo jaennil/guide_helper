@@ -67,7 +67,7 @@
 \renewcommand{\cfttoctitlefont}{\hfill\bfseries\normalsize\MakeUppercase}
 \renewcommand{\cftaftertoctitle}{\hfill}
 \setlength{\cftbeforetoctitleskip}{0pt}
-\setlength{\cftaftertoctitleskip}{6pt}
+\setlength{\cftaftertoctitleskip}{0pt}
 \renewcommand{\cftchapfont}{\normalfont}
 \renewcommand{\cftchappagefont}{\normalfont}
 \renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
@@ -104,6 +104,14 @@
 
 % --- Листинги кода ---
 \usepackage{listings}
+\lstdefinelanguage{Rust}{
+  keywords={fn, let, mut, pub, use, mod, struct, enum, impl, match, if, else, for, while, loop, return, async, await, type, trait, where, const, static, ref, move, self, Self, super, crate, true, false, Some, None, Ok, Err, Box, Arc, Vec, String, Option, Result},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+}
 \lstset{
   basicstyle=\small\ttfamily,
   breaklines=true,
@@ -112,7 +120,10 @@
   numberstyle=\tiny,
   tabsize=2,
   inputencoding=utf8,
-  extendedchars=true
+  extendedchars=true,
+  keywordstyle=\bfseries,
+  commentstyle=\itshape,
+  captionpos=b
 }
 
 % --- Математика ---

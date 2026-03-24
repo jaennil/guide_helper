@@ -1,0 +1,382 @@
+\chapter{Разработка и реализация системы}
+
+\section{Реализация сервиса аутентификации}
+
+\subsection{Архитектура сервиса аутентификации}
+
+Сервис аутентификации реализован на языке программирования Rust с использованием веб-фреймворка Axum. Сервис отвечает за регистрацию и авторизацию пользователей, управление профилем, а также выпуск и валидацию JWT-токенов. Хранение учётных данных осуществляется в отдельной базе данных \texttt{auth\_db} PostgreSQL, что обеспечивает изоляцию аутентификационных данных от бизнес-данных приложения.
+
+Сервис предоставляет следующие HTTP-эндпоинты: \texttt{POST /api/v1/auth/register} для регистрации нового пользователя, \texttt{POST /api/v1/auth/login} для входа и получения токенов, \texttt{POST /api/v1/auth/refresh} для обновления access-токена по refresh-токену, \texttt{GET /api/v1/auth/me} для получения профиля текущего пользователя и \texttt{PUT /api/v1/auth/profile} для обновления имени и аватара.
+
+Пароли пользователей хранятся в хешированном виде. Для хеширования используется алгоритм Argon2id~--- современный победитель конкурса Password Hashing Competition, рекомендованный OWASP в качестве первого выбора для хеширования паролей. Алгоритм устойчив к атакам с применением специализированного оборудования (ASIC, FPGA) благодаря требованиям к памяти.
+
+\subsection{Структура JWT-токенов}
+
+Для аутентификации API-запросов применяется механизм JSON Web Tokens (JWT). Система выпускает два типа токенов: access-токен с коротким сроком жизни (15 минут) для авторизации запросов, и refresh-токен с длинным сроком жизни (7 дней) для получения нового access-токена без повторного ввода учётных данных.
+
+Полезная нагрузка (claims) JWT-токена содержит следующие поля, представленные структурой \texttt{Claims} в листинге~\ref{lst:jwt-claims}:
+
+\begin{lstlisting}[language=Rust, caption={Структура полезной нагрузки JWT-токена}, label={lst:jwt-claims}]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Claims {
+    pub sub: String,         // Subject: user UUID
+    pub email: String,       // User email address
+    pub role: String,        // Role: user / moderator / admin
+    pub exp: i64,            // Expiration timestamp (Unix)
+    pub iat: i64,            // Issued-at timestamp (Unix)
+    pub token_type: TokenType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum TokenType {
+    Access,
+    Refresh,
+}
+\end{lstlisting}
+
+Наличие поля \texttt{token\_type} позволяет различать access- и refresh-токены на уровне валидации. Это предотвращает использование refresh-токена в качестве access-токена~--- потенциальную уязвимость, которая присутствует в системах, различающих токены только по сроку жизни.
+
+Метод \texttt{validate\_token} сервиса \texttt{JwtService} выполняет верификацию подписи токена ключом HMAC-SHA256 и проверку срока действия. При истечении срока возвращается специфическая ошибка \texttt{TokenExpired}, которая обрабатывается клиентом для автоматического обновления токена.
+
+\subsection{Промежуточный слой аутентификации}
+
+Защита эндпоинтов сервиса маршрутов реализована через промежуточный слой (middleware) Axum. Middleware извлекает Bearer-токен из заголовка \texttt{Authorization}, валидирует его и внедряет данные аутентифицированного пользователя в расширения запроса (request extensions), делая их доступными для всех обработчиков. Реализация представлена в листинге~\ref{lst:auth-middleware}.
+
+\begin{lstlisting}[language=Rust, caption={Промежуточный слой аутентификации}, label={lst:auth-middleware}]
+pub async fn auth_middleware(
+    State(state): State<Arc<AppState>>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, String)> {
+    let token = match request
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+    {
+        Some(t) => t,
+        None => return Err((StatusCode::UNAUTHORIZED,
+            "Missing Authorization header".to_string())),
+    };
+
+    let claims = state.jwt_service.validate_token(token)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, e.to_string()))?;
+
+    if claims.token_type != TokenType::Access {
+        return Err((StatusCode::UNAUTHORIZED,
+            "Invalid token type".to_string()));
+    }
+
+    let authenticated_user = AuthenticatedUser {
+        user_id: Uuid::parse_str(&claims.sub)?,
+        email: claims.email,
+        role: claims.role,
+    };
+
+    request.extensions_mut().insert(authenticated_user);
+    Ok(next.run(request).await)
+}
+\end{lstlisting}
+
+Структура \texttt{AuthenticatedUser}, внедряемая в расширения запроса, содержит три поля: идентификатор пользователя (\texttt{user\_id} типа UUID), адрес электронной почты и роль. Обработчики защищённых эндпоинтов извлекают эту структуру с помощью экстрактора Axum \texttt{Extension<AuthenticatedUser>}, что гарантирует: обработчик получает управление только при наличии корректного токена.
+
+\section{Реализация сервиса маршрутов}
+
+\subsection{Архитектура и внедрение зависимостей}
+
+Сервис маршрутов является центральным компонентом системы Guide Helper и реализует основную бизнес-логику: управление маршрутами, социальные функции, AI-ассистента, уведомления и администрирование. Сервис разработан на Rust/Axum и следует принципам чистой архитектуры с разделением на слои: delivery (HTTP-обработчики), usecase (бизнес-логика) и repository (работа с базой данных).
+
+Состояние приложения \texttt{AppState} содержит все сервисы бизнес-логики (use cases) и инфраструктурные зависимости. Тип \texttt{AppState} параметризован конкретными реализациями репозиториев через дженерики, что позволяет подменять реализации при тестировании. В листинге~\ref{lst:appstate} представлены ключевые поля структуры.
+
+\begin{lstlisting}[language=Rust, caption={Структура состояния приложения AppState}, label={lst:appstate}]
+pub struct AppState {
+    pub routes_usecase: RoutesUseCase<PostgresRouteRepository>,
+    pub comments_usecase: CommentsUseCase<...>,
+    pub chat_usecase: ChatUseCase<...>,
+    pub jwt_service: JwtService,
+    pub nats_client: Option<async_nats::Client>,
+    // WebSocket channels per route_id
+    pub ws_channels: Arc<RwLock<HashMap<Uuid, broadcast::Sender<String>>>>,
+    pub chat_rate_limits: Arc<RwLock<HashMap<Uuid, (Instant, u32)>>>,
+}
+\end{lstlisting}
+
+Поле \texttt{ws\_channels} представляет собой словарь каналов рассылки (broadcast channels) библиотеки Tokio, индексированных по идентификатору маршрута. Это позволяет каждому WebSocket-соединению подписаться на уведомления конкретного маршрута без глобальной блокировки.
+
+\subsection{Доменная модель маршрута}
+
+Доменная модель маршрута представлена структурой \texttt{Route} и вложенной структурой \texttt{RoutePoint}. Точки маршрута хранятся в поле типа \texttt{JSONB} в PostgreSQL, что обеспечивает гибкость схемы без дополнительных JOIN-запросов. Каждая точка может содержать необязательные данные фотографии, описываемые структурой \texttt{PhotoData} (листинг~\ref{lst:domain-route}).
+
+\begin{lstlisting}[language=Rust, caption={Доменные модели Route и RoutePoint}, label={lst:domain-route}]
+pub struct Route {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub points: Vec<RoutePoint>,  // stored as JSONB
+    pub share_token: Option<Uuid>,
+    pub category_ids: Vec<Uuid>,
+    pub seasons: Vec<String>,
+    pub description: Option<String>,
+    pub start_location: Option<String>,
+    pub end_location: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct RoutePoint {
+    pub lat: f64,
+    pub lng: f64,
+    pub name: Option<String>,
+    pub segment_mode: Option<String>,
+    pub photo: Option<PhotoData>,
+}
+
+pub struct PhotoData {
+    pub original: String,
+    pub thumbnail_url: Option<String>,
+    pub status: PhotoStatus,  // Pending | Processing | Done | Failed
+}
+\end{lstlisting}
+
+Для обеспечения обратной совместимости реализован специальный десериализатор поля \texttt{photo}: он принимает как строку в формате data URL (старый формат), так и объект \texttt{PhotoData} (новый формат). Это позволяет поддерживать маршруты, созданные до введения полной обработки фотографий, без миграции данных.
+
+\subsection{Бизнес-логика маршрутов}
+
+Класс \texttt{RoutesUseCase} реализует всю бизнес-логику работы с маршрутами. Конструктор принимает реализацию репозитория \texttt{RouteRepository} и опциональные зависимости~--- клиент Nominatim для геокодирования и клиент Ollama для генерации AI-описаний. Такой подход позволяет создавать экземпляры use case без внешних сервисов в юнит-тестах.
+
+При создании маршрута система выполняет следующую последовательность действий: валидирует входные данные, создаёт объект \texttt{Route} с новым UUID, сохраняет его в PostgreSQL, а затем в фоновой задаче Tokio выполняет обратное геокодирование начальной и конечной точки через Nominatim API. Фоновая задача сохраняет результаты геокодирования в поля \texttt{start\_location} и \texttt{end\_location} маршрута, не блокируя HTTP-ответ пользователю.
+
+Если точки маршрута содержат фотографии в формате base64 data URL, use case создаёт задачу \texttt{PhotoProcessTask} и публикует её в NATS JetStream для асинхронной обработки.
+
+Механизм шеринга маршрутов реализован через уникальный токен типа UUID, хранящийся в поле \texttt{share\_token}. При включении публичного доступа сервис генерирует новый токен; при отключении~--- удаляет его. Публичный маршрут доступен по пути \texttt{/api/v1/shared/\{token\}} без авторизации.
+
+\subsection{Геокодирование и статистика}
+
+Интеграция с Nominatim API обеспечивает автоматическое определение названий начальной и конечной точки маршрута по географическим координатам. Запрос к Nominatim выполняется в фоновой задаче через 100 миллисекунд после создания или обновления маршрута, чтобы не нагружать API при частых обновлениях.
+
+Расчёт статистики маршрута выполняется на стороне сервиса маршрутов с применением алгоритмов, описанных в разделе~1.5. Формула Гаверсинуса применяется для вычисления расстояния между последовательными точками; данные о высотах запрашиваются у Open-Meteo Elevation API и используются для расчёта суммарного набора высоты по формуле Нейсмита. На основе совокупного расстояния и набора высоты алгоритм классификации автоматически присваивает маршруту уровень сложности: «Лёгкий», «Средний» или «Сложный».
+
+\section{Асинхронная обработка фотографий}
+
+\subsection{Конвейер обработки через NATS JetStream}
+
+Асинхронная обработка фотографий реализована как отдельный микросервис \texttt{photo-worker}, взаимодействующий с основным сервисом маршрутов через брокер сообщений NATS JetStream. Такая архитектура обеспечивает изоляцию отказов: сбой в обработке изображений не влияет на работу API.
+
+При загрузке фотографии пользователь передаёт её в формате base64 data URL вместе с данными точки маршрута. Сервис маршрутов сохраняет точку в базе данных со статусом \texttt{Pending} и публикует задачу в поток NATS JetStream (листинг~\ref{lst:nats-publish}).
+
+\begin{lstlisting}[language=Rust, caption={Публикация задачи обработки фото в NATS}, label={lst:nats-publish}]
+pub struct PhotoProcessTask {
+    pub route_id: Uuid,
+    pub user_id: Uuid,
+    pub point_indices: Vec<usize>,
+}
+
+impl PhotoProcessTask {
+    pub fn from_route(route: &Route) -> Option<Self> {
+        let indices: Vec<usize> = route.points
+            .iter()
+            .enumerate()
+            .filter_map(|(i, point)| {
+                point.photo.as_ref()
+                    .filter(|p| p.original.starts_with("data:"))
+                    .map(|_| i)
+            })
+            .collect();
+
+        if indices.is_empty() { return None; }
+        Some(Self { route_id: route.id,
+                    user_id: route.user_id,
+                    point_indices: indices })
+    }
+}
+\end{lstlisting}
+
+Метод \texttt{from\_route} определяет, какие точки маршрута содержат необработанные фотографии (в формате data URL), и включает их индексы в задачу. Уже обработанные фотографии (с URL вида \texttt{/photos/...}) в задачу не включаются, что обеспечивает идемпотентность при повторной публикации.
+
+\subsection{Обработчик фотографий photo-worker}
+
+Сервис \texttt{photo-worker} при запуске подключается к PostgreSQL, MinIO (S3-совместимое объектное хранилище) и NATS JetStream, после чего создаёт постоянного потребителя (durable consumer) потока \texttt{PHOTOS} с политикой \texttt{WorkQueue}. Политика WorkQueue гарантирует, что каждое сообщение будет доставлено ровно одному потребителю и удалено из потока после подтверждения (ACK).
+
+Конвейер обработки одной фотографии включает следующие этапы:
+\begin{enumerate}
+  \item декодирование base64 data URL в массив байтов;
+  \item загрузка изображения в память и масштабирование до максимальной ширины 1920 пикселей с использованием фильтра Ланцоша (Lanczos3) для сохранения качества при уменьшении;
+  \item генерация миниатюры с шириной 300 пикселей для быстрой загрузки маркеров на карте;
+  \item кодирование в формат JPEG с качеством 85\%~--- оптимальный баланс размера файла и визуального качества;
+  \item загрузка оригинала и миниатюры в MinIO по ключам \texttt{\{user\_id\}/\{route\_id\}/photo\_\{index\}.jpg} и \texttt{.../thumb\_\{index\}.jpg};
+  \item обновление записи в PostgreSQL: замена base64 на URL файлов MinIO, установка статуса \texttt{Done};
+  \item публикация события завершения в NATS по теме \texttt{photos.completed.\{route\_id\}} для уведомления фронтенда через WebSocket.
+\end{enumerate}
+
+Реализация функции декодирования и сжатия приведена в листинге~\ref{lst:photo-processing}.
+
+\begin{lstlisting}[language=Rust, caption={Декодирование data URL и сжатие изображения}, label={lst:photo-processing}]
+pub fn decode_data_url(data_url: &str) -> Result<Vec<u8>> {
+    let comma_pos = data_url.find(',')
+        .ok_or_else(|| anyhow!("invalid data URL"))?;
+    let encoded = &data_url[comma_pos + 1..];
+    base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .context("failed to decode base64")
+}
+
+pub fn compress_image(data: &[u8], max_width: u32) -> Result<Vec<u8>> {
+    let img = image::load_from_memory(data)?;
+    let img = if img.width() > max_width {
+        let ratio = max_width as f64 / img.width() as f64;
+        let new_h = (img.height() as f64 * ratio) as u32;
+        img.resize(max_width, new_h, FilterType::Lanczos3)
+    } else { img };
+
+    let mut buf = Cursor::new(Vec::new());
+    img.write_to(&mut buf, ImageFormat::Jpeg)?;
+    Ok(buf.into_inner())
+}
+\end{lstlisting}
+
+\subsection{Уведомления в реальном времени через WebSocket}
+
+После завершения обработки фотографии \texttt{photo-worker} публикует событие в NATS по теме \texttt{photos.completed.\{route\_id\}}. Сервис маршрутов подписан на эти события и при получении рассылает уведомление по WebSocket-каналу соответствующего маршрута.
+
+WebSocket-соединение устанавливается клиентом при открытии редактора маршрута через эндпоинт \texttt{GET /api/v1/routes/\{id\}/ws}. Для каждого маршрута создаётся канал рассылки Tokio (\texttt{broadcast::Sender}), хранящийся в поле \texttt{ws\_channels} объекта \texttt{AppState}. Все клиенты, просматривающие один и тот же маршрут, получают уведомление одновременно.
+
+Уведомление содержит идентификатор точки, URL обработанного оригинала и URL миниатюры. Клиент обновляет маркер на карте: заменяет индикатор загрузки на миниатюру фотографии без перезагрузки страницы.
+
+\section{Интеграция ИИ-ассистента}
+
+\subsection{Многопровайдерная архитектура}
+
+Система Guide Helper поддерживает несколько провайдеров языковых моделей: OpenAI API (облачный), Anthropic Claude API (облачный), а также локальный Ollama с моделью llama3.2-vision. Выбор активного провайдера осуществляется через переменную окружения \texttt{AI\_PROVIDER} или динамически через систему флагов функциональности Unleash.
+
+Конфигурация провайдеров задаётся в структуре \texttt{AppConfig}:
+\begin{itemize}
+  \item \texttt{openai\_api\_key}, \texttt{openai\_base\_url}, \texttt{openai\_model}~--- настройки OpenAI-совместимого API;
+  \item \texttt{anthropic\_api\_key}, \texttt{anthropic\_model}~--- настройки Anthropic;
+  \item \texttt{ollama\_base\_url}, \texttt{ollama\_vision\_model}~--- настройки локального Ollama;
+  \item \texttt{unleash\_url}, \texttt{unleash\_api\_token}~--- опциональная интеграция с Unleash для A/B-переключения провайдеров.
+\end{itemize}
+
+Все провайдеры реализуют единый трейт \texttt{AiChatClient}, что позволяет подменять их без изменения кода бизнес-логики. Класс \texttt{DynamicAiClient} реализует тот же трейт и делегирует вызовы активному провайдеру, определяемому в runtime на основе флага Unleash или статической конфигурации.
+
+\subsection{Диалоговый интерфейс с вызовом инструментов}
+
+ИИ-ассистент реализован как полноценный диалоговый интерфейс с поддержкой вызова инструментов (function calling / tool use). При получении сообщения от пользователя сервис Chat отправляет историю диалога и доступные инструменты провайдеру ЯМ. Если модель решает вызвать инструмент, сервис выполняет соответствующую операцию и возвращает результат обратно модели для формирования финального ответа.
+
+Реализованы следующие инструменты ассистента:
+\begin{itemize}
+  \item \textbf{geocode}~--- поиск географических координат по текстовому запросу через Nominatim API;
+  \item \textbf{search\_routes}~--- поиск маршрутов в каталоге по тексту, категории и местоположению;
+  \item \textbf{get\_route\_details}~--- получение подробной информации о конкретном маршруте по UUID;
+  \item \textbf{get\_weather}~--- запрос прогноза погоды для заданных координат через Open-Meteo.
+\end{itemize}
+
+Цикл вызова инструментов ограничен параметром \texttt{chat\_max\_tool\_iterations} (по умолчанию 5 итераций), что предотвращает бесконечные циклы. Для предотвращения злоупотреблений применяется оконное ограничение частоты запросов: не более \texttt{chat\_rate\_limit\_max} (10) сообщений за \texttt{chat\_rate\_limit\_window\_secs} (60 секунд) для одного пользователя.
+
+Генерация текстовых описаний маршрута по фотографиям выполняется через Ollama с моделью llama3.2-vision, поддерживающей обработку изображений. Сервис отправляет модели URL обработанных фотографий маршрута и запрос на генерацию описания на русском языке объёмом 3--5 предложений.
+
+\section{Клиентское веб-приложение}
+
+\subsection{Структура React-приложения}
+
+Клиентская часть системы разработана с использованием библиотеки React~19 и языка TypeScript. Приложение организовано по страничной архитектуре: каждая страница соответствует отдельному разделу функциональности системы.
+
+Основные страницы приложения:
+\begin{itemize}
+  \item \textbf{MapPage}~--- главная страница с интерактивной картой и редактором маршрутов;
+  \item \textbf{ExplorePage}~--- каталог публичных маршрутов с поиском и фильтрацией;
+  \item \textbf{ProfilePage}~--- профиль пользователя со списком созданных маршрутов;
+  \item \textbf{BookmarksPage}~--- список маршрутов, добавленных в избранное;
+  \item \textbf{ChatPage}~--- интерфейс ИИ-ассистента;
+  \item \textbf{AdminPage}~--- административная панель управления;
+  \item \textbf{SharedRoutePage}~--- публичный просмотр маршрута по уникальной ссылке.
+\end{itemize}
+
+Приложение поддерживает светлую и тёмную темы оформления через переключатель в навигационной панели. Интернационализация реализована с помощью библиотеки i18next: поддерживаются русский и английский языки, выбор языка сохраняется в localStorage браузера.
+
+\subsection{Интерактивная карта на Leaflet}
+
+Интерактивная карта реализована на основе библиотеки Leaflet с обёрткой React-Leaflet. Система поддерживает несколько источников тайлов: OpenStreetMap (основной), Yandex Maps и исторический слой OpenHistoricalMap. Тайлы кешируются сервисом \texttt{cache} через Redis для снижения нагрузки на внешние API и ускорения загрузки карты.
+
+Компонент редактора маршрутов (\texttt{RouteBuilder}) поддерживает два режима добавления точек: ручной (клик по карте) и автоматический (маршрутизация через OSRM с построением кратчайшего пути по дорогам). Между последовательными точками отображается линия маршрута; для каждого сегмента можно выбрать режим передвижения (пешком, велосипед, автомобиль).
+
+Точки с прикреплёнными фотографиями отображаются на карте специальными маркерами с миниатюрами. При клике на маркер открывается всплывающее окно с полноразмерной фотографией, названием и описанием точки. Компонент профиля высот (\texttt{ElevationProfile}) отображает интерактивный график изменения высоты вдоль маршрута; при наведении курсора на точку графика соответствующая точка подсвечивается на карте.
+
+\subsection{Прогрессивное веб-приложение и настольная версия}
+
+Клиентское приложение сконфигурировано как Progressive Web App (PWA): оно регистрирует Service Worker, который кеширует ресурсы приложения и ранее загруженные маршруты для работы в офлайн-режиме. Пользователь может добавить приложение на главный экран мобильного устройства.
+
+Для создания настольной версии (Windows, macOS, Linux) используется фреймворк Tauri. Tauri оборачивает веб-приложение в нативную оболочку с доступом к файловой системе операционной системы, при этом размер итогового исполняемого файла значительно меньше, чем у Electron-приложений, благодаря использованию системного WebView и ядра на Rust.
+
+Компоненты \texttt{WeatherWidget} и \texttt{NotificationPanel} обращаются к соответствующим API-эндпоинтам для отображения прогноза погоды для района маршрута и уведомлений о новых комментариях, отметках «нравится» и оценках в реальном времени.
+
+\section{Схема базы данных и репозиторный слой}
+
+Сервис маршрутов использует отдельную базу данных \texttt{routes\_db} PostgreSQL, содержащую 11 таблиц. Доступ к данным реализован через репозиторный слой: каждый агрегат (маршруты, комментарии, лайки и т.д.) имеет собственный трейт-интерфейс и конкретную реализацию \texttt{PostgresXxxRepository}. Такое разделение позволяет подменять реализацию в тестах.
+
+Ключевые таблицы базы данных:
+\begin{itemize}
+  \item \texttt{routes}~--- маршруты пользователей; поле \texttt{points} типа \texttt{JSONB} хранит массив точек с координатами и данными фотографий; поле \texttt{share\_token} содержит опциональный UUID публичной ссылки;
+  \item \texttt{route\_categories}~--- таблица связи «многие-ко-многим» между маршрутами и категориями;
+  \item \texttt{comments}, \texttt{route\_likes}, \texttt{route\_ratings}~--- социальные функции; в таблице рейтингов пара (\texttt{route\_id}, \texttt{user\_id}) уникальна, что гарантирует не более одной оценки от одного пользователя;
+  \item \texttt{notifications}~--- уведомления о событиях (комментарий, лайк, оценка) с полем \texttt{is\_read};
+  \item \texttt{conversations}, \texttt{chat\_messages}~--- история диалогов с ИИ-ассистентом; роль сообщения (\texttt{user} / \texttt{assistant}) и опциональный массив вызовов инструментов хранятся в \texttt{JSONB};
+  \item \texttt{bookmarks}~--- избранные маршруты; пара (\texttt{user\_id}, \texttt{route\_id}) уникальна.
+\end{itemize}
+
+Для получения данных применяется библиотека sqlx с проверкой SQL-запросов на этапе компиляции: \texttt{sqlx::query\_as!} сопоставляет результат запроса с Rust-структурой при сборке, что исключает несоответствие типов в runtime. Поддержка типа \texttt{JSONB} реализована через атрибут \texttt{\#[sqlx(json)]}, автоматически выполняющий сериализацию и десериализацию через \texttt{serde\_json}.
+
+\section{Инфраструктура и CI/CD}
+
+\subsection{Контейнеризация через Docker Compose}
+
+Для локальной разработки и тестирования все компоненты системы оркестрированы через Docker Compose. Файл \texttt{docker-compose.yml} описывает десять сервисов: PostgreSQL (с инициализацией двух баз данных \texttt{auth\_db} и \texttt{routes\_db}), NATS JetStream, MinIO, Redis, сервис аутентификации, сервис маршрутов, обработчик фотографий, сервис кеширования тайлов, сервис проксирования тайлов и фронтенд.
+
+Зависимости между сервисами обеспечиваются директивой \texttt{depends\_on} с проверками готовности (\texttt{healthcheck}): сервис маршрутов ожидает готовности PostgreSQL (через \texttt{pg\_isready}), NATS (через HTTP-мониторинг на порту 8222) и сервиса аутентификации. Таблица~\ref{tab:docker-services} содержит перечень контейнеров с назначенными портами.
+
+\begin{table}[H]
+\caption{Сервисы Docker Compose}
+\label{tab:docker-services}
+\begin{tabularx}{\textwidth}{|l|X|c|}
+\hline
+\textbf{Сервис} & \textbf{Назначение} & \textbf{Порт} \\
+\hline
+postgres & PostgreSQL 16, базы auth\_db и routes\_db & 5433 \\
+\hline
+nats & NATS JetStream, брокер сообщений & 4222 \\
+\hline
+minio & MinIO S3, хранилище фотографий & 9000 \\
+\hline
+redis & Redis 7, кеш тайлов карты & 6379 \\
+\hline
+auth & Сервис аутентификации (Rust/Axum) & 8086 \\
+\hline
+routes & Сервис маршрутов (Rust/Axum) & 8088 \\
+\hline
+photo-worker & Обработчик фотографий (Rust/NATS) & --- \\
+\hline
+cache & Кеширование тайлов (Go/Gin) & 8085 \\
+\hline
+tiles & Проксирование тайлов (Go/Gin) & 8087 \\
+\hline
+frontend & React-приложение & 3005 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Kubernetes-развёртывание}
+
+Для продуктивного развёртывания системы подготовлены манифесты Kubernetes, управляемые через Kustomize. Каждый микросервис оформлен как отдельный \texttt{Deployment} с соответствующим \texttt{Service}. Конфиденциальные данные (JWT-секрет, ключи MinIO, токены API) хранятся в объектах \texttt{Secret}.
+
+Для автоматического горизонтального масштабирования применяется \texttt{HorizontalPodAutoscaler}: при превышении порога загрузки CPU Kubernetes автоматически увеличивает число реплик сервиса маршрутов. Обработчик фотографий \texttt{photo-worker} допускает независимое масштабирование для ускорения обработки при высокой нагрузке.
+
+\subsection{Непрерывная интеграция и доставка}
+
+CI/CD-пайплайн реализован средствами GitHub Actions. При каждом коммите в ветку \texttt{main} запускается рабочий процесс, включающий следующие этапы:
+\begin{enumerate}
+  \item запуск юнит-тестов для сервиса маршрутов (\texttt{cargo test});
+  \item сборка Docker-образов для всех микросервисов и фронтенда;
+  \item публикация образов в реестр GitHub Container Registry (\texttt{ghcr.io}) с тегом, соответствующим хешу коммита;
+  \item обновление тегов образов в Kubernetes-манифестах и применение изменений в кластере.
+\end{enumerate}
+
+Образы собираются с применением многоэтапной сборки (\texttt{multi-stage build}): финальный образ Rust-сервисов основан на \texttt{rust:1.91.0-alpine} и содержит только скомпилированный бинарный файл без исходного кода, что минимизирует размер и поверхность атаки.
