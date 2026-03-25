@@ -31,9 +31,9 @@
 \begin{lstlisting}[language=Rust, caption={Тест обратной совместимости десериализации фото}, label={lst:unit-test-example}]
 #[test]
 fn test_backward_compat_plain_string_photo() {
-    let json = r#"{"lat":55.0,"lng":37.0,
-        "name":null,"segment_mode":null,
-        "photo":"data:image/png;base64,abc"}"#;
+    // old format: photo field is a plain string
+    let json = r#"{"lat":55.0,"lng":37.0,"name":null,
+"segment_mode":null,"photo":"data:image/png;base64,abc"}"#;
 
     let point: RoutePoint = serde_json::from_str(json).unwrap();
 
@@ -45,11 +45,10 @@ fn test_backward_compat_plain_string_photo() {
 
 #[test]
 fn test_photo_data_struct_deserialization() {
+    // new format: photo field is a PhotoData object
     let json = r#"{"lat":55.0,"lng":37.0,"name":null,
-        "segment_mode":null,
-        "photo":{"original":"data:image/png;base64,abc",
-                 "thumbnail_url":"/photos/thumb.jpg",
-                 "status":"done"}}"#;
+"segment_mode":null,"photo":{"original":"data:image/png;base64,abc",
+"thumbnail_url":"/photos/thumb.jpg","status":"done"}}"#;
 
     let point: RoutePoint = serde_json::from_str(json).unwrap();
     let photo = point.photo.unwrap();

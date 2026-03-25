@@ -123,7 +123,10 @@
   extendedchars=true,
   keywordstyle=\bfseries,
   commentstyle=\itshape,
-  captionpos=b
+  captionpos=b,
+  showstringspaces=false,
+  showtabs=false,
+  showspaces=false
 }
 
 % --- Математика ---
@@ -156,6 +159,9 @@
 % --- Перечисления ---
 \usepackage{enumitem}
 \setlist{nosep, labelindent=\parindent, leftmargin=*, labelsep=0.5em}
+
+% --- Инлайн-код в тексте: Times New Roman (ГОСТ 7.32, без моноширинного) ---
+\renewcommand{\texttt}[1]{\textnormal{#1}}
 
 % --- Подавление сирот в заголовках ---
 \widowpenalty=10000
