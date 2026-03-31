@@ -131,6 +131,160 @@ QR-код для публикации & 0{,}03 & 0 & 0 & 0 & 0 & 0 & 3 \\
 \end{itemize}
 
 
+\section{Моделирование бизнес-процесса}
+
+На рисунке~\ref{fig:bpmn} представлена диаграмма бизнес-процесса создания и публикации туристического маршрута с геопривязанными фотографиями в нотации BPMN~2.0. Диаграмма описывает взаимодействие трёх участников: гида (основной пользователь), системы Guide Helper (три микросервиса) и туриста (потребитель маршрута).
+
+Процесс начинается с авторизации гида в системе. Гид создаёт маршрут, добавляет точки на интерактивную карту и загружает фотографии к точкам. Загрузка фотографий инициирует асинхронный процесс в обработчике фотографий: извлечение GPS-координат из EXIF-метаданных, сжатие и генерацию миниатюры, загрузку результатов в объектное хранилище MinIO.
+
+Построение маршрута между точками инициирует обращение сервиса маршрутов к внешнему сервису маршрутизации OSRM для расчёта оптимального пути, после чего рассчитываются статистики маршрута по формулам Гаверсинуса и Нейсмита.
+
+Публикация маршрута инициирует генерацию уникальной ссылки сервисом публикации, которая передаётся туристу. Турист открывает ссылку и просматривает интерактивную карту с маршрутом и фотографиями.
+
+\begin{landscape}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm,
+  % BPMN Start Event — тонкая окружность
+  startevent/.style={circle, draw, thick, minimum size=7mm, inner sep=0pt},
+  % BPMN End Event — толстая окружность
+  endevent/.style={circle, draw, line width=2.5pt, minimum size=7mm, inner sep=0pt},
+  % BPMN Message Catch Event — двойная окружность с конвертом
+  msgcatch/.style={circle, draw, double, double distance=1pt, minimum size=8mm, inner sep=0pt,
+    path picture={
+      \draw ($(path picture bounding box.center)+(-1.2mm,-0.7mm)$)
+            rectangle ($(path picture bounding box.center)+(1.2mm,0.7mm)$);
+      \draw ($(path picture bounding box.center)+(-1.2mm,0.7mm)$)
+            -- ($(path picture bounding box.center)+(0mm,-0.15mm)$)
+            -- ($(path picture bounding box.center)+(1.2mm,0.7mm)$);
+    }
+  },
+  % BPMN Message Throw Event — двойная окружность с заполненным конвертом
+  msgthrow/.style={circle, draw, double, double distance=1pt, minimum size=8mm, inner sep=0pt,
+    path picture={
+      \fill ($(path picture bounding box.center)+(-1.2mm,-0.7mm)$)
+            rectangle ($(path picture bounding box.center)+(1.2mm,0.7mm)$);
+      \draw[white, line width=0.4pt] ($(path picture bounding box.center)+(-1.2mm,0.7mm)$)
+            -- ($(path picture bounding box.center)+(0mm,-0.15mm)$)
+            -- ($(path picture bounding box.center)+(1.2mm,0.7mm)$);
+    }
+  },
+  % BPMN Task — скруглённый прямоугольник
+  bpmntask/.style={rectangle, draw, rounded corners=3pt, minimum height=9mm,
+    text width=#1, align=center, font=\scriptsize},
+  bpmntask/.default=23mm,
+  % Потоки
+  seqflow/.style={-{Stealth[length=2.5mm]}, semithick},
+  msgflow/.style={-{Stealth[length=2.5mm, open]}, dashed, semithick},
+]
+
+% ======= ПУЛ: ГИД / ИНСТРУКТОР =======
+\draw[thick] (0, 0) rectangle (7, 16);
+\draw[thick] (0, 15) -- (7, 15);
+\node[font=\footnotesize\bfseries] at (3.5, 15.5) {Гид / Инструктор};
+
+% Узлы потока (x=3.5, сверху вниз)
+\node[startevent] (g-start) at (3.5, 14) {};
+\node[bpmntask=42mm] (g-auth)    at (3.5, 12.8) {Авторизация в системе};
+\node[bpmntask=42mm] (g-create)  at (3.5, 11.6) {Создание маршрута};
+\node[bpmntask=42mm] (g-points)  at (3.5, 10.4) {Добавление точек на карту};
+\node[bpmntask=42mm] (g-photo)   at (3.5, 9.2)  {Загрузка фотографий};
+\node[bpmntask=42mm] (g-route)   at (3.5, 7.2)  {Построение маршрута};
+\node[bpmntask=42mm] (g-publish) at (3.5, 5.2)  {Публикация маршрута};
+\node[endevent] (g-end) at (3.5, 4) {};
+
+\draw[seqflow] (g-start)   -- (g-auth);
+\draw[seqflow] (g-auth)    -- (g-create);
+\draw[seqflow] (g-create)  -- (g-points);
+\draw[seqflow] (g-points)  -- (g-photo);
+\draw[seqflow] (g-photo)   -- (g-route);
+\draw[seqflow] (g-route)   -- (g-publish);
+\draw[seqflow] (g-publish) -- (g-end);
+
+% ======= ПУЛ: СИСТЕМА GUIDE HELPER =======
+\draw[thick] (7.5, 0) rectangle (17.5, 16);
+\draw[thick] (7.5, 15) -- (17.5, 15);
+\node[font=\footnotesize\bfseries] at (12.5, 15.5) {Система Guide Helper};
+
+% Заголовки дорожек
+\draw[thick] (7.5, 14) -- (17.5, 14);
+\draw (10.83, 0) -- (10.83, 14);
+\draw (14.17, 0) -- (14.17, 14);
+\node[font=\tiny, text width=28mm, align=center] at (9.17, 14.5) {Обработчик\\фотографий};
+\node[font=\tiny, text width=28mm, align=center] at (12.5, 14.5) {Сервис\\маршрутов};
+\node[font=\tiny, text width=28mm, align=center] at (15.83, 14.5) {Сервис\\публикации};
+
+% --- Дорожка 1: Обработчик фотографий (x=9.17) ---
+\node[msgcatch] (s1-start)    at (9.17, 9.2) {};
+\node[bpmntask] (s1-exif)     at (9.17, 8.2) {Извлечение GPS из EXIF};
+\node[bpmntask] (s1-compress) at (9.17, 6.2) {Сжатие и генерация миниатюры};
+\node[bpmntask] (s1-minio)    at (9.17, 4.4) {Загрузка в хранилище MinIO};
+\node[endevent] (s1-end)      at (9.17, 3.4) {};
+
+\draw[seqflow] (s1-start)    -- (s1-exif);
+\draw[seqflow] (s1-exif)     -- (s1-compress);
+\draw[seqflow] (s1-compress) -- (s1-minio);
+\draw[seqflow] (s1-minio)    -- (s1-end);
+
+% --- Дорожка 2: Сервис маршрутов (x=12.5) ---
+\node[msgcatch] (s2-start) at (12.5, 7.2) {};
+\node[bpmntask] (s2-osrm)  at (12.5, 6.0) {Маршрутизация через OSRM};
+\node[bpmntask] (s2-stats) at (12.5, 4.0) {Расчёт статистик маршрута};
+\node[endevent] (s2-end)   at (12.5, 3.0) {};
+
+\draw[seqflow] (s2-start) -- (s2-osrm);
+\draw[seqflow] (s2-osrm)  -- (s2-stats);
+\draw[seqflow] (s2-stats) -- (s2-end);
+
+% --- Дорожка 3: Сервис публикации (x=15.83) ---
+\node[msgcatch] (s3-start) at (15.83, 5.2) {};
+\node[bpmntask] (s3-link)  at (15.83, 3.8) {Генерация публичной ссылки};
+\node[msgthrow] (s3-end)   at (15.83, 2.6) {};
+
+\draw[seqflow] (s3-start) -- (s3-link);
+\draw[seqflow] (s3-link)  -- (s3-end);
+
+% ======= ПУЛ: ТУРИСТ =======
+\draw[thick] (18, 0) rectangle (24, 16);
+\draw[thick] (18, 15) -- (24, 15);
+\node[font=\footnotesize\bfseries] at (21, 15.5) {Турист};
+
+\node[msgcatch] (t-start) at (21, 2.6) {};
+\node[bpmntask=38mm] (t-view) at (21, 1.4) {Просмотр маршрута на карте};
+\node[endevent] (t-end)  at (21, 0.4) {};
+
+\draw[seqflow] (t-start) -- (t-view);
+\draw[seqflow] (t-view)  -- (t-end);
+
+% ======= ПОТОКИ СООБЩЕНИЙ (Message Flows) =======
+% Гид → Обработчик фотографий
+\draw[msgflow] (g-photo.east)   -- (s1-start.west);
+% Гид → Сервис маршрутов
+\draw[msgflow] (g-route.east)   -- (s2-start.west);
+% Гид → Сервис публикации
+\draw[msgflow] (g-publish.east) -- (s3-start.west);
+% Сервис публикации → Турист
+\draw[msgflow] (s3-end.east)    -- (t-start.west);
+
+% ======= ЛЕГЕНДА =======
+\node[font=\tiny, anchor=north west, text width=6cm] at (0, -0.3) {%
+  \begin{tabular}{@{}cl@{}}
+  \tikz\draw[thick] (0,0) circle (2.5mm); & Стартовое событие \\[1mm]
+  \tikz\draw[line width=2pt] (0,0) circle (2.5mm); & Конечное событие \\[1mm]
+  \tikz\draw[double, double distance=0.8pt] (0,0) circle (3mm); & Промежуточное событие (сообщение) \\[1mm]
+  \tikz\draw[rounded corners=2pt] (-4mm,-2.5mm) rectangle (4mm,2.5mm); & Задача \\[1mm]
+  \tikz\draw[-{Stealth[length=2mm]}, semithick] (0,0) -- (8mm,0); & Поток управления \\[1mm]
+  \tikz\draw[-{Stealth[length=2mm, open]}, dashed, semithick] (0,0) -- (8mm,0); & Поток сообщений \\
+  \end{tabular}
+};
+
+\end{tikzpicture}
+\caption{Диаграмма бизнес-процесса создания туристического маршрута (нотация BPMN~2.0)}
+\label{fig:bpmn}
+\end{figure}
+\end{landscape}
+
+
 \section{Анализ целевой аудитории и требования}
 
 На основе анализа предметной области выделены четыре основные группы целевой аудитории системы.
