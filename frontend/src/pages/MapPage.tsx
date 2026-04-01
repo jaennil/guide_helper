@@ -85,14 +85,10 @@ function MapClickHandler({
   return null;
 }
 
-interface RoutingControlData {
-  control: L.Routing.Control;
-  fromIndex: number;
-  toIndex: number;
-  fromLatLng: L.LatLng;
-  toLatLng: L.LatLng;
-}
-
+/**
+ * RoutingControl — fetches route paths from the selected engine and
+ * renders them as Polylines. No dependency on leaflet-routing-machine.
+ */
 export const RoutingControl = React.memo(function RoutingControl({
   waypoints,
   routeSegments,
@@ -105,140 +101,64 @@ export const RoutingControl = React.memo(function RoutingControl({
   engineId?: RoutingEngineId;
 }) {
   const map = useMapEvents({});
-  const routingControlsRef = useRef<Map<string, RoutingControlData>>(new Map());
+  const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
 
   useEffect(() => {
     if (waypoints.length < 2) {
-      routingControlsRef.current.forEach((data) => {
-        map.removeControl(data.control);
-      });
-      routingControlsRef.current.clear();
+      polylinesRef.current.forEach((pl) => map.removeLayer(pl));
+      polylinesRef.current.clear();
       return;
     }
 
+    const activeKeys = new Set<string>();
+
     routeSegments.forEach((segment) => {
-      if (segment.mode === "auto") {
-        const key = `${segment.fromIndex}-${segment.toIndex}`;
-        const fromPoint = waypoints[segment.fromIndex];
-        const toPoint = waypoints[segment.toIndex];
+      if (segment.mode !== "auto") return;
+      const key = `${segment.fromIndex}-${segment.toIndex}-${engineId}`;
+      activeKeys.add(key);
 
-        if (!fromPoint || !toPoint) return;
+      const fromPoint = waypoints[segment.fromIndex];
+      const toPoint = waypoints[segment.toIndex];
+      if (!fromPoint || !toPoint) return;
 
-        const existing = routingControlsRef.current.get(key);
-        if (existing) {
-          // Update waypoints if positions changed
-          const positionsChanged =
-            !existing.fromLatLng.equals(fromPoint) ||
-            !existing.toLatLng.equals(toPoint);
-          if (positionsChanged) {
-            console.log(`[routing] updating waypoints for segment ${key}`);
-            (existing.control as any).setWaypoints([fromPoint, toPoint]);
-            existing.fromLatLng = fromPoint;
-            existing.toLatLng = toPoint;
-          }
-          return;
-        }
+      if (polylinesRef.current.has(key)) return;
 
-        const plan = new (L.Routing as any).Plan([fromPoint, toPoint], {
-          createMarker: () => false,
-        });
-        const customRouter: any = { _pendingRequest: null };
-        customRouter.route = function(wps: any[], callback: any) {
-          const from: [number, number] = [wps[0].latLng.lat, wps[0].latLng.lng];
-          const to: [number, number] = [wps[1].latLng.lat, wps[1].latLng.lng];
-          fetchRoute(engineId, from, to).then((coords) => {
-            customRouter._pendingRequest = null;
-            callback(false, [{
-              name: '',
-              coordinates: coords.map((c: [number, number]) => L.latLng(c[0], c[1])),
-              summary: { totalDistance: 0, totalTime: 0 },
-              instructions: [],
-              waypoints: wps,
-            }]);
-          }).catch((err: any) => {
-            customRouter._pendingRequest = null;
-            console.error('[routing] custom router failed:', err);
-            callback(true, []);
-          });
-          return customRouter;
-        };
+      const from: [number, number] = [fromPoint.lat, fromPoint.lng];
+      const to: [number, number] = [toPoint.lat, toPoint.lng];
 
-        const routingControl = L.Routing.control({
-          plan,
-          routeWhileDragging: false,
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: false,
-          showAlternatives: false,
-          lineOptions: {
-            styles: [{ color, opacity: 0.7, weight: 4 }],
-            extendToWaypoints: true,
-            missingRouteTolerance: 0,
-          },
-          router: customRouter as any,
-        } as any).addTo(map);
-
-        routingControlsRef.current.set(key, {
-          control: routingControl,
-          fromIndex: segment.fromIndex,
-          toIndex: segment.toIndex,
-          fromLatLng: fromPoint,
-          toLatLng: toPoint,
-        });
-
-        setTimeout(() => {
-          const container = map.getContainer();
-          const routingContainers = container.querySelectorAll(
-            ".leaflet-routing-container"
-          );
-          routingContainers.forEach((container) => {
-            (container as HTMLElement).style.display = "none";
-          });
-        }, 100);
-      }
+      fetchRoute(engineId, from, to).then((coords) => {
+        // Remove old polyline for this segment if engine changed
+        const latLngs = coords.map((c) => L.latLng(c[0], c[1]));
+        const polyline = L.polyline(latLngs, {
+          color,
+          opacity: 0.7,
+          weight: 4,
+        }).addTo(map);
+        polylinesRef.current.set(key, polyline);
+      });
     });
 
-    routingControlsRef.current.forEach((data, key) => {
-      const exists = routeSegments.some(
-        (segment) =>
-          segment.mode === "auto" &&
-          segment.fromIndex === data.fromIndex &&
-          segment.toIndex === data.toIndex
-      );
-      if (!exists) {
-        map.removeControl(data.control);
-        routingControlsRef.current.delete(key);
+    // Remove stale polylines
+    polylinesRef.current.forEach((pl, key) => {
+      if (!activeKeys.has(key)) {
+        map.removeLayer(pl);
+        polylinesRef.current.delete(key);
       }
     });
-  }, [waypoints, routeSegments, map, engineId]);
+  }, [waypoints, routeSegments, map, engineId, color]);
 
-  // Clear all routes when engine changes
+  // Clear all when engine changes
   useEffect(() => {
-    routingControlsRef.current.forEach((data) => {
-      map.removeControl(data.control);
-    });
-    routingControlsRef.current.clear();
+    polylinesRef.current.forEach((pl) => map.removeLayer(pl));
+    polylinesRef.current.clear();
   }, [engineId, map]);
 
   useEffect(() => {
-    const container = map.getContainer();
-    const routingContainers = container.querySelectorAll(
-      ".leaflet-routing-container"
-    );
-    routingContainers.forEach((container) => {
-      (container as HTMLElement).style.display = "none";
-    });
-  }, [routeSegments, map]);
-
-  useEffect(() => {
     return () => {
-      routingControlsRef.current.forEach((data) => {
-        try {
-          map.removeControl(data.control);
-        } catch (e) {
-        }
+      polylinesRef.current.forEach((pl) => {
+        try { map.removeLayer(pl); } catch (_) {}
       });
-      routingControlsRef.current.clear();
+      polylinesRef.current.clear();
     };
   }, [map]);
 
