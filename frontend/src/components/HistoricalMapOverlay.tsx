@@ -91,14 +91,13 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
     }, 150);
   }, [year]);
 
-  // Update opacity
+  // Update opacity — apply to GL container directly via DOM query
+  // (layerRef may be stale after remounts)
   useEffect(() => {
-    if (layerRef.current) {
-      const container = layerRef.current.getContainer();
-      if (container) {
-        container.style.opacity = String(opacity);
-        console.log('[historical] opacity set to', opacity);
-      }
+    const glContainer = document.querySelector('.leaflet-gl-layer') as HTMLElement | null;
+    if (glContainer) {
+      glContainer.style.opacity = String(opacity);
+      console.log('[historical] opacity set to', opacity);
     }
   }, [opacity]);
 
