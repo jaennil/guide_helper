@@ -19,7 +19,8 @@ interface HistoricalMapOverlayProps {
   opacity: number;
 }
 
-export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProps) {
+export function HistoricalMapOverlay({ year: _year, opacity }: HistoricalMapOverlayProps) {
+  void _year; // year prop reserved for future OHM date filtering
   const map = useMap();
   const watercolorRef = useRef<L.TileLayer | null>(null);
   const labelsRef = useRef<L.TileLayer | null>(null);
