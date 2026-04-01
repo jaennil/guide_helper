@@ -436,6 +436,7 @@ jobs:
           provenance: false
           build-args: |
             VITE_GRAPHHOPPER_API_KEY=${{ secrets.VITE_GRAPHHOPPER_API_KEY }}
+            VITE_STADIA_API_KEY=${{ secrets.VITE_STADIA_API_KEY }}
 
   merge-frontend:
     needs: [changes, build-frontend]
