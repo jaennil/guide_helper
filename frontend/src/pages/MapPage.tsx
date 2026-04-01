@@ -77,6 +77,35 @@ function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null
   return null;
 }
 
+function TileLayerUpdater({ url, attribution }: { url: string; attribution: string }) {
+  const map = useMapEvents({});
+  const layerRef = useRef<L.TileLayer | null>(null);
+
+  useEffect(() => {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+
+    if (layerRef.current) {
+      map.removeLayer(layerRef.current);
+    }
+    const newLayer = L.tileLayer(url, { attribution });
+    newLayer.addTo(map);
+    layerRef.current = newLayer;
+
+    map.setView(center, zoom, { animate: false });
+  }, [url, attribution, map]);
+
+  useEffect(() => {
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+      }
+    };
+  }, [map]);
+
+  return null;
+}
+
 function MapClickHandler({
   onMapClick,
 }: {
@@ -1153,10 +1182,7 @@ export function MapPage() {
         zoom={15}
         style={{ height: "100vh", width: "100%" }}
       >
-        <TileLayer
-          url={currentProvider.url}
-          attribution={currentProvider.attribution}
-        />
+        <TileLayerUpdater url={currentProvider.url} attribution={currentProvider.attribution} />
         <MapRefCapture mapRef={mapRef} />
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
