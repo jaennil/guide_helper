@@ -769,22 +769,8 @@ export function MapPage() {
 
   const mapRef = useRef<L.Map | null>(null);
   const handleTileProviderChange = (providerId: string) => {
-    // Save current view before tile switch
-    if (mapRef.current) {
-      const center = mapRef.current.getCenter();
-      const zoom = mapRef.current.getZoom();
-      setTileProvider(providerId);
-      localStorage.setItem("tileProvider", providerId);
-      // Restore view after React re-renders TileLayer
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.setView(center, zoom, { animate: false });
-        }
-      }, 50);
-    } else {
-      setTileProvider(providerId);
-      localStorage.setItem("tileProvider", providerId);
-    }
+    setTileProvider(providerId);
+    localStorage.setItem("tileProvider", providerId);
   };
 
   const handleChatShowPoints = (points: ChatPoint[]) => {
@@ -1168,7 +1154,6 @@ export function MapPage() {
         style={{ height: "100vh", width: "100%" }}
       >
         <TileLayer
-          key={tileProvider}
           url={currentProvider.url}
           attribution={currentProvider.attribution}
         />
