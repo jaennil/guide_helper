@@ -35,22 +35,38 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
     const glMap = gl.getMaplibreMap();
     glMapRef.current = glMap;
 
-    // Use 'load' event — fires after style AND all sources/tiles are ready.
-    // 'styledata' fires too early (before sources are loaded).
-    glMap.once('load', () => {
-      const layers = glMap.getStyle().layers;
-      console.log(`[historical] OHM map loaded, ${layers.length} layers, applying year ${yearRef.current}`);
+    const applyFilter = () => {
+      if (readyRef.current) return;
+      const style = glMap.getStyle();
+      if (!style?.layers?.length) return;
+      console.log(`[historical] OHM ready, ${style.layers.length} layers, applying year ${yearRef.current}`);
       readyRef.current = true;
       filterByDate(glMap, String(yearRef.current));
       console.log('[historical] initial date filter applied');
-    });
+    };
 
-    glMap.on('error', (e) => {
+    // Try multiple events — 'load' may not fire if tiles fail to load,
+    // 'styledata' fires when style is parsed (before tiles).
+    glMap.once('load', applyFilter);
+    glMap.on('styledata', () => {
+      // styledata fires early but style may be ready enough for filtering
+      setTimeout(applyFilter, 500);
+    });
+    // Fallback: check periodically if style loaded
+    const fallbackInterval = setInterval(() => {
+      if (glMap.isStyleLoaded()) {
+        applyFilter();
+        clearInterval(fallbackInterval);
+      }
+    }, 1000);
+
+    glMap.on('error', (e: any) => {
       console.error('[historical] MapLibre error:', e.error?.message || e);
     });
 
     return () => {
       readyRef.current = false;
+      clearInterval(fallbackInterval);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (layerRef.current) {
         console.log('[historical] removing OHM overlay layer');
