@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import exifr from "exifr";
 import {
   MapContainer,
+  TileLayer,
   Marker,
   Popup,
   useMapEvents,
@@ -76,26 +77,25 @@ function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null
   return null;
 }
 
-function TileLayerUpdater({ url, attribution }: { url: string; attribution: string }) {
+/** Restores map view after TileLayer re-mount (key change) */
+function MapViewRestorer({ tileProvider }: { tileProvider: string }) {
   const map = useMapEvents({});
-  const layerRef = useRef<L.TileLayer | null>(null);
+  const savedView = useRef<{ center: L.LatLng; zoom: number } | null>(null);
 
   useEffect(() => {
-    if (!layerRef.current) {
-      layerRef.current = L.tileLayer(url, { attribution }).addTo(map);
-    } else {
-      layerRef.current.setUrl(url);
-      layerRef.current.options.attribution = attribution;
-    }
-  }, [url, attribution, map]);
-
-  useEffect(() => {
+    // Before unmount (tile switch), save current view
     return () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-      }
+      savedView.current = { center: map.getCenter(), zoom: map.getZoom() };
     };
-  }, [map]);
+  }, [tileProvider, map]);
+
+  useEffect(() => {
+    // After mount with new tile provider, restore view
+    if (savedView.current) {
+      map.setView(savedView.current.center, savedView.current.zoom, { animate: false });
+      savedView.current = null;
+    }
+  }, [tileProvider, map]);
 
   return null;
 }
@@ -1176,7 +1176,12 @@ export function MapPage() {
         zoom={15}
         style={{ height: "100vh", width: "100%" }}
       >
-        <TileLayerUpdater url={currentProvider.url} attribution={currentProvider.attribution} />
+        <TileLayer
+          key={tileProvider}
+          url={currentProvider.url}
+          attribution={currentProvider.attribution}
+        />
+        <MapViewRestorer tileProvider={tileProvider} />
         <MapRefCapture mapRef={mapRef} />
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
