@@ -151,8 +151,8 @@ export const RoutingControl = React.memo(function RoutingControl({
             missingRouteTolerance: 0,
           },
           router: L.Routing.osrmv1({
-            serviceUrl: "https://router.project-osrm.org/route/v1",
-            profile: "foot",
+            serviceUrl: "https://routing.openstreetmap.de/routed-foot/route/v1",
+            profile: "driving",
           }),
         } as any).addTo(map);
 
