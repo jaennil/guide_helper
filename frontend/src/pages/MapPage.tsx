@@ -143,10 +143,12 @@ export const RoutingControl = React.memo(function RoutingControl({
           createMarker: () => false,
         });
         const customRouter = {
+          _pendingRequest: null as any,
           route(wps: any[], callback: any) {
             const from: [number, number] = [wps[0].latLng.lat, wps[0].latLng.lng];
             const to: [number, number] = [wps[1].latLng.lat, wps[1].latLng.lng];
-            fetchRoute(engineId, from, to).then((coords) => {
+            const req = fetchRoute(engineId, from, to).then((coords) => {
+              this._pendingRequest = null;
               callback(false, [{
                 name: '',
                 coordinates: coords.map(c => L.latLng(c[0], c[1])),
@@ -155,9 +157,12 @@ export const RoutingControl = React.memo(function RoutingControl({
                 waypoints: wps,
               }]);
             }).catch((err) => {
+              this._pendingRequest = null;
               console.error('[routing] custom router failed:', err);
               callback(true, []);
             });
+            this._pendingRequest = req;
+            return this;
           },
         };
 
