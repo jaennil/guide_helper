@@ -3,7 +3,6 @@ import toast from "react-hot-toast";
 import exifr from "exifr";
 import {
   MapContainer,
-  TileLayer,
   Marker,
   Popup,
   useMapEvents,
