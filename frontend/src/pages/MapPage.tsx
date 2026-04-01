@@ -81,17 +81,12 @@ function TileLayerUpdater({ url, attribution }: { url: string; attribution: stri
   const layerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
-    const center = map.getCenter();
-    const zoom = map.getZoom();
-
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
+    if (!layerRef.current) {
+      layerRef.current = L.tileLayer(url, { attribution }).addTo(map);
+    } else {
+      layerRef.current.setUrl(url);
+      layerRef.current.options.attribution = attribution;
     }
-    const newLayer = L.tileLayer(url, { attribution });
-    newLayer.addTo(map);
-    layerRef.current = newLayer;
-
-    map.setView(center, zoom, { animate: false });
   }, [url, attribution, map]);
 
   useEffect(() => {
