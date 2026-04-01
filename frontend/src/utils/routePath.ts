@@ -1,4 +1,5 @@
 import type { RouteSegment, RoutePoint } from '../pages/MapPage';
+import { fetchRoute, type RoutingEngineId, DEFAULT_ENGINE } from './routingEngines';
 
 export interface PathResult {
   /** Full detailed path as [lat, lng] tuples */
@@ -26,41 +27,16 @@ function interpolateLine(
   return result;
 }
 
-/**
- * Fetch a detailed path from OSRM for a foot routing segment.
- * Returns array of [lat, lng] tuples.
- */
-async function fetchOsrmSegment(
-  from: [number, number],
-  to: [number, number]
-): Promise<[number, number][]> {
-  const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
-  console.log('[routePath] fetching OSRM segment');
+/** Current routing engine, can be changed from MapPage */
+let currentEngine: RoutingEngineId = DEFAULT_ENGINE;
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`[routePath] OSRM returned ${res.status}, falling back to straight line`);
-      return interpolateLine(from, to, 20);
-    }
+export function setRoutingEngine(engine: RoutingEngineId) {
+  currentEngine = engine;
+  console.log(`[routePath] engine set to ${engine}`);
+}
 
-    const data = await res.json();
-    if (data.code !== 'Ok' || !data.routes?.[0]?.geometry?.coordinates) {
-      console.warn('[routePath] OSRM returned no route, falling back to straight line');
-      return interpolateLine(from, to, 20);
-    }
-
-    // GeoJSON coordinates are [lng, lat], we need [lat, lng]
-    const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
-      (c: [number, number]) => [c[1], c[0]] as [number, number]
-    );
-
-    console.log(`[routePath] OSRM returned ${coords.length} points`);
-    return coords;
-  } catch (err) {
-    console.error('[routePath] OSRM fetch failed:', err);
-    return interpolateLine(from, to, 20);
-  }
+export function getRoutingEngine(): RoutingEngineId {
+  return currentEngine;
 }
 
 /**
@@ -117,7 +93,7 @@ export async function fetchDetailedPath(
     let segmentPath: [number, number][];
 
     if (segment.mode === 'auto') {
-      segmentPath = await fetchOsrmSegment(from.position, to.position);
+      segmentPath = await fetchRoute(currentEngine, from.position, to.position);
     } else {
       segmentPath = interpolateLine(from.position, to.position, 20);
     }

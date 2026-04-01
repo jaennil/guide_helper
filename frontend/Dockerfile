@@ -8,6 +8,10 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
 COPY . .
+
+ARG VITE_GRAPHHOPPER_API_KEY=""
+ENV VITE_GRAPHHOPPER_API_KEY=$VITE_GRAPHHOPPER_API_KEY
+
 RUN npm run build
 
 FROM nginx:alpine

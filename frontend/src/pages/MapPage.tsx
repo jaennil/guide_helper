@@ -34,6 +34,8 @@ import { NotificationBell } from "../components/NotificationBell";
 import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
+import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
+import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 
 type RouteMode = "auto" | "manual";
 
@@ -95,10 +97,12 @@ export const RoutingControl = React.memo(function RoutingControl({
   waypoints,
   routeSegments,
   color = "#3388ff",
+  engineId = DEFAULT_ENGINE,
 }: {
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
   color?: string;
+  engineId?: RoutingEngineId;
 }) {
   const map = useMapEvents({});
   const routingControlsRef = useRef<Map<string, RoutingControlData>>(new Map());
@@ -138,6 +142,25 @@ export const RoutingControl = React.memo(function RoutingControl({
         const plan = new (L.Routing as any).Plan([fromPoint, toPoint], {
           createMarker: () => false,
         });
+        const customRouter = {
+          route(wps: any[], callback: any) {
+            const from: [number, number] = [wps[0].latLng.lat, wps[0].latLng.lng];
+            const to: [number, number] = [wps[1].latLng.lat, wps[1].latLng.lng];
+            fetchRoute(engineId, from, to).then((coords) => {
+              callback(false, [{
+                name: '',
+                coordinates: coords.map(c => L.latLng(c[0], c[1])),
+                summary: { totalDistance: 0, totalTime: 0 },
+                instructions: [],
+                waypoints: wps,
+              }]);
+            }).catch((err) => {
+              console.error('[routing] custom router failed:', err);
+              callback(true, []);
+            });
+          },
+        };
+
         const routingControl = L.Routing.control({
           plan,
           routeWhileDragging: false,
@@ -150,10 +173,7 @@ export const RoutingControl = React.memo(function RoutingControl({
             extendToWaypoints: true,
             missingRouteTolerance: 0,
           },
-          router: L.Routing.osrmv1({
-            serviceUrl: "https://routing.openstreetmap.de/routed-foot/route/v1",
-            profile: "driving",
-          }),
+          router: customRouter as any,
         } as any).addTo(map);
 
         routingControlsRef.current.set(key, {
@@ -188,7 +208,15 @@ export const RoutingControl = React.memo(function RoutingControl({
         routingControlsRef.current.delete(key);
       }
     });
-  }, [waypoints, routeSegments, map]);
+  }, [waypoints, routeSegments, map, engineId]);
+
+  // Clear all routes when engine changes
+  useEffect(() => {
+    routingControlsRef.current.forEach((data) => {
+      map.removeControl(data.control);
+    });
+    routingControlsRef.current.clear();
+  }, [engineId, map]);
 
   useEffect(() => {
     const container = map.getContainer();
@@ -386,6 +414,12 @@ export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeMode, setRouteMode] = useState<RouteMode>("auto");
+  const [routingEngine, setRoutingEngine] = useState<RoutingEngineId>(DEFAULT_ENGINE);
+
+  const handleEngineChange = (engineId: RoutingEngineId) => {
+    setRoutingEngine(engineId);
+    setPathEngine(engineId);
+  };
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
@@ -870,6 +904,19 @@ export function MapPage() {
             />
             {t("map.modeManual")}
           </label>
+          {routeMode === "auto" && (
+            <select
+              value={routingEngine}
+              onChange={(e) => handleEngineChange(e.target.value as RoutingEngineId)}
+              style={{ marginLeft: 8 }}
+            >
+              {ROUTING_ENGINES.map((engine) => (
+                <option key={engine.id} value={engine.id}>
+                  {engine.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="tile-switcher">
           <select
@@ -1187,7 +1234,7 @@ export function MapPage() {
         {historicalMode && (
           <HistoricalMapOverlay year={historicalYear} opacity={historicalOpacity} />
         )}
-        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
+        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} engineId={routingEngine} />
         <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
         {routePoints.map((point, index) => (
           <Marker
@@ -1221,6 +1268,7 @@ export function MapPage() {
                 waypoints={overlayWaypoints}
                 routeSegments={overlay.segments}
                 color={overlay.color}
+                engineId={routingEngine}
               />
               <ManualRoutes
                 waypoints={overlayWaypoints}
