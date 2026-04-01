@@ -71,6 +71,12 @@ const ROUTE_COLORS = [
   '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
 ];
 
+function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
+  const map = useMapEvents({});
+  mapRef.current = map;
+  return null;
+}
+
 function MapClickHandler({
   onMapClick,
 }: {
@@ -761,9 +767,24 @@ export function MapPage() {
     navigate('/login');
   };
 
+  const mapRef = useRef<L.Map | null>(null);
   const handleTileProviderChange = (providerId: string) => {
-    setTileProvider(providerId);
-    localStorage.setItem("tileProvider", providerId);
+    // Save current view before tile switch
+    if (mapRef.current) {
+      const center = mapRef.current.getCenter();
+      const zoom = mapRef.current.getZoom();
+      setTileProvider(providerId);
+      localStorage.setItem("tileProvider", providerId);
+      // Restore view after React re-renders TileLayer
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.setView(center, zoom, { animate: false });
+        }
+      }, 50);
+    } else {
+      setTileProvider(providerId);
+      localStorage.setItem("tileProvider", providerId);
+    }
   };
 
   const handleChatShowPoints = (points: ChatPoint[]) => {
@@ -1151,6 +1172,7 @@ export function MapPage() {
           url={currentProvider.url}
           attribution={currentProvider.attribution}
         />
+        <MapRefCapture mapRef={mapRef} />
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
         {historicalMode && (
