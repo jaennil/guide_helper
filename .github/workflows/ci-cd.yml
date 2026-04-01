@@ -434,6 +434,8 @@ jobs:
           cache-from: type=gha,scope=frontend-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=frontend-${{ matrix.suffix }}
           provenance: false
+          build-args: |
+            VITE_GRAPHHOPPER_API_KEY=${{ secrets.VITE_GRAPHHOPPER_API_KEY }}
 
   merge-frontend:
     needs: [changes, build-frontend]
