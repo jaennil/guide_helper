@@ -32,6 +32,13 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
     gl.addTo(map);
     layerRef.current = gl;
 
+    // Apply vintage style to the GL container
+    const container = gl.getContainer();
+    if (container) {
+      container.style.filter = 'sepia(0.4) saturate(0.7) contrast(1.1)';
+      container.style.mixBlendMode = 'multiply';
+    }
+
     const glMap = gl.getMaplibreMap();
     glMapRef.current = glMap;
 
@@ -45,14 +52,10 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
       console.log('[historical] initial date filter applied');
     };
 
-    // Try multiple events — 'load' may not fire if tiles fail to load,
-    // 'styledata' fires when style is parsed (before tiles).
     glMap.once('load', applyFilter);
     glMap.on('styledata', () => {
-      // styledata fires early but style may be ready enough for filtering
       setTimeout(applyFilter, 500);
     });
-    // Fallback: check periodically if style loaded
     const fallbackInterval = setInterval(() => {
       if (glMap.isStyleLoaded()) {
         applyFilter();
@@ -77,7 +80,7 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
     };
   }, [map]);
 
-  // Update date filter when year changes (debounced to avoid flooding setFilter calls)
+  // Update date filter when year changes
   useEffect(() => {
     yearRef.current = year;
     if (!readyRef.current || !glMapRef.current) return;
@@ -91,14 +94,19 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
     }, 150);
   }, [year]);
 
-  // Update opacity — apply to GL container directly via DOM query
-  // (layerRef may be stale after remounts)
+  // Update opacity on the GL container
   useEffect(() => {
-    const glContainer = document.querySelector('.leaflet-gl-layer') as HTMLElement | null;
-    if (glContainer) {
-      glContainer.style.opacity = String(opacity);
-      console.log('[historical] opacity set to', opacity);
-    }
+    const applyOpacity = () => {
+      const glContainer = document.querySelector('.leaflet-gl-layer') as HTMLElement | null;
+      if (glContainer) {
+        glContainer.style.opacity = String(opacity);
+        console.log('[historical] opacity set to', opacity);
+      }
+    };
+    applyOpacity();
+    // Also re-apply after a short delay (in case container was recreated)
+    const timer = setTimeout(applyOpacity, 200);
+    return () => clearTimeout(timer);
   }, [opacity]);
 
   return null;
