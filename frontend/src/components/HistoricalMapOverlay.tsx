@@ -28,7 +28,7 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
       style: OHM_STYLE_URL,
       interactive: false,
       pane: 'overlayPane',
-    });
+    } as any);
     gl.addTo(map);
     layerRef.current = gl;
 
