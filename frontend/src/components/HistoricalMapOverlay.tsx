@@ -34,14 +34,11 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
 
     const container = gl.getContainer();
     if (container) {
-      // Move from tilePane to overlayPane so it's not destroyed on tile switch
-      const overlayPane = map.getPane('overlayPane');
-      if (overlayPane && container.parentElement !== overlayPane) {
-        overlayPane.appendChild(container);
-        console.log('[historical] moved GL layer to overlayPane');
-      }
+      // Keep in tilePane but set high z-index so it renders above base tiles
+      container.style.zIndex = '500';
       container.style.opacity = String(opacity);
       container.style.pointerEvents = 'none';
+      console.log('[historical] GL container configured, z-index=500');
     }
 
     const glMap = gl.getMaplibreMap();
