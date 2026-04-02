@@ -1,72 +1,98 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import '@maplibre/maplibre-gl-leaflet';
+import { filterByDate } from '@openhistoricalmap/maplibre-gl-dates';
 
-const STADIA_API_KEY = import.meta.env.VITE_STADIA_API_KEY || '';
-
-// Stamen Watercolor — художественный стиль «старинной акварельной карты»
-function getWatercolorUrl(): string {
-  return `https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg${STADIA_API_KEY ? `?api_key=${STADIA_API_KEY}` : ''}`;
-}
-
-// Stamen Toner Labels — подписи в стиле старой печатной карты (поверх watercolor)
-function getTonerLabelsUrl(): string {
-  return `https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}.png${STADIA_API_KEY ? `?api_key=${STADIA_API_KEY}` : ''}`;
-}
+const OHM_STYLE_URL = 'https://www.openhistoricalmap.org/map-styles/main/main.json';
 
 interface HistoricalMapOverlayProps {
   year: number;
   opacity: number;
 }
 
-export function HistoricalMapOverlay({ year: _year, opacity }: HistoricalMapOverlayProps) {
-  void _year; // year prop reserved for future OHM date filtering
+export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProps) {
   const map = useMap();
-  const watercolorRef = useRef<L.TileLayer | null>(null);
-  const labelsRef = useRef<L.TileLayer | null>(null);
+  const layerRef = useRef<L.MaplibreGL | null>(null);
+  const glMapRef = useRef<maplibregl.Map | null>(null);
+  const readyRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Create tile layers
+  // Create the MapLibre GL layer
   useEffect(() => {
-    console.log('[historical] creating watercolor overlay');
+    console.log('[historical] creating OHM overlay');
 
-    const watercolor = L.tileLayer(getWatercolorUrl(), {
-      attribution: '&copy; <a href="https://stamen.com">Stamen Design</a> | <a href="https://stadiamaps.com">Stadia Maps</a>',
-      opacity: opacity,
-      maxZoom: 18,
+    const gl = L.maplibreGL({
+      style: OHM_STYLE_URL,
+      interactive: false,
+      pane: 'overlayPane',
     });
-    watercolor.addTo(map);
-    watercolorRef.current = watercolor;
+    gl.addTo(map);
+    layerRef.current = gl;
 
-    const labels = L.tileLayer(getTonerLabelsUrl(), {
-      attribution: '',
-      opacity: Math.min(opacity + 0.1, 1),
-      maxZoom: 18,
+    const container = gl.getContainer();
+    if (container) {
+      container.style.opacity = String(opacity);
+      container.style.pointerEvents = 'none';
+    }
+
+    const glMap = gl.getMaplibreMap();
+    glMapRef.current = glMap;
+
+    glMap.on('load', () => {
+      console.log('[historical] MapLibre loaded');
+      readyRef.current = true;
+      filterByDate(glMap, String(year));
+      glMap.resize();
+      glMap.triggerRepaint();
+      console.log('[historical] date filter applied:', year);
     });
-    labels.addTo(map);
-    labelsRef.current = labels;
+
+    glMap.on('error', (e: any) => {
+      console.error('[historical] MapLibre error:', e.error?.message || e);
+    });
+
+    // Force resize after map settles
+    const resizeTimer = setInterval(() => {
+      if (glMap.loaded()) {
+        glMap.resize();
+        glMap.triggerRepaint();
+      }
+    }, 2000);
 
     return () => {
-      console.log('[historical] removing watercolor overlay');
-      if (watercolorRef.current) {
-        map.removeLayer(watercolorRef.current);
-        watercolorRef.current = null;
-      }
-      if (labelsRef.current) {
-        map.removeLayer(labelsRef.current);
-        labelsRef.current = null;
+      readyRef.current = false;
+      clearInterval(resizeTimer);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+        layerRef.current = null;
+        glMapRef.current = null;
       }
     };
   }, [map]);
 
-  // Update opacity
+  // Year filter
   useEffect(() => {
-    if (watercolorRef.current) {
-      watercolorRef.current.setOpacity(opacity);
+    if (!readyRef.current || !glMapRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (glMapRef.current && readyRef.current) {
+        console.log('[historical] filtering by year', year);
+        filterByDate(glMapRef.current, String(year));
+        glMapRef.current.triggerRepaint();
+      }
+    }, 200);
+  }, [year]);
+
+  // Opacity
+  useEffect(() => {
+    if (layerRef.current) {
+      const c = layerRef.current.getContainer();
+      if (c) c.style.opacity = String(opacity);
     }
-    if (labelsRef.current) {
-      labelsRef.current.setOpacity(Math.min(opacity + 0.1, 1));
-    }
-    console.log('[historical] opacity set to', opacity);
   }, [opacity]);
 
   return null;

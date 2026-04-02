@@ -3,7 +3,6 @@ import toast from "react-hot-toast";
 import exifr from "exifr";
 import {
   MapContainer,
-  TileLayer,
   Marker,
   Popup,
   useMapEvents,
@@ -77,25 +76,27 @@ function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null
   return null;
 }
 
-/** Restores map view after TileLayer re-mount (key change) */
-function MapViewRestorer({ tileProvider }: { tileProvider: string }) {
+/** Manages base tile layer imperatively via setUrl() to avoid remounting child components */
+function BaseTileLayer({ url, attribution }: { url: string; attribution: string }) {
   const map = useMapEvents({});
-  const savedView = useRef<{ center: L.LatLng; zoom: number } | null>(null);
+  const layerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
-    // Before unmount (tile switch), save current view
-    return () => {
-      savedView.current = { center: map.getCenter(), zoom: map.getZoom() };
-    };
-  }, [tileProvider, map]);
-
-  useEffect(() => {
-    // After mount with new tile provider, restore view
-    if (savedView.current) {
-      map.setView(savedView.current.center, savedView.current.zoom, { animate: false });
-      savedView.current = null;
+    if (!layerRef.current) {
+      layerRef.current = L.tileLayer(url, { attribution, zIndex: 0 }).addTo(map);
+    } else {
+      layerRef.current.setUrl(url);
     }
-  }, [tileProvider, map]);
+  }, [url, attribution, map]);
+
+  useEffect(() => {
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+        layerRef.current = null;
+      }
+    };
+  }, [map]);
 
   return null;
 }
@@ -1176,12 +1177,7 @@ export function MapPage() {
         zoom={15}
         style={{ height: "100vh", width: "100%" }}
       >
-        <TileLayer
-          key={tileProvider}
-          url={currentProvider.url}
-          attribution={currentProvider.attribution}
-        />
-        <MapViewRestorer tileProvider={tileProvider} />
+        <BaseTileLayer url={currentProvider.url} attribution={currentProvider.attribution} />
         <MapRefCapture mapRef={mapRef} />
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />

@@ -5,7 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
     server: {
-        allowedHosts: true
+        allowedHosts: true,
+        proxy: {
+            '/api/v1/auth': 'http://localhost:8086',
+            '/api/v1': 'http://localhost:8088',
+        }
     },
   plugins: [
     react(),
