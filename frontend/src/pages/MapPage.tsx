@@ -24,6 +24,7 @@ import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
+import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
@@ -1177,6 +1178,7 @@ export function MapPage() {
         zoom={15}
         style={{ height: "100vh", width: "100%" }}
       >
+        <LeafletAttributionPrefix />
         <BaseTileLayer url={currentProvider.url} attribution={currentProvider.attribution} />
         <MapRefCapture mapRef={mapRef} />
         <MapClickHandler onMapClick={handleMapClick} />

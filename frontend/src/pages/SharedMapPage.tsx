@@ -28,6 +28,7 @@ import { LikeRatingBar } from "../components/LikeRatingBar";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { RoutePlayback } from "../components/RoutePlayback";
+import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeModal } from "../components/QRCodeModal";
 
@@ -247,6 +248,7 @@ export function SharedMapPage() {
         zoom={13}
         style={{ height: "100vh", width: "100%" }}
       >
+        <LeafletAttributionPrefix />
         <TileLayer
           key={tileProvider}
           url={currentProvider.url}
