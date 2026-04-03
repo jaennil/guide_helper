@@ -114,11 +114,11 @@ pub struct OpenAIClient {
     http_client: reqwest::Client,
     base_url: String,
     model: String,
-    api_key: String,
+    api_key: Option<String>,
 }
 
 impl OpenAIClient {
-    pub fn new(base_url: String, model: String, api_key: String) -> Self {
+    pub fn new(base_url: String, model: String, api_key: Option<String>) -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
@@ -131,6 +131,13 @@ impl OpenAIClient {
             base_url,
             model,
             api_key,
+        }
+    }
+
+    fn authorize(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match self.api_key.as_ref().filter(|key| !key.trim().is_empty()) {
+            Some(api_key) => builder.bearer_auth(api_key),
+            None => builder,
         }
     }
 
@@ -147,9 +154,7 @@ impl OpenAIClient {
         tracing::debug!(%url, model = %request.model, messages_count = request.messages.len(), "sending chat request to OpenAI");
 
         let response = self
-            .http_client
-            .post(&url)
-            .bearer_auth(&self.api_key)
+            .authorize(self.http_client.post(&url))
             .json(&request)
             .send()
             .await
@@ -180,9 +185,7 @@ impl OpenAIClient {
         tracing::debug!(%url, model = %request.model, "sending vision chat request");
 
         let response = self
-            .http_client
-            .post(&url)
-            .bearer_auth(&self.api_key)
+            .authorize(self.http_client.post(&url))
             .json(&request)
             .send()
             .await
@@ -206,14 +209,8 @@ impl OpenAIClient {
     }
 
     pub async fn health_check(&self) -> bool {
-        let url = format!("{}/models/{}", self.base_url, self.model);
-        match self
-            .http_client
-            .get(&url)
-            .bearer_auth(&self.api_key)
-            .send()
-            .await
-        {
+        let url = format!("{}/models", self.base_url);
+        match self.authorize(self.http_client.get(&url)).send().await {
             Ok(resp) if resp.status().is_success() => {
                 tracing::debug!(status = %resp.status(), "OpenAI health check ok");
                 true
@@ -308,6 +305,10 @@ impl AiChatClient for OpenAIClient {
 
     fn model(&self) -> &str {
         self.model()
+    }
+
+    fn is_configured(&self) -> bool {
+        true
     }
 
     async fn health_check(&self) -> bool {

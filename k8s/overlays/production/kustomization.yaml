@@ -10,6 +10,7 @@ resources:
 - sealed-secrets/auth-sealed.yaml
 - sealed-secrets/ghcr-sealed.yaml
 - sealed-secrets/minio-sealed.yaml
+- sealed-secrets/unleash-sealed.yaml
 
 patches:
 - patch: |-

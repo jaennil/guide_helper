@@ -37,6 +37,15 @@ cp jwt-secret.txt.example jwt-secret.txt
 openssl rand -base64 48 > jwt-secret.txt
 ```
 
+Для AI-переключения у `routes` есть отдельные опциональные секреты:
+
+- `openai-secret` c ключом `api-key` для OpenAI.
+- `anthropic-secret` c ключом `api-key` для прямого Anthropic/Claude API.
+- `claude-secret` c ключом `api-key` для Claude через OpenAI-совместимый proxy.
+- `unleash-secret` c ключом `api-token` для клиентского токена Unleash.
+
+Если этих секретов нет, соответствующий провайдер считается недоступным, а `routes` честно возвращает `503` вместо попытки ходить с фиктивным ключом.
+
 ## Шаг 2: Проверка манифестов
 
 ```bash
@@ -110,6 +119,28 @@ curl -X POST http://localhost:3005/api/v1/auth/register \
 3. **ArgoCD auto-sync**: Включен автоматический sync с GitHub
 4. **Replicas**: Production использует 3 реплики для каждого сервиса
 5. **Ingress**: Настроен для `guide-helper.local`, измените на реальный домен в production
+
+## AI provider switch
+
+`routes` поддерживает четыре режима AI-чата:
+
+- `openai`
+- `ollama`
+- `claude`
+- `off`
+
+Статический fallback задаётся через `AI_PROVIDER` в `k8s/base/routes/configmap.yaml`.
+Сейчас production fallback настроен на `ollama`, чтобы чат не зависел от внешнего OpenAI API.
+
+Для динамического переключения используется Unleash feature flag `ai-provider`.
+Рекомендуемый вариант настройки:
+
+1. Создать в Unleash feature flag `ai-provider`.
+2. В production держать ровно один активный variant со 100% весом: `openai`, `ollama`, `claude` или `off`.
+3. Для variant payload можно не задавать ничего и использовать имя варианта, либо передать строку в `payload.value` или `payload.provider`.
+4. Выдать `routes` клиентский Unleash token и положить его в secret `unleash-secret`.
+
+Важно: для Rust SDK нужен именно Unleash client token. Admin API token для `/api/admin` сюда не подходит.
 
 ## Troubleshooting
 

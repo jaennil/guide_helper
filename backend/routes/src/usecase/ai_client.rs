@@ -64,5 +64,6 @@ pub struct AiResponse {
 pub trait AiChatClient: Send + Sync {
     async fn chat(&self, messages: &[AiMessage], tools: &[AiTool]) -> Result<AiResponse>;
     fn model(&self) -> &str;
+    fn is_configured(&self) -> bool;
     async fn health_check(&self) -> bool;
 }

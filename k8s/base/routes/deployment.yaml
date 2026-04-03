@@ -68,6 +68,18 @@ spec:
               name: openai-secret
               key: api-key
               optional: true
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anthropic-secret
+              key: api-key
+              optional: true
+        - name: CLAUDE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: claude-secret
+              key: api-key
+              optional: true
         - name: UNLEASH_API_TOKEN
           valueFrom:
             secretKeyRef:

@@ -140,7 +140,10 @@ where
     }
 
     pub fn is_available(&self) -> bool {
-        self.assistant.is_some()
+        self.assistant
+            .as_ref()
+            .map(|assistant| assistant.is_configured())
+            .unwrap_or(false)
     }
 
     pub fn model_name(&self) -> &str {
@@ -789,7 +792,7 @@ mod tests {
             Some(Arc::new(OpenAIClient::new(
                 "https://api.openai.com/v1".to_string(),
                 "test-model".to_string(),
-                "test-key".to_string(),
+                Some("test-key".to_string()),
             )) as Arc<dyn AiChatClient>)
         } else {
             None

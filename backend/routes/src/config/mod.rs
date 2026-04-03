@@ -36,12 +36,22 @@ pub struct AppConfig {
     pub chat_max_message_length: usize,
     #[serde(default)]
     pub ollama_base_url: Option<String>,
+    #[serde(default)]
+    pub ollama_chat_base_url: Option<String>,
+    #[serde(default = "default_ollama_chat_model")]
+    pub ollama_chat_model: String,
     #[serde(default = "default_ollama_vision_model")]
     pub ollama_vision_model: String,
     #[serde(default)]
     pub anthropic_api_key: Option<String>,
     #[serde(default = "default_anthropic_model")]
     pub anthropic_model: String,
+    #[serde(default)]
+    pub claude_base_url: Option<String>,
+    #[serde(default)]
+    pub claude_api_key: Option<String>,
+    #[serde(default = "default_claude_model")]
+    pub claude_model: String,
     #[serde(default)]
     pub unleash_url: Option<String>,
     #[serde(default)]
@@ -86,12 +96,20 @@ fn default_ollama_vision_model() -> String {
     "llama3.2-vision".to_string()
 }
 
+fn default_ollama_chat_model() -> String {
+    "llama3.2".to_string()
+}
+
 fn default_anthropic_model() -> String {
     "claude-haiku-4-5-20251001".to_string()
 }
 
+fn default_claude_model() -> String {
+    "claude-sonnet-4-6".to_string()
+}
+
 fn default_ai_provider() -> String {
-    "openai".to_string()
+    "off".to_string()
 }
 
 fn default_telemetry_service_name() -> String {

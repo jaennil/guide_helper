@@ -169,12 +169,18 @@ services:
       - DATABASE_MAX_CONNECTIONS=5
       - JWT_SECRET=${JWT_SECRET:-change_this_secret_key_in_production}
       - NATS_URL=nats://nats:4222
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://claude-code-api:8000/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-claude-sonnet-4-6}
+      - AI_PROVIDER=${AI_PROVIDER:-claude}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - CLAUDE_BASE_URL=${CLAUDE_BASE_URL:-http://claude-code-api:8000/v1}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+      - OLLAMA_CHAT_BASE_URL=${OLLAMA_CHAT_BASE_URL}
+      - OLLAMA_CHAT_MODEL=${OLLAMA_CHAT_MODEL:-llama3.2}
       - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-llama3.2-vision}
     depends_on:
       postgres:
@@ -261,5 +267,4 @@ volumes:
   nats_data:
   minio_data:
   claude_code_auth:
-
 

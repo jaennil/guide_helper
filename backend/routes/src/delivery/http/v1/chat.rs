@@ -94,7 +94,7 @@ fn validate_message(message: &str, max_len: usize) -> Result<(), UsecaseError> {
 
 fn check_availability(state: &AppState) -> Result<(), UsecaseError> {
     if !state.chat_usecase.is_available() {
-        tracing::warn!("chat request received but Ollama is not available");
+        tracing::warn!("chat request received but AI assistant is not available");
         metrics::counter!("chat_unavailable_total").increment(1);
         return Err(UsecaseError::Unavailable(
             "AI assistant is currently unavailable".to_string(),

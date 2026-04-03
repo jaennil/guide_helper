@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: unleash-secret
+  namespace: guide-helper
+spec:
+  encryptedData:
+    api-token: AgB/f3WkUho1utqamz6tZmAS3NwER+CyaiPLmIoiUyEK7p7Hom4FUermOZ3b7ub/sAzsiafOLR7OZ3Us9HZzg0fwFoypu6fZutlg/E5GHhxoslNkp64EzeENqFD0MpMJu/tC+44MYGMnS5SStMK3nq/QWixa34BdP7cJxrdqCGBUnsOglpshCTHk1OBW92i6rPl84LmsPwNBb1VqV2tp2ek56j0F2OUQq//F3GyKYxAatvLAbr0IE7S5Ma8XZpfF8BISdp5ysaCbyuveNLY7mJWQxbI0AmNduBQp/ZqtGAGuCeZ3jctgFr4Pmu1P4OzJ9fgp/28d2IIc8rRXXwa8RhQc4l6sunlVphISqIx/8/hJhESVsjpotWaSxoatoN/y/eTvxhFRi1XmGc3+LRDNQ+VdWLYn7G7j/oUHnZJrl4RlestZdj2zGzK6TIAc0SuwrKzJbYp9CVCYZLBh42WgtMMvc88lmpZ4pAl1vAN9GGrlj292Wwl4Tv8HgsvfpPG5yhQ/HxgRHaYSqhlR6yNH+MtoBuDjtOMAAeQ6wjRcqR/pHMiv14uNoktY/+i5U6FX6eZjKLbAdVdN/F5NCoqoSdRBuSWCsgER19Y24kyDeAeJ7OB8WDjGYS26inURe8imisWsZHGQAvzOFcfC9QoVpzJUJJ1b2ueKLESZaV/IGARFEf3xhgseE3pRYgFpV9n2EXL6bC96W9qyzYzA5LmE9CmjHKEe6d4TtYMNdSRhMyTvfsiDT6gcpYAYbTaWMk0ZRZke2VG3+89uPIgbgbmw9eEFJhtkpasX8hWlWxA=
+  template:
+    metadata:
+      name: unleash-secret
+      namespace: guide-helper

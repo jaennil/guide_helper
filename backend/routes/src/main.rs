@@ -69,6 +69,60 @@ pub struct AppState {
     pub chat_rate_limit_window_secs: u64,
 }
 
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn non_empty_str(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn openai_compatible_base_url(base_url: &str) -> String {
+    let trimmed = base_url.trim().trim_end_matches('/');
+    if trimmed.ends_with("/v1") {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/v1")
+    }
+}
+
+fn is_official_openai_base_url(base_url: &str) -> bool {
+    let trimmed = base_url.trim().trim_end_matches('/');
+    trimmed.eq_ignore_ascii_case("https://api.openai.com/v1")
+        || trimmed.eq_ignore_ascii_case("https://api.openai.com")
+}
+
+fn build_openai_compatible_client(
+    provider: &str,
+    base_url: Option<String>,
+    model: Option<String>,
+    api_key: Option<String>,
+) -> Option<Arc<dyn AiChatClient>> {
+    let base_url = openai_compatible_base_url(&base_url?);
+    let model = model?;
+    let api_key = non_empty(api_key);
+
+    if is_official_openai_base_url(&base_url) && api_key.is_none() {
+        tracing::warn!(provider, %base_url, "provider disabled because API key is missing");
+        return None;
+    }
+
+    tracing::info!(provider, %base_url, %model, has_api_key = api_key.is_some(), "OpenAI-compatible client configured");
+    Some(Arc::new(OpenAIClient::new(base_url, model, api_key)) as Arc<dyn AiChatClient>)
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = config::AppConfig::from_env()
@@ -126,12 +180,12 @@ async fn main() -> anyhow::Result<()> {
     let route_repository_for_chat = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
     let nominatim_client = crate::usecase::nominatim::NominatimClient::new(config.nominatim_url.clone());
-    let ollama_client = config.ollama_base_url.as_ref().map(|base_url| {
+    let ollama_client = non_empty(config.ollama_base_url.clone()).map(|base_url| {
         tracing::info!(%base_url, model = %config.ollama_vision_model, "Ollama vision client configured");
         OpenAIClient::new(
-            format!("{}/v1", base_url.trim_end_matches('/')),
+            openai_compatible_base_url(&base_url),
             config.ollama_vision_model.clone(),
-            "ollama".to_string(),
+            None,
         )
     });
 
@@ -152,31 +206,37 @@ async fn main() -> anyhow::Result<()> {
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
 
     // Initialize all AI clients (each is optional based on config)
-    let openai_client: Option<Arc<dyn AiChatClient>> = {
-        let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
-        tracing::info!(base_url = %config.openai_base_url, model = %config.openai_model, "OpenAI-compatible client configured");
-        Some(Arc::new(OpenAIClient::new(
-            config.openai_base_url.clone(),
-            config.openai_model.clone(),
-            key,
-        )))
-    };
+    let openai_client = build_openai_compatible_client(
+        "openai",
+        non_empty_str(&config.openai_base_url),
+        non_empty_str(&config.openai_model),
+        config.openai_api_key.clone(),
+    );
 
-    let anthropic_client: Option<Arc<dyn AiChatClient>> =
-        config.anthropic_api_key.as_ref().filter(|k| !k.trim().is_empty()).map(|key| {
+    let ollama_chat_client = non_empty(config.ollama_chat_base_url.clone()).map(|base_url| {
+        let base_url = openai_compatible_base_url(&base_url);
+        tracing::info!(provider = "ollama", %base_url, model = %config.ollama_chat_model, "Ollama chat client configured");
+        Arc::new(OpenAIClient::new(
+            base_url,
+            config.ollama_chat_model.clone(),
+            None,
+        )) as Arc<dyn AiChatClient>
+    });
+
+    let anthropic_client: Option<Arc<dyn AiChatClient>> = non_empty(config.anthropic_api_key.clone())
+        .map(|key| {
             tracing::info!(model = %config.anthropic_model, "Anthropic client configured");
-            Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key.clone())) as Arc<dyn AiChatClient>
+            Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key)) as Arc<dyn AiChatClient>
         });
 
-    // claude-code-api uses the same OpenAI-compatible client pointed at local URL
-    let claude_code_api_client: Option<Arc<dyn AiChatClient>> = {
-        let key = config.openai_api_key.clone().unwrap_or_else(|| "dummy".to_string());
-        Some(Arc::new(OpenAIClient::new(
-            config.openai_base_url.clone(),
-            config.openai_model.clone(),
-            key,
-        )))
-    };
+    let claude_proxy_client = build_openai_compatible_client(
+        "claude",
+        non_empty(config.claude_base_url.clone()),
+        non_empty_str(&config.claude_model),
+        config.claude_api_key.clone(),
+    );
+
+    let claude_client = claude_proxy_client.or(anthropic_client.clone());
 
     // Initialize Unleash client for dynamic feature flags
     let unleash_client = match (&config.unleash_url, &config.unleash_api_token) {
@@ -217,8 +277,8 @@ async fn main() -> anyhow::Result<()> {
     let assistant_client: Option<Arc<dyn AiChatClient>> = Some(Arc::new(DynamicAiClient::new(
         unleash_client,
         openai_client,
-        anthropic_client,
-        claude_code_api_client,
+        ollama_chat_client,
+        claude_client,
         config.ai_provider.clone(),
     )));
 

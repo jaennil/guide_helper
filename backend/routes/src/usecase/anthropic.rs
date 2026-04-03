@@ -246,6 +246,10 @@ impl AiChatClient for AnthropicClient {
         &self.model
     }
 
+    fn is_configured(&self) -> bool {
+        true
+    }
+
     async fn health_check(&self) -> bool {
         // Simple check: send a minimal request
         let request = serde_json::json!({
