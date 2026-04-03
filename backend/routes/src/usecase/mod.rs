@@ -11,6 +11,7 @@ pub mod likes;
 pub mod notifications;
 pub mod ai_client;
 pub mod anthropic;
+pub mod dynamic_ai_client;
 pub mod openai;
 pub mod photo_tasks;
 pub mod ratings;

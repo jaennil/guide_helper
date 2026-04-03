@@ -86,6 +86,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         };
 
         let task = PhotoProcessTask::from_route(&route).unwrap();
@@ -112,6 +114,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());
@@ -140,6 +144,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());

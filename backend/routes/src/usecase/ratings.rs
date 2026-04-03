@@ -109,6 +109,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         }
     }
 
@@ -216,7 +218,6 @@ mod tests {
             .times(1)
             .returning(|_| Ok((4.2, 10)));
 
-        let user_id_clone = user_id;
         mock_rating_repo
             .expect_find_by_route_and_user()
             .with(

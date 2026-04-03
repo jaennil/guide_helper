@@ -42,6 +42,12 @@ pub struct AppConfig {
     pub anthropic_api_key: Option<String>,
     #[serde(default = "default_anthropic_model")]
     pub anthropic_model: String,
+    #[serde(default)]
+    pub unleash_url: Option<String>,
+    #[serde(default)]
+    pub unleash_api_token: Option<String>,
+    #[serde(default = "default_ai_provider")]
+    pub ai_provider: String,
 }
 
 fn default_nats_url() -> String {
@@ -82,6 +88,10 @@ fn default_ollama_vision_model() -> String {
 
 fn default_anthropic_model() -> String {
     "claude-haiku-4-5-20251001".to_string()
+}
+
+fn default_ai_provider() -> String {
+    "openai".to_string()
 }
 
 fn default_telemetry_service_name() -> String {

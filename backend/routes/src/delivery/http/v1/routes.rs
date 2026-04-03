@@ -469,6 +469,7 @@ mod tests {
                 photo: None,
             }],
             category_ids: vec![],
+            seasons: vec![],
         };
 
         assert!(request.validate().is_ok());
@@ -486,6 +487,7 @@ mod tests {
                 photo: None,
             }],
             category_ids: vec![],
+            seasons: vec![],
         };
 
         assert!(request.validate().is_err());
@@ -497,6 +499,7 @@ mod tests {
             name: "Test".to_string(),
             points: vec![],
             category_ids: vec![],
+            seasons: vec![],
         };
 
         assert!(request.validate().is_err());

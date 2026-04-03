@@ -774,9 +774,11 @@ mod tests {
     use crate::domain::chat_message::ChatMessage;
     use crate::domain::route::{ExploreRouteRow, Route};
     use crate::repository::errors::RepositoryError;
+    use crate::usecase::ai_client::AiChatClient;
     use crate::usecase::contracts::{MockChatMessageRepository, MockRouteRepository};
     use crate::usecase::openai::OpenAIClient;
     use std::collections::HashMap;
+    use std::sync::Arc;
 
     fn make_usecase(
         chat_repo: MockChatMessageRepository,
@@ -784,11 +786,11 @@ mod tests {
         with_assistant: bool,
     ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
         let assistant = if with_assistant {
-            Some(OpenAIClient::new(
+            Some(Arc::new(OpenAIClient::new(
                 "https://api.openai.com/v1".to_string(),
                 "test-model".to_string(),
                 "test-key".to_string(),
-            ))
+            )) as Arc<dyn AiChatClient>)
         } else {
             None
         };
@@ -941,12 +943,13 @@ mod tests {
             avg_rating: 4.5,
             ratings_count: 3,
             category_ids: vec![],
+            seasons: vec![],
         }];
 
         mock_route
             .expect_explore_shared()
             .times(1)
-            .return_once(move |_, _, _, _, _| Ok(rows));
+            .return_once(move |_, _, _, _, _, _| Ok(rows));
 
         let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
 
@@ -977,7 +980,7 @@ mod tests {
         mock_route
             .expect_explore_shared()
             .times(1)
-            .return_once(|_, _, _, _, _| Ok(vec![]));
+            .return_once(|_, _, _, _, _, _| Ok(vec![]));
 
         let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
 
@@ -993,9 +996,9 @@ mod tests {
 
         mock_route
             .expect_explore_shared()
-            .withf(|_, _, order, _, _| order == "likes_count DESC, r.created_at DESC")
+            .withf(|_, _, _, order, _, _| order == "likes_count DESC, r.created_at DESC")
             .times(1)
-            .return_once(|_, _, _, _, _| Ok(vec![]));
+            .return_once(|_, _, _, _, _, _| Ok(vec![]));
 
         let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
 
@@ -1015,7 +1018,7 @@ mod tests {
         mock_route
             .expect_explore_shared()
             .times(1)
-            .return_once(|_, _, _, _, _| Err(RepositoryError::NotFound));
+            .return_once(|_, _, _, _, _, _| Err(RepositoryError::NotFound));
 
         let uc = make_usecase(MockChatMessageRepository::new(), mock_route, false);
 
@@ -1044,6 +1047,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         };
         let route_clone = route.clone();
 
@@ -1164,7 +1169,7 @@ mod tests {
         let tools = build_tools();
         assert_eq!(tools.len(), 4);
 
-        let names: Vec<&str> = tools.iter().map(|t| t.function.name.as_str()).collect();
+        let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
         assert!(names.contains(&"geocode"));
         assert!(names.contains(&"search_routes"));
         assert!(names.contains(&"get_route_details"));
@@ -1175,8 +1180,9 @@ mod tests {
     fn test_build_tools_all_function_type() {
         let tools = build_tools();
         for tool in &tools {
-            assert_eq!(tool.tool_type, "function");
-            assert!(!tool.function.name.is_empty());
+            assert!(!tool.name.is_empty());
+            assert!(!tool.description.is_empty());
+            assert!(tool.parameters.is_object());
         }
     }
 

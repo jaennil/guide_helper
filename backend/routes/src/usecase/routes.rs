@@ -421,7 +421,7 @@ mod tests {
         }];
 
         let result = usecase
-            .create_route(user_id, "Test Route".to_string(), points, vec![])
+            .create_route(user_id, "Test Route".to_string(), points, vec![], vec![])
             .await;
 
         assert!(result.is_ok());

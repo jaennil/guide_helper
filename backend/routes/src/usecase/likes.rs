@@ -100,6 +100,8 @@ mod tests {
             category_ids: vec![],
             start_location: None,
             end_location: None,
+            seasons: vec![],
+            description: None,
         }
     }
 
@@ -154,7 +156,6 @@ mod tests {
             .times(1)
             .returning(move |_| Ok(Some(route_clone.clone())));
 
-        let existing_like = RouteLike::new(route_id, user_id);
         mock_like_repo
             .expect_find_by_route_and_user()
             .with(

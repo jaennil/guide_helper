@@ -11,6 +11,7 @@ entity "users\n(auth_db)" as users {
   * password_hash : TEXT
     name : TEXT
     avatar_url : TEXT
+  * role : TEXT [user|moderator|admin]
   * created_at : TIMESTAMPTZ
   * updated_at : TIMESTAMPTZ
     deleted_at : TIMESTAMPTZ
@@ -22,10 +23,25 @@ entity "routes\n(routes_db)" as routes {
   * user_id : UUID <<FK>>
   * name : TEXT
   * points : JSONB
-  * tags : TEXT[]
+    description : TEXT
+    seasons : TEXT[]
     share_token : UUID <<UNIQUE>>
   * created_at : TIMESTAMPTZ
   * updated_at : TIMESTAMPTZ
+}
+
+entity "categories" as categories {
+  * **id** : UUID <<PK>>
+  --
+  * name : TEXT <<UNIQUE>>
+  * created_at : TIMESTAMPTZ
+}
+
+entity "route_categories" as route_categories {
+  * **route_id** : UUID <<FK>>
+  * **category_id** : UUID <<FK>>
+  --
+  <<PK>> (route_id, category_id)
 }
 
 entity "comments" as comments {
@@ -59,9 +75,56 @@ entity "route_ratings" as ratings {
   <<UNIQUE>> (route_id, user_id)
 }
 
+entity "bookmarks" as bookmarks {
+  * **id** : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * route_id : UUID <<FK>>
+  * created_at : TIMESTAMPTZ
+  ..
+  <<UNIQUE>> (user_id, route_id)
+}
+
+entity "notifications" as notifications {
+  * **id** : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * type : TEXT [comment|like|rating]
+  * route_id : UUID
+  * actor_name : TEXT
+    is_read : BOOL
+  * created_at : TIMESTAMPTZ
+}
+
+entity "conversations" as conversations {
+  * **id** : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+    title : TEXT
+  * created_at : TIMESTAMPTZ
+  * updated_at : TIMESTAMPTZ
+}
+
+entity "chat_messages" as chat_messages {
+  * **id** : UUID <<PK>>
+  --
+  * conversation_id : UUID <<FK>>
+  * role : TEXT [user|assistant]
+  * content : TEXT
+    actions : JSONB
+  * created_at : TIMESTAMPTZ
+}
+
 users ||--o{ routes : "создаёт"
 routes ||--o{ comments : "имеет"
 routes ||--o{ likes : "получает"
 routes ||--o{ ratings : "оценивается"
+routes ||--o{ route_categories : "относится к"
+categories ||--o{ route_categories : "включает"
+users ||--o{ bookmarks : "сохраняет"
+routes ||--o{ bookmarks : "добавляется в"
+users ||--o{ notifications : "получает"
+users ||--o{ conversations : "ведёт"
+conversations ||--o{ chat_messages : "содержит"
 
 @enduml

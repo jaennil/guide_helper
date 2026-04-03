@@ -112,6 +112,15 @@ services:
     networks:
       - guide_helper_network
 
+  claude-code-api-init:
+    image: alpine
+    container_name: guide_helper_claude_code_api_init
+    restart: "no"
+    volumes:
+      - ${HOME}/.claude:/host-claude:ro
+      - claude_code_auth:/dest-claude
+    command: sh -c "cp -a /host-claude/. /dest-claude/ && chown -R 1001:1001 /dest-claude"
+
   claude-code-api:
     build:
       context: ./claude-code-api
@@ -123,9 +132,12 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
     volumes:
-      - ${HOME}/.claude:/home/claudeuser/.claude:ro
+      - claude_code_auth:/home/claudeuser/.claude
     networks:
       - guide_helper_network
+    depends_on:
+      claude-code-api-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -248,5 +260,6 @@ volumes:
   redis_data:
   nats_data:
   minio_data:
+  claude_code_auth:
 
 
