@@ -108,7 +108,7 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-dim);
+  color: var(--text-muted);
   width: 18px;
   height: 18px;
   pointer-events: none;
