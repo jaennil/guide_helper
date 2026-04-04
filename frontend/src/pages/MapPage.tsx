@@ -385,7 +385,7 @@ export function MapPage() {
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
   const [loadedRouteInfo, setLoadedRouteInfo] = useState<{ id: string; user_id: string; name: string } | null>(null);
   const [historicalMode, setHistoricalMode] = useState(false);
-  const [historicalYear, setHistoricalYear] = useState(1900);
+  const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear());
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -1049,7 +1049,7 @@ export function MapPage() {
           <input
             type="range"
             min={1700}
-            max={2025}
+            max={new Date().getFullYear()}
             step={1}
             value={historicalYear}
             onChange={(e) => setHistoricalYear(Number(e.target.value))}
