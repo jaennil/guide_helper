@@ -866,20 +866,20 @@ export function MapPage() {
           )}
         </div>
 
-        {/* ── Center: Tile selector ── */}
-        <select
-          className="header-select header-tile-select"
-          value={tileProvider}
-          onChange={(e) => handleTileProviderChange(e.target.value)}
-        >
-          {TILE_PROVIDERS.map((provider) => (
-            <option key={provider.id} value={provider.id}>{provider.name}</option>
-          ))}
-        </select>
-
         {/* ── Right: Actions ── */}
         <div className="header-actions">
           <input type="file" ref={photoImportRef} multiple accept="image/*" onChange={handleImportPhotos} style={{ display: "none" }} />
+
+          {/* Tile selector */}
+          <select
+            className="header-select"
+            value={tileProvider}
+            onChange={(e) => handleTileProviderChange(e.target.value)}
+          >
+            {TILE_PROVIDERS.map((provider) => (
+              <option key={provider.id} value={provider.id}>{provider.name}</option>
+            ))}
+          </select>
 
           {/* Save Route — prominent */}
           {routePoints.length >= 2 && !loadedRouteInfo && (
