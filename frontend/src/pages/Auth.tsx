@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { Mail, Lock } from 'lucide-react';
 import './Auth.css';
 
 export function Auth() {
@@ -43,27 +44,33 @@ export function Auth() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">{t("auth.email")}</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
+            <div className="input-wrap">
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+              <Mail className="input-icon" />
+            </div>
           </div>
 
           <div className="form-group">
             <label htmlFor="password">{t("auth.password")}</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={isLogin ? 1 : 8}
-              autoComplete={isLogin ? 'current-password' : 'new-password'}
-            />
+            <div className="input-wrap">
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={isLogin ? 1 : 8}
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+              />
+              <Lock className="input-icon" />
+            </div>
             {!isLogin && (
               <small>{t("auth.passwordMinLength")}</small>
             )}
@@ -71,7 +78,7 @@ export function Auth() {
 
           {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" disabled={loading}>
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
             {loading ? t("auth.loading") : isLogin ? t("auth.login") : t("auth.register")}
           </button>
         </form>
