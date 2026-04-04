@@ -7,10 +7,10 @@ export interface RoutingEngine {
 }
 
 export const ROUTING_ENGINES: RoutingEngine[] = [
-  { id: 'osrm-foot', label: 'OSRM (foot)', type: 'foot' },
-  { id: 'graphhopper', label: 'GraphHopper (foot)', type: 'foot' },
-  { id: 'valhalla', label: 'Valhalla (foot)', type: 'foot' },
-  { id: 'osrm-car', label: 'OSRM (car)', type: 'car' },
+  { id: 'graphhopper', label: '🚶 Пеший', type: 'foot' },
+  { id: 'osrm-foot', label: '🚶 Пеший (OSRM)', type: 'foot' },
+  { id: 'valhalla', label: '🚶 Пеший (Valhalla)', type: 'foot' },
+  { id: 'osrm-car', label: '🚗 Авто', type: 'car' },
 ];
 
 export const DEFAULT_ENGINE: RoutingEngineId = 'graphhopper';
