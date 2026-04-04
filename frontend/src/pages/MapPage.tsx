@@ -35,6 +35,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
+import { Settings, Sparkles, Compass } from "lucide-react";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 
 type RouteMode = "auto" | "manual";
@@ -888,6 +889,15 @@ export function MapPage() {
             </button>
           )}
 
+          {/* Catalog — standalone button */}
+          <button
+            className="btn btn-ghost btn-sm btn-icon"
+            onClick={() => navigate("/explore")}
+            title={t("explore.catalog")}
+          >
+            <Compass size={18} />
+          </button>
+
           {/* Tools dropdown */}
           <div className="header-dropdown-wrap">
             <button
@@ -895,7 +905,7 @@ export function MapPage() {
               onClick={() => { setToolsOpen(!toolsOpen); setUserMenuOpen(false); }}
               title="Tools"
             >
-              &#9881;
+              <Settings size={18} />
             </button>
             {toolsOpen && (
               <div className="header-dropdown" onClick={() => setToolsOpen(false)}>
@@ -926,7 +936,7 @@ export function MapPage() {
             onClick={() => setChatOpen(!chatOpen)}
             title={t("chat.toggle")}
           >
-            &#128172;
+            <Sparkles size={18} />
           </button>
 
           {/* Notifications */}
@@ -943,7 +953,6 @@ export function MapPage() {
             {userMenuOpen && (
               <div className="header-dropdown header-dropdown-right" onClick={() => setUserMenuOpen(false)}>
                 <button onClick={() => navigate("/profile")}>{t("map.profile")}</button>
-                <button onClick={() => navigate("/explore")}>{t("explore.catalog")}</button>
                 <button onClick={() => navigate("/bookmarks")}>{t("bookmarks.title")}</button>
                 <button onClick={toggleTheme}>{theme === "light" ? "🌙 " : "☀️ "}{t("theme.toggle")}</button>
                 <hr />
