@@ -44,7 +44,7 @@ use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
 use crate::usecase::ai_client::AiChatClient;
 use crate::usecase::anthropic::AnthropicClient;
-use crate::usecase::dynamic_ai_client::{DynamicAiClient, UnleashFeatures};
+use crate::usecase::dynamic_ai_client::{DynamicAiClient, UnleashPoller};
 use crate::usecase::openai::OpenAIClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
@@ -238,35 +238,15 @@ async fn main() -> anyhow::Result<()> {
 
     let claude_client = claude_proxy_client.or(anthropic_client.clone());
 
-    // Initialize Unleash client for dynamic feature flags
+    // Initialize Unleash poller for dynamic feature flags
     let unleash_client = match (&config.unleash_url, &config.unleash_api_token) {
         (Some(url), Some(token)) => {
-            match unleash_api_client::client::ClientBuilder::default()
-                .into_client::<UnleashFeatures, reqwest::Client>(
-                    url,
-                    "guide-helper-routes",
-                    &uuid::Uuid::new_v4().to_string(),
-                    Some(token.clone()),
-                ) {
-                Ok(client) => {
-                    let client = Arc::new(client);
-                    let c = client.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = c.register().await {
-                            tracing::warn!(error = %e, "Unleash registration failed, feature flags will use defaults");
-                        } else {
-                            tracing::info!("Unleash registered, polling for feature flags");
-                            c.poll_for_updates().await;
-                        }
-                    });
-                    tracing::info!(%url, "Unleash client initialized");
-                    Some(client)
-                }
-                Err(e) => {
-                    tracing::warn!(error = %e, "failed to build Unleash client, using default provider");
-                    None
-                }
-            }
+            tracing::info!(%url, "Starting Unleash poller for ai-provider feature flag");
+            Some(Arc::new(UnleashPoller::new(
+                url.clone(),
+                token.clone(),
+                "ai-provider".to_string(),
+            )))
         }
         _ => {
             tracing::info!(default_provider = %config.ai_provider, "Unleash not configured, using static AI_PROVIDER");

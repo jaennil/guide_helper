@@ -34,8 +34,6 @@ metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 metrics-process = "2.3"
 validator = { version = "0.20.0", features = ["derive"] }
-unleash-api-client = { version = "0.15", features = ["reqwest-client"] }
-enum-map = "2"
 
 [dev-dependencies]
 mockall = "0.13"

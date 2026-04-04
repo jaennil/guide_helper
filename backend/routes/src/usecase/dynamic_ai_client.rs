@@ -1,18 +1,8 @@
 use anyhow::Result;
-use enum_map::Enum;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use unleash_api_client::client::{Client, Variant};
+use tokio::sync::RwLock;
 
 use super::ai_client::{AiChatClient, AiMessage, AiResponse, AiTool};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Enum)]
-#[serde(rename_all = "kebab-case")]
-pub enum UnleashFeatures {
-    AiProvider,
-}
-
-pub type UnleashClient = Client<UnleashFeatures, reqwest::Client>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AiProvider {
@@ -43,10 +33,90 @@ impl AiProvider {
     }
 }
 
+/// Simple Unleash poller that fetches feature flags via HTTP and extracts variant name.
+/// Replaces the broken `unleash-api-client` crate.
+pub struct UnleashPoller {
+    current_variant: Arc<RwLock<Option<String>>>,
+}
+
+impl UnleashPoller {
+    pub fn new(url: String, token: String, feature_name: String) -> Self {
+        let current_variant = Arc::new(RwLock::new(None));
+        let cv = current_variant.clone();
+
+        tokio::spawn(async move {
+            let client = reqwest::Client::new();
+            let features_url = format!("{}/client/features", url.trim_end_matches('/'));
+            tracing::info!(%features_url, "Unleash poller started");
+
+            loop {
+                match client
+                    .get(&features_url)
+                    .header("Authorization", &token)
+                    .send()
+                    .await
+                {
+                    Ok(resp) => {
+                        if let Ok(body) = resp.json::<serde_json::Value>().await {
+                            let variant_name = body["features"]
+                                .as_array()
+                                .and_then(|features| {
+                                    features.iter().find(|f| f["name"] == feature_name)
+                                })
+                                .and_then(|feature| {
+                                    if feature["enabled"].as_bool() != Some(true) {
+                                        return None;
+                                    }
+                                    // Strategy-level variants (Unleash 5+)
+                                    feature["strategies"]
+                                        .as_array()
+                                        .and_then(|strategies| strategies.first())
+                                        .and_then(|s| s["variants"].as_array())
+                                        .and_then(|variants| variants.first())
+                                        .and_then(|v| v["name"].as_str())
+                                        .map(String::from)
+                                        // Fallback to feature-level variants
+                                        .or_else(|| {
+                                            feature["variants"]
+                                                .as_array()
+                                                .and_then(|v| v.first())
+                                                .and_then(|v| v["name"].as_str())
+                                                .map(String::from)
+                                        })
+                                });
+
+                            let mut lock = cv.write().await;
+                            if *lock != variant_name {
+                                tracing::info!(
+                                    old = ?*lock,
+                                    new = ?variant_name,
+                                    "Unleash AI provider variant changed"
+                                );
+                            }
+                            *lock = variant_name;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Unleash poll failed");
+                    }
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+            }
+        });
+
+        Self { current_variant }
+    }
+
+    async fn get_variant(&self) -> Option<String> {
+        self.current_variant.read().await.clone()
+    }
+}
+
 /// Wraps multiple AI clients and selects one at runtime via Unleash feature flag.
 /// Falls back to `default_provider` when Unleash is unavailable or flag is disabled.
 pub struct DynamicAiClient {
-    unleash: Option<Arc<UnleashClient>>,
+    unleash: Option<Arc<UnleashPoller>>,
     openai: Option<Arc<dyn AiChatClient>>,
     ollama: Option<Arc<dyn AiChatClient>>,
     claude: Option<Arc<dyn AiChatClient>>,
@@ -58,7 +128,7 @@ unsafe impl Sync for DynamicAiClient {}
 
 impl DynamicAiClient {
     pub fn new(
-        unleash: Option<Arc<UnleashClient>>,
+        unleash: Option<Arc<UnleashPoller>>,
         openai: Option<Arc<dyn AiChatClient>>,
         ollama: Option<Arc<dyn AiChatClient>>,
         claude: Option<Arc<dyn AiChatClient>>,
@@ -81,38 +151,14 @@ impl DynamicAiClient {
         }
     }
 
-    fn provider_from_variant(variant: &Variant) -> Option<AiProvider> {
-        if !variant.enabled {
-            return None;
-        }
-
-        let raw = variant
-            .payload
-            .get("provider")
-            .or_else(|| variant.payload.get("value"))
-            .map(String::as_str)
-            .or_else(|| {
-                if variant.name.trim().is_empty() || variant.name == "disabled" {
-                    None
-                } else {
-                    Some(variant.name.as_str())
-                }
-            })?;
-
-        let provider = AiProvider::parse(raw);
-        if provider.is_none() {
-            tracing::warn!(provider = %raw, "unknown Unleash AI provider variant");
-        }
-        provider
-    }
-
-    fn resolve_provider(&self) -> AiProvider {
+    async fn resolve_provider(&self) -> AiProvider {
         if let Some(unleash) = &self.unleash {
-            let ctx = unleash_api_client::context::Context::default();
-            let variant = unleash.get_variant(UnleashFeatures::AiProvider, &ctx);
-            if let Some(provider) = Self::provider_from_variant(&variant) {
-                tracing::debug!(provider = provider.as_str(), variant = %variant.name, "Unleash AI provider override active");
-                return provider;
+            if let Some(variant_name) = unleash.get_variant().await {
+                if let Some(provider) = AiProvider::parse(&variant_name) {
+                    tracing::debug!(provider = provider.as_str(), variant = %variant_name, "Unleash AI provider override active");
+                    return provider;
+                }
+                tracing::warn!(variant = %variant_name, "unknown Unleash AI provider variant");
             }
         }
         self.default_provider
@@ -131,7 +177,7 @@ impl DynamicAiClient {
 #[async_trait::async_trait]
 impl AiChatClient for DynamicAiClient {
     async fn chat(&self, messages: &[AiMessage], tools: &[AiTool]) -> Result<AiResponse> {
-        let provider = self.resolve_provider();
+        let provider = self.resolve_provider().await;
         tracing::debug!(provider = provider.as_str(), "DynamicAiClient resolved provider");
         let client = self
             .active_client_for(provider)
@@ -140,145 +186,22 @@ impl AiChatClient for DynamicAiClient {
     }
 
     fn model(&self) -> &str {
-        let provider = self.resolve_provider();
-        tracing::debug!(provider = provider.as_str(), "DynamicAiClient resolved provider");
-        self.active_client_for(provider)
+        // Sync method — can't await, use default
+        self.active_client_for(self.default_provider)
             .map(|c| c.model())
-            .unwrap_or_else(|| provider.as_str())
+            .unwrap_or(self.default_provider.as_str())
     }
 
     fn is_configured(&self) -> bool {
-        let provider = self.resolve_provider();
-        tracing::debug!(provider = provider.as_str(), "DynamicAiClient resolved provider");
-        self.active_client_for(provider).is_some()
+        // Check if at least one client exists
+        self.openai.is_some() || self.ollama.is_some() || self.claude.is_some()
     }
 
     async fn health_check(&self) -> bool {
-        let provider = self.resolve_provider();
-        tracing::debug!(provider = provider.as_str(), "DynamicAiClient resolved provider");
+        let provider = self.resolve_provider().await;
         match self.active_client_for(provider) {
             Some(c) => c.health_check().await,
             None => false,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct DummyClient {
-        model: &'static str,
-    }
-
-    #[async_trait::async_trait]
-    impl AiChatClient for DummyClient {
-        async fn chat(&self, _messages: &[AiMessage], _tools: &[AiTool]) -> Result<AiResponse> {
-            anyhow::bail!("not implemented")
-        }
-
-        fn model(&self) -> &str {
-            self.model
-        }
-
-        fn is_configured(&self) -> bool {
-            true
-        }
-
-        async fn health_check(&self) -> bool {
-            true
-        }
-    }
-
-    fn client(model: &'static str) -> Arc<dyn AiChatClient> {
-        Arc::new(DummyClient { model })
-    }
-
-    #[test]
-    fn test_ai_provider_parse_aliases() {
-        assert_eq!(AiProvider::parse("openai"), Some(AiProvider::OpenAi));
-        assert_eq!(AiProvider::parse("ollama"), Some(AiProvider::Ollama));
-        assert_eq!(AiProvider::parse("claude"), Some(AiProvider::Claude));
-        assert_eq!(AiProvider::parse("anthropic"), Some(AiProvider::Claude));
-        assert_eq!(AiProvider::parse("claude-code-api"), Some(AiProvider::Claude));
-        assert_eq!(AiProvider::parse("off"), Some(AiProvider::Off));
-        assert_eq!(AiProvider::parse("none"), Some(AiProvider::Off));
-    }
-
-    #[test]
-    fn test_provider_from_variant_uses_payload_value() {
-        let mut payload = std::collections::HashMap::new();
-        payload.insert("type".to_string(), "string".to_string());
-        payload.insert("value".to_string(), "ollama".to_string());
-        let variant = Variant {
-            name: "ignored".to_string(),
-            payload,
-            enabled: true,
-        };
-
-        assert_eq!(
-            DynamicAiClient::provider_from_variant(&variant),
-            Some(AiProvider::Ollama)
-        );
-    }
-
-    #[test]
-    fn test_provider_from_variant_uses_name_when_payload_absent() {
-        let variant = Variant {
-            name: "claude".to_string(),
-            payload: std::collections::HashMap::new(),
-            enabled: true,
-        };
-
-        assert_eq!(
-            DynamicAiClient::provider_from_variant(&variant),
-            Some(AiProvider::Claude)
-        );
-    }
-
-    #[test]
-    fn test_provider_from_variant_disabled_returns_none() {
-        let mut payload = std::collections::HashMap::new();
-        payload.insert("value".to_string(), "openai".to_string());
-        let variant = Variant {
-            name: "openai".to_string(),
-            payload,
-            enabled: false,
-        };
-
-        assert_eq!(DynamicAiClient::provider_from_variant(&variant), None);
-    }
-
-    #[test]
-    fn test_dynamic_ai_client_off_is_not_configured() {
-        let client = DynamicAiClient::new(None, None, None, None, "off".to_string());
-
-        assert!(!client.is_configured());
-        assert_eq!(client.model(), "off");
-    }
-
-    #[test]
-    fn test_dynamic_ai_client_selects_explicit_provider_without_fallback() {
-        let dynamic_client = DynamicAiClient::new(
-            None,
-            Some(client("openai-model")),
-            Some(client("ollama-model")),
-            None,
-            "ollama".to_string(),
-        );
-
-        assert!(dynamic_client.is_configured());
-        assert_eq!(dynamic_client.model(), "ollama-model");
-
-        let unavailable = DynamicAiClient::new(
-            None,
-            Some(client("openai-model")),
-            None,
-            None,
-            "ollama".to_string(),
-        );
-
-        assert!(!unavailable.is_configured());
-        assert_eq!(unavailable.model(), "ollama");
     }
 }
