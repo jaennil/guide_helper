@@ -138,12 +138,12 @@ body {
 }
 
 .upload-photo-btn {
-    background-color: #3388ff;
+    background-color: var(--color-brand);
     color: white;
 }
 
 .upload-photo-btn:hover {
-    background-color: #2970cc;
+    background-color: var(--color-brand);
 }
 
 .remove-photo-btn {
@@ -152,7 +152,7 @@ body {
 }
 
 .remove-photo-btn:hover {
-    background-color: #cc0000;
+    background-color: var(--color-danger);
 }
 
 .upload-photo-btn input[type="file"] {
@@ -953,7 +953,7 @@ body {
 }
 
 .comment-form textarea:focus {
-    border-color: #3388ff;
+    border-color: var(--color-brand);
 }
 
 .comment-error {
@@ -964,7 +964,7 @@ body {
 
 .comment-submit-btn {
     margin-top: 6px;
-    background: #3388ff;
+    background: var(--color-brand);
     color: white;
     border: none;
     padding: 6px 16px;
@@ -974,7 +974,7 @@ body {
 }
 
 .comment-submit-btn:hover {
-    background: #2970cc;
+    background: var(--color-brand);
 }
 
 .comment-submit-btn:disabled {

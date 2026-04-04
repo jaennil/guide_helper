@@ -61,7 +61,7 @@
 .mark-all-read-btn {
   background: none;
   border: none;
-  color: #4CAF50;
+  color: var(--color-success);
   cursor: pointer;
   font-size: 0.8rem;
   padding: 0;

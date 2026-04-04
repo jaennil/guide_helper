@@ -101,7 +101,7 @@ button[type="submit"] {
 }
 
 button[type="submit"]:hover:not(:disabled) {
-  background: #5568d3;
+  background: var(--color-brand);
 }
 
 button[type="submit"]:disabled {
@@ -124,5 +124,5 @@ button[type="submit"]:disabled {
 }
 
 .auth-switch button:hover {
-  color: #5568d3;
+  color: var(--color-brand);
 }

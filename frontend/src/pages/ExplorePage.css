@@ -42,7 +42,7 @@
 }
 
 .explore-search:focus {
-  border-color: #4CAF50;
+  border-color: var(--color-success);
 }
 
 .explore-sort {
@@ -58,7 +58,7 @@
 }
 
 .explore-sort:focus {
-  border-color: #4CAF50;
+  border-color: var(--color-success);
 }
 
 .explore-tag-filter {
@@ -74,7 +74,7 @@
 }
 
 .explore-tag-filter:focus {
-  border-color: #4CAF50;
+  border-color: var(--color-success);
 }
 
 .explore-grid {
