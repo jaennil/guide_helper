@@ -36,6 +36,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
 import { Settings, Sparkles, Compass } from "lucide-react";
+import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 
 type RouteMode = "auto" | "manual";
@@ -855,15 +856,11 @@ export function MapPage() {
             {t("map.modeManual")}
           </button>
           {routeMode === "auto" && (
-            <select
-              className="header-select"
+            <CustomSelect
+              options={ROUTING_ENGINES.map(e => ({ value: e.id, label: e.label }))}
               value={routingEngine}
-              onChange={(e) => handleEngineChange(e.target.value as RoutingEngineId)}
-            >
-              {ROUTING_ENGINES.map((engine) => (
-                <option key={engine.id} value={engine.id}>{engine.label}</option>
-              ))}
-            </select>
+              onChange={(v) => handleEngineChange(v as RoutingEngineId)}
+            />
           )}
         </div>
 
@@ -872,15 +869,11 @@ export function MapPage() {
           <input type="file" ref={photoImportRef} multiple accept="image/*" onChange={handleImportPhotos} style={{ display: "none" }} />
 
           {/* Tile selector */}
-          <select
-            className="header-select"
+          <CustomSelect
+            options={TILE_PROVIDERS.map(p => ({ value: p.id, label: p.name }))}
             value={tileProvider}
-            onChange={(e) => handleTileProviderChange(e.target.value)}
-          >
-            {TILE_PROVIDERS.map((provider) => (
-              <option key={provider.id} value={provider.id}>{provider.name}</option>
-            ))}
-          </select>
+            onChange={handleTileProviderChange}
+          />
 
           {/* Save Route — prominent */}
           {routePoints.length >= 2 && !loadedRouteInfo && (
