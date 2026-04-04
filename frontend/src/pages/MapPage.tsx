@@ -35,7 +35,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
-import { Wrench, Sparkles, Compass } from "lucide-react";
+import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 
@@ -847,13 +847,13 @@ export function MapPage() {
             className={`header-pill${routeMode === "auto" ? " active" : ""}`}
             onClick={() => setRouteMode("auto")}
           >
-            {t("map.modeAuto")}
+            <Route size={14} /> {t("map.modeAuto")}
           </button>
           <button
             className={`header-pill${routeMode === "manual" ? " active" : ""}`}
             onClick={() => setRouteMode("manual")}
           >
-            {t("map.modeManual")}
+            <Minus size={14} /> {t("map.modeManual")}
           </button>
           {routeMode === "auto" && (
             <CustomSelect
