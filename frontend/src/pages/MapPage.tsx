@@ -35,7 +35,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
-import { Settings, Sparkles, Compass } from "lucide-react";
+import { Wrench, Sparkles, Compass } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 
@@ -898,7 +898,7 @@ export function MapPage() {
               onClick={() => { setToolsOpen(!toolsOpen); setUserMenuOpen(false); }}
               title="Tools"
             >
-              <Settings size={18} />
+              <Wrench size={18} />
             </button>
             {toolsOpen && (
               <div className="header-dropdown" onClick={() => setToolsOpen(false)}>
