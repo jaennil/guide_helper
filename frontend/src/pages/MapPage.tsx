@@ -387,6 +387,8 @@ export function MapPage() {
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
@@ -837,134 +839,118 @@ export function MapPage() {
   return (
     <div className="App">
       <div className="map-header">
-        <div className="mode-switcher">
-          <label>
-            <input
-              type="radio"
-              name="routeMode"
-              value="auto"
-              checked={routeMode === "auto"}
-              onChange={(e) => setRouteMode(e.target.value as RouteMode)}
-            />
+        {/* ── Left: Route mode pills ── */}
+        <div className="header-pills">
+          <button
+            className={`header-pill${routeMode === "auto" ? " active" : ""}`}
+            onClick={() => setRouteMode("auto")}
+          >
             {t("map.modeAuto")}
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="routeMode"
-              value="manual"
-              checked={routeMode === "manual"}
-              onChange={(e) => setRouteMode(e.target.value as RouteMode)}
-            />
+          </button>
+          <button
+            className={`header-pill${routeMode === "manual" ? " active" : ""}`}
+            onClick={() => setRouteMode("manual")}
+          >
             {t("map.modeManual")}
-          </label>
+          </button>
           {routeMode === "auto" && (
             <select
+              className="header-select"
               value={routingEngine}
               onChange={(e) => handleEngineChange(e.target.value as RoutingEngineId)}
-              style={{ marginLeft: 8 }}
             >
               {ROUTING_ENGINES.map((engine) => (
-                <option key={engine.id} value={engine.id}>
-                  {engine.label}
-                </option>
+                <option key={engine.id} value={engine.id}>{engine.label}</option>
               ))}
             </select>
           )}
         </div>
-        <div className="tile-switcher">
-          <select
-            value={tileProvider}
-            onChange={(e) => handleTileProviderChange(e.target.value)}
-          >
-            {TILE_PROVIDERS.map((provider) => (
-              <option key={provider.id} value={provider.id}>
-                {provider.name}
-              </option>
-            ))}
-          </select>
-        </div>
+
+        {/* ── Center: Tile selector ── */}
+        <select
+          className="header-select header-tile-select"
+          value={tileProvider}
+          onChange={(e) => handleTileProviderChange(e.target.value)}
+        >
+          {TILE_PROVIDERS.map((provider) => (
+            <option key={provider.id} value={provider.id}>{provider.name}</option>
+          ))}
+        </select>
+
+        {/* ── Right: Actions ── */}
         <div className="header-actions">
-          <button
-            onClick={() => photoImportRef.current?.click()}
-            className="import-photos-btn"
-          >
-            {t("map.importPhotos")}
-          </button>
-          <input
-            type="file"
-            ref={photoImportRef}
-            multiple
-            accept="image/*"
-            onChange={handleImportPhotos}
-            style={{ display: "none" }}
-          />
+          <input type="file" ref={photoImportRef} multiple accept="image/*" onChange={handleImportPhotos} style={{ display: "none" }} />
+
+          {/* Save Route — prominent */}
           {routePoints.length >= 2 && !loadedRouteInfo && (
-            <button onClick={() => setShowSaveModal(true)} className="save-btn">
+            <button onClick={() => setShowSaveModal(true)} className="btn btn-primary btn-sm btn-pill">
               {t("map.saveRoute")}
             </button>
           )}
-          {loadedRouteInfo && routePoints.length >= 2 && (
-            <>
-              <button
-                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
-                className="btn-secondary"
-              >
-                {t("export.gpx")}
-              </button>
-              <button
-                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
-                className="btn-secondary"
-              >
-                {t("export.kml")}
-              </button>
-              <button
-                onClick={handleGenerateAiDescription}
-                disabled={aiGenerating}
-                className="btn-secondary"
-              >
-                {aiGenerating ? t("ai.generating") : t("ai.generateButton")}
-              </button>
-            </>
-          )}
-          {routePoints.length >= 2 && (
+
+          {/* Tools dropdown */}
+          <div className="header-dropdown-wrap">
             <button
-              onClick={() => setPlaybackActive(true)}
-              className="btn-secondary"
+              className="btn btn-secondary btn-sm btn-icon"
+              onClick={() => { setToolsOpen(!toolsOpen); setUserMenuOpen(false); }}
+              title="Tools"
             >
-              {t("playback.button")}
+              &#9881;
             </button>
-          )}
-          {(routePoints.length > 0 || overlayRoutes.length > 0) && (
-            <button onClick={handleClearRoute} className="clear-btn">
-              {t("map.clear")}
-            </button>
-          )}
+            {toolsOpen && (
+              <div className="header-dropdown" onClick={() => setToolsOpen(false)}>
+                <button onClick={() => photoImportRef.current?.click()}>{t("map.importPhotos")}</button>
+                {loadedRouteInfo && routePoints.length >= 2 && (
+                  <>
+                    <button onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}>{t("export.gpx")}</button>
+                    <button onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}>{t("export.kml")}</button>
+                    <button onClick={handleGenerateAiDescription} disabled={aiGenerating}>{aiGenerating ? t("ai.generating") : t("ai.generateButton")}</button>
+                  </>
+                )}
+                {routePoints.length >= 2 && (
+                  <button onClick={() => setPlaybackActive(true)}>{t("playback.button")}</button>
+                )}
+                <button onClick={() => setHistoricalMode(!historicalMode)}>
+                  {historicalMode ? "✓ " : ""}{t("historical.toggle")}
+                </button>
+                {(routePoints.length > 0 || overlayRoutes.length > 0) && (
+                  <button onClick={handleClearRoute} className="dropdown-danger">{t("map.clear")}</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* AI Chat */}
           <button
-            onClick={() => setHistoricalMode(!historicalMode)}
-            className={`btn-secondary explore-nav-btn${historicalMode ? " active-toggle" : ""}`}
+            className={`btn btn-ghost btn-sm btn-icon${chatOpen ? " active-toggle" : ""}`}
+            onClick={() => setChatOpen(!chatOpen)}
+            title={t("chat.toggle")}
           >
-            {t("historical.toggle")}
+            &#128172;
           </button>
-          <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
-            {t("explore.catalog")}
-          </button>
-          <button onClick={() => navigate("/bookmarks")} className="btn-secondary explore-nav-btn">
-            {t("bookmarks.title")}
-          </button>
-          <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
-            {t("chat.toggle")}
-          </button>
+
+          {/* Notifications */}
           <NotificationBell />
-          <button onClick={() => navigate("/profile")} className="profile-btn">
-            {user?.name || user?.email || t("map.profile")}
-          </button>
-          <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
-            {theme === "light" ? "\u263D" : "\u2600"}
-          </button>
-          <button onClick={handleLogout} className="logout-btn">
-            {t("map.logout")}
-          </button>
+
+          {/* User menu dropdown */}
+          <div className="header-dropdown-wrap">
+            <button
+              className="btn btn-ghost btn-sm header-user-btn"
+              onClick={() => { setUserMenuOpen(!userMenuOpen); setToolsOpen(false); }}
+            >
+              {(user?.name || user?.email || t("map.profile")).slice(0, 12)}
+            </button>
+            {userMenuOpen && (
+              <div className="header-dropdown header-dropdown-right" onClick={() => setUserMenuOpen(false)}>
+                <button onClick={() => navigate("/profile")}>{t("map.profile")}</button>
+                <button onClick={() => navigate("/explore")}>{t("explore.catalog")}</button>
+                <button onClick={() => navigate("/bookmarks")}>{t("bookmarks.title")}</button>
+                <button onClick={toggleTheme}>{theme === "light" ? "🌙 " : "☀️ "}{t("theme.toggle")}</button>
+                <hr />
+                <button onClick={handleLogout} className="dropdown-danger">{t("map.logout")}</button>
+              </div>
+            )}
+          </div>
         </div>
         <MapMenuButton>
           <button

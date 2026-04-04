@@ -37,6 +37,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     pointer-events: none;
 }
 
@@ -44,52 +45,122 @@ body {
     pointer-events: auto;
 }
 
-/* Переключатель режима */
-.mode-switcher {
-    background: var(--bg-panel);
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 8px var(--color-shadow);
-    display: flex;
-    gap: 12px;
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-    color: var(--text-primary);
-}
-
-.mode-switcher label {
+/* ── Header Pills (Auto/Manual toggle) ── */
+.header-pills {
     display: flex;
     align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    color: var(--text-primary);
+    gap: 2px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: 3px;
+    box-shadow: var(--shadow-md);
 }
-
-.mode-switcher input[type="radio"] {
-    cursor: pointer;
-    accent-color: var(--color-brand);
-}
-
-/* Переключатель тайлов */
-.tile-switcher {
-    background: var(--bg-panel);
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 8px var(--color-shadow);
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-}
-
-.tile-switcher select {
-    background: transparent;
-    color: var(--text-primary);
+.header-pill {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
     border: none;
-    font-size: 13px;
-    font-family: Arial, sans-serif;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.header-pill:hover { color: var(--text-primary); background: var(--bg-hover); }
+.header-pill.active {
+    background: var(--color-brand);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ── Header Select (Tile, Engine) ── */
+.header-select {
+    padding: 6px 12px;
+    font-size: 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--text-primary);
     cursor: pointer;
     outline: none;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+.header-select:focus { box-shadow: var(--focus-ring); }
+.header-tile-select { box-shadow: var(--shadow-md); }
+
+/* ── Header Actions (right side) ── */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: 4px 8px;
+    box-shadow: var(--shadow-md);
+}
+
+/* ── Header Dropdowns ── */
+.header-dropdown-wrap {
+    position: relative;
+}
+.header-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 4px;
+    z-index: 1001;
+    animation: dropdown-in var(--transition-fast) ease-out;
+}
+.header-dropdown-right { right: 0; }
+.header-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    text-align: left;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+.header-dropdown button:hover { background: var(--bg-hover); }
+.header-dropdown button.dropdown-danger { color: var(--color-danger); }
+.header-dropdown button.dropdown-danger:hover { background: var(--error-bg); }
+.header-dropdown hr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 4px 0;
+}
+.header-user-btn {
+    font-size: 12px !important;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.active-toggle {
+    background: rgba(var(--color-brand-rgb), 0.15) !important;
+    color: var(--color-brand) !important;
+}
+
+@keyframes dropdown-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Стили для попапа точки */
