@@ -209,6 +209,8 @@ where
         let tools = build_tools();
         let mut actions: Vec<ChatAction> = Vec::new();
 
+        let ai_timeout = std::time::Duration::from_secs(60);
+        let ai_result = tokio::time::timeout(ai_timeout, async {
         for iteration in 0..self.max_tool_iterations {
             tracing::debug!(iteration, provider = %assistant.model(), "sending request to AI");
 
@@ -296,6 +298,15 @@ where
         Err(UsecaseError::Internal(
             "AI assistant exceeded maximum tool call iterations".to_string(),
         ))
+        }).await;
+
+        match ai_result {
+            Ok(result) => result,
+            Err(_) => {
+                tracing::error!("AI chat request timed out after 60s");
+                Err(UsecaseError::Internal("AI request timed out".to_string()))
+            }
+        }
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -360,7 +371,7 @@ where
             "navigate" => self.tool_navigate(args).await,
             _ => {
                 tracing::warn!(%name, "unknown tool called");
-                (format!("Unknown tool: {}", name), vec![])
+                (format!("Error: tool '{}' is not available. Only these tools exist: geocode, search_routes, get_route_details, navigate. Do NOT use any other tools.", name), vec![])
             }
         }
     }
