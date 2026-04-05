@@ -1,8 +1,17 @@
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::time::Duration;
 
 use crate::usecase::ai_client::{AiChatClient, AiMessage, AiResponse, AiTool, AiToolCall};
+
+/// Deserialize `null` as `Default::default()` (empty Vec).
+fn deserialize_null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
+}
 
 // ── Request types ──────────────────────────────────────────────────────────────
 
@@ -75,7 +84,7 @@ pub struct OpenAIResponseMessage {
     pub role: String,
     pub content: Option<String>,
     /// Non-empty when the model requested one or more tool calls
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
     pub tool_calls: Vec<OpenAIToolCall>,
 }
 
