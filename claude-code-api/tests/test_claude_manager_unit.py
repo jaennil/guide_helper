@@ -240,3 +240,36 @@ async def test_create_session_without_model_does_not_force_model_flag(
     assert attempted_models == [None]
 
     await manager.cleanup_all()
+
+
+@pytest.mark.asyncio
+async def test_start_returns_false_when_process_exits_during_startup(
+    monkeypatch, tmp_path
+):
+    class FakeProcess:
+        def __init__(self):
+            self.returncode = 1
+            self.stdin = None
+
+        async def communicate(self):
+            return b"", b"WebSearch is not available\n"
+
+        def terminate(self):
+            return None
+
+        def kill(self):
+            return None
+
+        async def wait(self):
+            return self.returncode
+
+    async def fake_create_subprocess_exec(*_args, **_kwargs):
+        return FakeProcess()
+
+    monkeypatch.setattr(cm.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    process = cm.ClaudeProcess(session_id="sess-startup-fail", project_path=str(tmp_path))
+    started = await process.start(prompt="trigger web search")
+
+    assert started is False
+    assert "WebSearch is not available" in (process.last_error or "")

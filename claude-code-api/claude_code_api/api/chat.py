@@ -25,6 +25,7 @@ from claude_code_api.utils.parser import (
     ClaudeOutputParser,
     OpenAIConverter,
     estimate_tokens,
+    extract_error_from_message,
     normalize_claude_message,
 )
 from claude_code_api.utils.streaming import (
@@ -139,6 +140,21 @@ async def _resolve_session(
     )
 
 
+def _resolve_process_failure(claude_process, messages: list) -> Optional[str]:
+    for raw_message in messages:
+        normalized = normalize_claude_message(raw_message)
+        if not normalized:
+            continue
+        message_error = extract_error_from_message(normalized)
+        if message_error:
+            return message_error
+
+    failure_getter = getattr(claude_process, "get_failure_reason", None)
+    if callable(failure_getter):
+        return failure_getter()
+    return None
+
+
 async def _collect_non_streaming_response(
     claude_process,
     session_manager: SessionManager,
@@ -157,6 +173,25 @@ async def _collect_non_streaming_response(
     response = _build_non_streaming_response(
         messages, session_id, model, usage_summary, project_id
     )
+
+    failure_reason = _resolve_process_failure(claude_process, messages)
+    response_message = ((response.get("choices") or [{}])[0]).get("message") or {}
+    has_payload = bool(response_message.get("content")) or bool(
+        response_message.get("tool_calls")
+    )
+    if failure_reason and not has_payload:
+        logger.error(
+            "Claude process finished without assistant payload",
+            session_id=session_id,
+            error=failure_reason,
+        )
+        raise _http_error(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            f"Claude Code execution failed: {failure_reason}",
+            "service_unavailable",
+            "claude_execution_failed",
+        )
+
     _log_response_payload(response)
     return response
 

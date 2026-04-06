@@ -1,6 +1,7 @@
 """Claude Code process management."""
 
 import asyncio
+import contextlib
 import json
 import os
 import subprocess
@@ -112,6 +113,10 @@ class ClaudeProcess:
             # Single task reads both stdout/stderr via communicate()
             self._output_task = asyncio.create_task(self._collect_output())
 
+            if not await self._verify_startup():
+                await self.stop()
+                return False
+
             return True
 
         except Exception as e:
@@ -149,6 +154,16 @@ class ClaudeProcess:
             except asyncio.TimeoutError:
                 logger.warning("Claude process timed out", session_id=self.session_id)
                 self.last_error = "Claude process timed out"
+                if self.process and self.process.returncode is None:
+                    with contextlib.suppress(ProcessLookupError):
+                        self.process.terminate()
+                    with contextlib.suppress(asyncio.TimeoutError, ProcessLookupError):
+                        await asyncio.wait_for(self.process.wait(), timeout=5.0)
+                    if self.process.returncode is None:
+                        with contextlib.suppress(ProcessLookupError):
+                            self.process.kill()
+                        with contextlib.suppress(ProcessLookupError):
+                            await self.process.wait()
                 stdout = b""
                 stderr = b""
 
@@ -157,14 +172,17 @@ class ClaudeProcess:
                 error_text = line.decode().strip()
                 if error_text:
                     self._stderr_tail.append(error_text)
-                    self.last_error = error_text
                     logger.warning("Claude stderr", message=error_text)
+
+            return_code = self.process.returncode if self.process else None
+            if return_code not in (None, 0) and not self.last_error:
+                self.last_error = self._compose_process_error(return_code)
 
             logger.info(
                 "Claude process finished",
                 session_id=self.session_id,
                 stdout_bytes=len(stdout),
-                return_code=self.process.returncode,
+                return_code=return_code,
             )
 
             for line in stdout.splitlines():
@@ -211,7 +229,13 @@ class ClaudeProcess:
             if return_code == 0:
                 return True
 
-            error_text = self._compose_process_error(return_code)
+            if self._output_task and not self._output_task.done():
+                with contextlib.suppress(asyncio.TimeoutError, asyncio.CancelledError):
+                    await asyncio.wait_for(asyncio.shield(self._output_task), timeout=0.2)
+
+            error_text = self.get_failure_reason() or self._compose_process_error(
+                return_code
+            )
             self.last_error = error_text
             logger.error(
                 "Claude process exited during startup",
@@ -227,6 +251,13 @@ class ClaudeProcess:
         if self._stderr_tail:
             return f"Claude exited with code {return_code}: {' | '.join(self._stderr_tail)}"
         return f"Claude exited with code {return_code}"
+
+    def get_failure_reason(self) -> Optional[str]:
+        if self.process and self.process.returncode not in (None, 0):
+            return self._compose_process_error(self.process.returncode)
+        if self.last_error and not self.is_running:
+            return self.last_error
+        return None
 
     async def get_output(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Get output from Claude process."""

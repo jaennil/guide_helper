@@ -13,6 +13,7 @@ from claude_code_api.core.claude_manager import ClaudeProcess
 from claude_code_api.utils.parser import (
     ClaudeOutputParser,
     OpenAIConverter,
+    extract_error_from_message,
     normalize_claude_message,
     tool_use_to_openai_call,
 )
@@ -115,13 +116,10 @@ class OpenAIStreamConverter:
     ) -> AsyncGenerator[str, None]:
         """Convert Claude Code output stream to OpenAI format."""
         try:
-            # Send initial chunk to establish streaming
-            yield SSEFormatter.format_event(
-                self._build_chunk({"role": "assistant", "content": ""})
-            )
-
+            initial_chunk_sent = False
             saw_assistant_text = False
             saw_tool_calls = False
+            message_errors: List[str] = []
 
             # Process Claude output
             async for claude_message in claude_process.get_output():
@@ -130,7 +128,16 @@ class OpenAIStreamConverter:
                     continue
                 self.parser.parse_message(message)
 
+                error_text = extract_error_from_message(message)
+                if error_text:
+                    message_errors.append(error_text)
+
                 if self.parser.is_assistant_message(message):
+                    if not initial_chunk_sent:
+                        yield SSEFormatter.format_event(
+                            self._build_chunk({"role": "assistant", "content": ""})
+                        )
+                        initial_chunk_sent = True
                     chunks, saw_text, saw_tools = self._assistant_chunks(message)
                     for chunk in chunks:
                         yield chunk
@@ -139,6 +146,31 @@ class OpenAIStreamConverter:
 
                 if self.parser.is_final_message(message):
                     break
+
+            failure_reason = None
+            if message_errors:
+                failure_reason = message_errors[0]
+            else:
+                failure_getter = getattr(claude_process, "get_failure_reason", None)
+                if callable(failure_getter):
+                    failure_reason = failure_getter()
+
+            if failure_reason and not saw_assistant_text and not saw_tool_calls:
+                logger.error(
+                    "Claude process finished without stream payload",
+                    session_id=self.session_id,
+                    error=failure_reason,
+                )
+                yield SSEFormatter.format_error(
+                    failure_reason, error_type="service_unavailable"
+                )
+                yield SSEFormatter.format_completion()
+                return
+
+            if not initial_chunk_sent:
+                yield SSEFormatter.format_event(
+                    self._build_chunk({"role": "assistant", "content": ""})
+                )
 
             # Send final chunk
             finish_reason = "tool_calls" if saw_tool_calls else "stop"
