@@ -13,6 +13,10 @@ code
 **/build/
 **/node_modules/
 
+# Large local media artifacts
+*.mp4
+*.wav
+
 # OS files
 .DS_Store
 Thumbs.db

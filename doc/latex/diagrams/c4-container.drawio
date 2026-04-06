@@ -1,0 +1,153 @@
+<mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1200" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- Title -->
+    <mxCell id="title" value="Диаграмма контейнеров системы Guide Helper" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=14;verticalAlign=middle;" vertex="1" parent="1">
+      <mxGeometry x="450" y="15" width="900" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- USER (internal person) -->
+    <mxCell id="user" value="&lt;b&gt;Пользователь&lt;/b&gt;&lt;br&gt;[Person]&lt;br&gt;Гид, путешественник" style="html=1;fontSize=11;dashed=0;whiteSpace=wrap;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;shape=mxgraph.c4.person2;align=center;metaEdit=1;resizable=0;points=[[0.5,0,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0]];" vertex="1" parent="1">
+      <mxGeometry x="720" y="50" width="160" height="110" as="geometry" />
+    </mxCell>
+
+    <!-- EXTERNAL TOP-RIGHT: OpenAI + Open-Meteo -->
+    <mxCell id="openai" value="&lt;b&gt;OpenAI API&lt;/b&gt;&lt;br&gt;[Внешняя система]&lt;br&gt;GPT-4o-mini для ИИ-чата и ИИ-описаний" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1280" y="50" width="190" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="openmeteo" value="&lt;b&gt;Open-Meteo&lt;/b&gt;&lt;br&gt;[Внешняя система]&lt;br&gt;Высоты, погода" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1510" y="50" width="170" height="110" as="geometry" />
+    </mxCell>
+
+    <!-- SYSTEM BOUNDARY -->
+    <mxCell id="boundary" value="&lt;b&gt;Guide Helper&lt;/b&gt;&lt;br&gt;[System]" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.c4.boundary;fontSize=11;fontStyle=1;verticalAlign=top;align=center;spacingTop=5;fillColor=none;strokeColor=#666666;dashed=1;dashPattern=8 4;rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+      <mxGeometry x="200" y="210" width="1240" height="890" as="geometry" />
+    </mxCell>
+
+    <!-- FRONTEND -->
+    <mxCell id="frontend" value="&lt;b&gt;Frontend&lt;/b&gt;&lt;br&gt;[React 19, TypeScript, Leaflet, PWA/Tauri]&lt;br&gt;СПА с интерактивными картами, темами, ПВА и десктоп-оболочкой Tauri" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="640" y="280" width="200" height="120" as="geometry" />
+    </mxCell>
+
+    <!-- SERVICES ROW -->
+    <mxCell id="auth" value="&lt;b&gt;Auth Service&lt;/b&gt;&lt;br&gt;[Rust, Axum]&lt;br&gt;Аутентификация, JWT, Argon2, роли (user/moderator/admin)" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="215" y="490" width="170" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="photoworker" value="&lt;b&gt;Photo Worker&lt;/b&gt;&lt;br&gt;[Rust]&lt;br&gt;Компрессия фото, генерация миниатюр, ИИ-описание" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="410" y="490" width="170" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="tiles" value="&lt;b&gt;Tiles Service&lt;/b&gt;&lt;br&gt;[Go, Gin]&lt;br&gt;Проксирование тайлов OpenStreetMap/Yandex" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="605" y="490" width="170" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="claudeproxy" value="&lt;b&gt;Claude Proxy&lt;/b&gt;&lt;br&gt;[Node.js, Express]&lt;br&gt;HTTP-прокси к Claude Code SDK (локальный ИИ-агент)" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="800" y="490" width="170" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="routes" value="&lt;b&gt;Routes Service&lt;/b&gt;&lt;br&gt;[Rust, Axum]&lt;br&gt;Управление маршрутами, REST API, WebSocket, ИИ-чат, уведомления" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="490" width="185" height="120" as="geometry" />
+    </mxCell>
+
+    <!-- DATA LAYER -->
+    <mxCell id="postgres" value="&lt;b&gt;PostgreSQL 16&lt;/b&gt;&lt;br&gt;[SQL]&lt;br&gt;auth_db, routes_db (маршруты, категории, чат, уведомления, закладки)" style="shape=cylinder3;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="215" y="720" width="170" height="120" as="geometry" />
+    </mxCell>
+
+    <mxCell id="nats" value="&lt;b&gt;NATS JetStream&lt;/b&gt;&lt;br&gt;[Message Broker]&lt;br&gt;Очередь обработки фотографий" style="shape=cylinder3;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="410" y="720" width="170" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="minio" value="&lt;b&gt;MinIO&lt;/b&gt;&lt;br&gt;[S3 API]&lt;br&gt;Хранилище фотографий" style="shape=cylinder3;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="605" y="720" width="160" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="cache" value="&lt;b&gt;Cache Service&lt;/b&gt;&lt;br&gt;[Go, Gin]&lt;br&gt;Кэширование тайлов карт в Redis" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="800" y="720" width="170" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="redis" value="&lt;b&gt;Redis 7&lt;/b&gt;&lt;br&gt;[Key-Value]&lt;br&gt;Кэш тайлов карт" style="shape=cylinder3;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;strokeColor=#0D5091;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="800" y="900" width="170" height="100" as="geometry" />
+    </mxCell>
+
+    <!-- EXTERNAL RIGHT: Nominatim + OSM -->
+    <mxCell id="nominatim" value="&lt;b&gt;Nominatim&lt;/b&gt;&lt;br&gt;[Внешняя система]&lt;br&gt;Геокодирование" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1530" y="490" width="170" height="100" as="geometry" />
+    </mxCell>
+
+    <mxCell id="osm" value="&lt;b&gt;OpenStreetMap / Yandex&lt;/b&gt;&lt;br&gt;[Внешняя система]&lt;br&gt;Тайлы карт" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1530" y="650" width="170" height="100" as="geometry" />
+    </mxCell>
+
+    <!-- ARROWS -->
+    <mxCell id="e1" value="Использует&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="user" target="frontend" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e2" value="Аутентификация&#xa;[REST API]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="frontend" target="auth" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e3" value="CRUD маршрутов, ИИ-чат&#xa;[REST API / WebSocket / SSE]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="frontend" target="routes" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e4" value="Тайлы карт&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="frontend" target="tiles" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e5" value="ИИ-агент запросы&#xa;[REST API]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="frontend" target="claudeproxy" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e6" value="Читает/пишет&#xa;[SQL]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="auth" target="postgres" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e7" value="Читает/пишет&#xa;[SQL]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;exitX=0;exitY=1;" edge="1" source="routes" target="postgres" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e8" value="Публикует задачи&#xa;[NATS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="routes" target="nats" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e9" value="Потребляет задачи&#xa;[NATS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="photoworker" target="nats" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e10" value="Загружает фото&#xa;[S3 API]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="photoworker" target="minio" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e11" value="Обновляет статус&#xa;[SQL]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="photoworker" target="postgres" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e13" value="Кэширование&#xa;[HTTP]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="tiles" target="cache" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e14" value="Читает/пишет&#xa;[Redis Protocol]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="cache" target="redis" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Routes → OpenAI -->
+    <mxCell id="e18" value="ИИ-чат&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" source="routes" target="openai" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- PhotoWorker → OpenAI (через верх) -->
+    <mxCell id="e12" value="ИИ-описание по фото&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" source="photoworker" target="openai" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="495" y="400" />
+          <mxPoint x="1375" y="400" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <!-- Routes → OpenMeteo -->
+    <mxCell id="e16" value="Высоты, погода&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;exitX=1;exitY=0.3;entryX=0;entryY=0.5;" edge="1" source="routes" target="openmeteo" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Tiles → OSM -->
+    <mxCell id="e15" value="Проксирует&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="tiles" target="osm" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Routes → Nominatim -->
+    <mxCell id="e17" value="Геокодирование&#xa;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="routes" target="nominatim" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
