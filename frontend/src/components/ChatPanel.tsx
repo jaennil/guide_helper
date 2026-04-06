@@ -145,6 +145,32 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
   const { t } = useLanguage();
   const navigate = useNavigate();
 
+  const resolveChatError = useCallback((err: any) => {
+    const status = err?.response?.status;
+    const payload = err?.response?.data;
+    const message = typeof payload === 'string'
+      ? payload.trim()
+      : typeof payload?.message === 'string'
+        ? payload.message.trim()
+        : typeof err?.message === 'string'
+          ? err.message.trim()
+          : '';
+
+    if (status === 429) {
+      return t('chat.rateLimited');
+    }
+
+    if (message) {
+      return message;
+    }
+
+    if (status === 503) {
+      return t('chat.unavailable');
+    }
+
+    return t('chat.error');
+  }, [t]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -221,33 +247,24 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
       // Remove streaming placeholder if it exists
       setMessages((prev) => prev.filter((m) => m.role !== 'assistant' || m.content !== ''));
 
-      const status = err?.response?.status;
-      if (status === 429) {
-        setError(t('chat.rateLimited'));
-      } else if (status === 503) {
-        setError(t('chat.unavailable'));
-      } else {
-        // Fallback to non-streaming
-        try {
-          const response = await chatApi.sendMessage(text, conversationId);
-          setConversationId(response.conversation_id);
-          const assistantMsg: DisplayMessage = {
-            id: response.id,
-            role: 'assistant',
-            content: response.message,
-            actions: response.actions,
-          };
-          setMessages((prev) => [...prev, assistantMsg]);
-        } catch (fallbackErr: any) {
-          const fbStatus = fallbackErr?.response?.status;
-          if (fbStatus === 429) {
-            setError(t('chat.rateLimited'));
-          } else if (fbStatus === 503) {
-            setError(t('chat.unavailable'));
-          } else {
-            setError(t('chat.error'));
-          }
-        }
+      if (err?.response?.status === 429) {
+        setError(resolveChatError(err));
+        return;
+      }
+
+      // Fallback to non-streaming
+      try {
+        const response = await chatApi.sendMessage(text, conversationId);
+        setConversationId(response.conversation_id);
+        const assistantMsg: DisplayMessage = {
+          id: response.id,
+          role: 'assistant',
+          content: response.message,
+          actions: response.actions,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } catch (fallbackErr: any) {
+        setError(resolveChatError(fallbackErr ?? err));
       }
     } finally {
       setLoading(false);

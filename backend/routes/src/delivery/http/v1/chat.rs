@@ -95,17 +95,6 @@ fn validate_message(message: &str, max_len: usize) -> Result<(), UsecaseError> {
     Ok(())
 }
 
-fn check_availability(state: &AppState) -> Result<(), UsecaseError> {
-    if !state.chat_usecase.is_available() {
-        tracing::warn!("chat request received but AI assistant is not available");
-        metrics::counter!("chat_unavailable_total").increment(1);
-        return Err(UsecaseError::Unavailable(
-            "AI assistant is currently unavailable".to_string(),
-        ));
-    }
-    Ok(())
-}
-
 #[tracing::instrument(skip(state, body), fields(user_id = %user.user_id))]
 pub async fn send_chat_message(
     State(state): State<Arc<AppState>>,
@@ -120,7 +109,6 @@ pub async fn send_chat_message(
 
     validate_message(&body.message, state.chat_usecase.max_message_length())?;
     enforce_rate_limit(&state, user.user_id).await?;
-    check_availability(&state)?;
 
     tracing::info!(
         %conversation_id,
@@ -277,7 +265,6 @@ pub async fn send_chat_message_stream(
 
     validate_message(&body.message, state.chat_usecase.max_message_length())?;
     enforce_rate_limit(&state, user.user_id).await?;
-    check_availability(&state)?;
 
     metrics::counter!("chat_messages_total", "role" => "user").increment(1);
 

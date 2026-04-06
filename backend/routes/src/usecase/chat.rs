@@ -78,6 +78,12 @@ struct DirectChatResponse {
     actions: Vec<ChatAction>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DirectRouteRequest {
+    display_places: Vec<String>,
+    geocoding_queries: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ChatStreamEvent {
@@ -357,29 +363,42 @@ where
         &self,
         text: &str,
     ) -> Result<Option<DirectChatResponse>, UsecaseError> {
-        let Some(places) = extract_route_locations(text) else {
+        let Some(route_request) = extract_direct_route_request(text) else {
             return Ok(None);
         };
 
-        tracing::info!(places = ?places, "matched direct route request");
+        tracing::info!(
+            places = ?route_request.display_places,
+            geocoding_queries = ?route_request.geocoding_queries,
+            "matched direct route request"
+        );
 
         let is_russian = contains_cyrillic(text);
         let mut found_points = Vec::new();
         let mut missing_places = Vec::new();
 
-        for place in &places {
-            match self.geocode_place(place).await {
+        for (display_place, geocoding_query) in route_request
+            .display_places
+            .iter()
+            .zip(route_request.geocoding_queries.iter())
+        {
+            match self.geocode_place(geocoding_query).await {
                 Ok(Some(point)) => found_points.push(point),
-                Ok(None) => missing_places.push(place.clone()),
+                Ok(None) => missing_places.push(display_place.clone()),
                 Err(error) => {
-                    tracing::warn!(%place, %error, "direct route geocoding failed");
-                    missing_places.push(place.clone());
+                    tracing::warn!(
+                        place = %display_place,
+                        query = %geocoding_query,
+                        %error,
+                        "direct route geocoding failed"
+                    );
+                    missing_places.push(display_place.clone());
                 }
             }
         }
 
         if missing_places.is_empty() && found_points.len() >= 2 {
-            let summary = places.join(" -> ");
+            let summary = route_request.display_places.join(" -> ");
             let message = if is_russian {
                 format!(
                     "Построил маршрут через точки: {}. Маршрут добавлен на карту.",
@@ -921,8 +940,17 @@ fn parse_function_arguments(input: &str) -> std::collections::HashMap<String, se
 }
 
 fn extract_route_locations(text: &str) -> Option<Vec<String>> {
+    extract_direct_route_request(text).map(|request| request.display_places)
+}
+
+fn extract_direct_route_request(text: &str) -> Option<DirectRouteRequest> {
     let normalized = format!(" {} ", normalize_whitespace(text).to_lowercase());
-    let patterns = [(" от ", " до "), (" из ", " в "), (" from ", " to ")];
+    let patterns = [
+        (" от ", " до "),
+        (" из ", " до "),
+        (" из ", " в "),
+        (" from ", " to "),
+    ];
 
     for (from_token, to_token) in patterns {
         let Some(from_idx) = normalized.find(from_token) else {
@@ -941,16 +969,52 @@ fn extract_route_locations(text: &str) -> Option<Vec<String>> {
             continue;
         }
 
-        let mut places = split_place_list(&start_and_waypoints);
-        places.push(end);
-        places.retain(|place| !place.is_empty());
+        let mut display_places = split_place_list(&start_and_waypoints);
+        display_places.push(end);
+        display_places.retain(|place| !place.is_empty());
 
-        if places.len() >= 2 {
-            return Some(places);
+        if display_places.len() >= 2 {
+            let context = extract_route_context(&normalized[..from_idx]);
+            let geocoding_queries = display_places
+                .iter()
+                .map(|place| enrich_place_with_context(place, context.as_deref()))
+                .collect();
+
+            return Some(DirectRouteRequest {
+                display_places,
+                geocoding_queries,
+            });
         }
     }
 
     None
+}
+
+fn extract_route_context(prefix: &str) -> Option<String> {
+    let trimmed = prefix.trim();
+    for token in [" в ", " in "] {
+        if let Some(idx) = trimmed.rfind(token) {
+            let context = trim_place_name(&trimmed[idx + token.len()..]);
+            if !context.is_empty() {
+                return Some(context);
+            }
+        }
+    }
+    None
+}
+
+fn enrich_place_with_context(place: &str, context: Option<&str>) -> String {
+    let Some(context) = context.map(str::trim).filter(|value| !value.is_empty()) else {
+        return place.to_string();
+    };
+
+    let place_lower = place.to_lowercase();
+    let context_lower = context.to_lowercase();
+    if place_lower.contains(&context_lower) {
+        place.to_string()
+    } else {
+        format!("{}, {}", place, context)
+    }
 }
 
 fn normalize_whitespace(text: &str) -> String {
@@ -1093,6 +1157,32 @@ mod tests {
         assert_eq!(places, vec!["владивостока", "уфу", "казань", "самары"]);
     }
 
+    #[test]
+    fn test_extract_route_locations_with_city_context_and_iz_do_form() {
+        let places = extract_route_locations(
+            "построй маршрут в москве из улицы бультерова до улицы куликовская",
+        )
+        .unwrap();
+        assert_eq!(places, vec!["улицы бультерова", "улицы куликовская"]);
+    }
+
+    #[test]
+    fn test_extract_direct_route_request_enriches_queries_with_context() {
+        let request = extract_direct_route_request(
+            "построй маршрут в москве из улицы бультерова до улицы куликовская",
+        )
+        .unwrap();
+
+        assert_eq!(
+            request.display_places,
+            vec!["улицы бультерова", "улицы куликовская"]
+        );
+        assert_eq!(
+            request.geocoding_queries,
+            vec!["улицы бультерова, москве", "улицы куликовская, москве"]
+        );
+    }
+
     #[tokio::test]
     async fn test_send_message_direct_route_request_returns_points_without_assistant() {
         let mock_server = wiremock::MockServer::start().await;
@@ -1146,6 +1236,70 @@ mod tests {
                 assert_eq!(points.len(), 2);
                 assert!(points[0].name.contains("Vladivostok"));
                 assert!(points[1].name.contains("Samara"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_direct_route_request_uses_city_context_for_geocoding() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param(
+                "q",
+                "улицы бультерова, москве",
+            ))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.6200",
+                    "lon": "37.6400",
+                    "display_name": "улица Бутлерова, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param(
+                "q",
+                "улицы куликовская, москве",
+            ))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.5600",
+                    "lon": "37.5600",
+                    "display_name": "Куликовская улица, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+
+        let uc =
+            make_usecase_with_nominatim(mock_chat, MockRouteRepository::new(), mock_server.uri());
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут в москве из улицы бультерова до улицы куликовская".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("Маршрут добавлен на карту"));
+        assert_eq!(result.actions.len(), 1);
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 2);
+                assert!(points[0].name.contains("Москва"));
+                assert!(points[1].name.contains("Москва"));
             }
             _ => panic!("expected ShowPoints action"),
         }
