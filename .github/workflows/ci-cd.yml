@@ -476,6 +476,9 @@ jobs:
        needs.merge-routes.result == 'success' ||
        needs.merge-photo-worker.result == 'success' ||
        needs.merge-frontend.result == 'success')
+    concurrency:
+      group: update-manifests-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -533,6 +536,28 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --depth=1
+          if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
+            echo "main advanced beyond $GITHUB_SHA; skipping stale manifest update"
+            exit 0
+          fi
           git add k8s/overlays/production/kustomization.yaml
-          git commit -m "ci: update image tags to ${GITHUB_SHA::7}" || exit 0
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "ci: update image tags to ${GITHUB_SHA::7}"
+
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            git fetch origin main --depth=1
+            if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
+              echo "main advanced while pushing; skipping stale manifest update"
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "Failed to push manifest update after retries"
+          exit 1
