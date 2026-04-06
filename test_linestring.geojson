@@ -1,0 +1,15 @@
+{
+  "type": "Feature",
+  "properties": {
+    "name": "Moscow to Saint Petersburg"
+  },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [37.6173, 55.7558],
+      [36.1877, 56.8519],
+      [32.9333, 58.5167],
+      [30.3351, 59.9343]
+    ]
+  }
+}

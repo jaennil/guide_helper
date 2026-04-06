@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "name": "Golden Ring Tour",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Moscow"},
+      "geometry": {"type": "Point", "coordinates": [37.6173, 55.7558]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Vladimir"},
+      "geometry": {"type": "Point", "coordinates": [40.4067, 56.1291]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Suzdal"},
+      "geometry": {"type": "Point", "coordinates": [40.4461, 56.4225]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Yaroslavl"},
+      "geometry": {"type": "Point", "coordinates": [39.8933, 57.6261]}
+    }
+  ]
+}
