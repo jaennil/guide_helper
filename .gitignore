@@ -6,6 +6,8 @@
 code
 .vscode/
 .idea/
+.VSCodeCounter/
+.codex
 
 # Build artifacts
 **/target/
@@ -34,3 +36,7 @@ claude-code-api/*.egg-info/
 claude-code-api/.venv/
 claude-code-api/workspace/
 claude-code-api/claude-config/
+
+# Local logs
+main.log
+texput.log
