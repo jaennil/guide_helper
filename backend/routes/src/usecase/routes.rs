@@ -6,7 +6,9 @@ use crate::domain::route::{ExploreRouteRow, PhotoStatus, Route, RoutePoint};
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
 use crate::usecase::nominatim::NominatimClient;
-use crate::usecase::openai::{OpenAIClient, VisionChatRequest, VisionContentPart, VisionImageUrl, VisionMessage};
+use crate::usecase::openai::{
+    OpenAIClient, VisionChatRequest, VisionContentPart, VisionImageUrl, VisionMessage,
+};
 
 pub struct RoutesUseCase<R>
 where
@@ -164,7 +166,11 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn enable_sharing(&self, user_id: Uuid, route_id: Uuid) -> Result<Uuid, UsecaseError> {
+    pub async fn enable_sharing(
+        &self,
+        user_id: Uuid,
+        route_id: Uuid,
+    ) -> Result<Uuid, UsecaseError> {
         tracing::debug!("enabling sharing for route");
 
         let route = self
@@ -251,7 +257,14 @@ where
 
         let routes = self
             .route_repository
-            .explore_shared(search.clone(), category_id, season.clone(), order_clause, limit, offset)
+            .explore_shared(
+                search.clone(),
+                category_id,
+                season.clone(),
+                order_clause,
+                limit,
+                offset,
+            )
             .await?;
         let total = self
             .route_repository
@@ -263,7 +276,12 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id, %role))]
-    pub async fn delete_route(&self, user_id: Uuid, route_id: Uuid, role: &str) -> Result<(), UsecaseError> {
+    pub async fn delete_route(
+        &self,
+        user_id: Uuid,
+        route_id: Uuid,
+        role: &str,
+    ) -> Result<(), UsecaseError> {
         tracing::debug!("deleting route");
 
         let route = self
@@ -290,7 +308,11 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
-    pub async fn generate_description(&self, user_id: Uuid, route_id: Uuid) -> Result<String, UsecaseError> {
+    pub async fn generate_description(
+        &self,
+        user_id: Uuid,
+        route_id: Uuid,
+    ) -> Result<String, UsecaseError> {
         tracing::info!("generating AI description for route");
 
         let client = self.ollama_client.as_ref().ok_or_else(|| {
@@ -308,28 +330,33 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
-        let photo_urls: Vec<String> = route.points.iter()
+        let photo_urls: Vec<String> = route
+            .points
+            .iter()
             .filter_map(|p| p.photo.as_ref())
             .filter(|ph| ph.status == PhotoStatus::Done)
             .map(|ph| ph.original.clone())
             .collect();
 
         if photo_urls.is_empty() {
-            return Err(UsecaseError::Validation("Route has no processed photos".to_string()));
+            return Err(UsecaseError::Validation(
+                "Route has no processed photos".to_string(),
+            ));
         }
 
-        tracing::info!(photo_count = photo_urls.len(), "sending photos to Ollama for description");
+        tracing::info!(
+            photo_count = photo_urls.len(),
+            "sending photos to Ollama for description"
+        );
 
-        let mut content: Vec<VisionContentPart> = vec![
-            VisionContentPart {
-                part_type: "text".to_string(),
-                text: Some(format!(
-                    "Ты — помощник туристического гида. По фотографиям с маршрута «{}» напиши краткое описание маршрута на русском языке (3-5 предложений): что можно увидеть, какая атмосфера, для кого подходит.",
-                    route.name
-                )),
-                image_url: None,
-            },
-        ];
+        let mut content: Vec<VisionContentPart> = vec![VisionContentPart {
+            part_type: "text".to_string(),
+            text: Some(format!(
+                "Ты — помощник туристического гида. По фотографиям с маршрута «{}» напиши краткое описание маршрута на русском языке (3-5 предложений): что можно увидеть, какая атмосфера, для кого подходит.",
+                route.name
+            )),
+            image_url: None,
+        }];
 
         for url in &photo_urls {
             content.push(VisionContentPart {
@@ -359,11 +386,19 @@ where
             .and_then(|c| c.message.content)
             .ok_or_else(|| UsecaseError::Internal("Empty response from Ollama".to_string()))?;
 
-        tracing::info!(desc_len = description.len(), "AI description generated successfully");
+        tracing::info!(
+            desc_len = description.len(),
+            "AI description generated successfully"
+        );
         Ok(description)
     }
 
-    pub async fn save_description(&self, user_id: Uuid, route_id: Uuid, description: String) -> Result<Route, UsecaseError> {
+    pub async fn save_description(
+        &self,
+        user_id: Uuid,
+        route_id: Uuid,
+        description: String,
+    ) -> Result<Route, UsecaseError> {
         let mut route = self
             .route_repository
             .find_by_id(route_id)

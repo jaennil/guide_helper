@@ -1,12 +1,12 @@
-use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
+use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
-use opentelemetry_sdk::{trace as sdktrace, Resource};
+use opentelemetry_sdk::{Resource, trace as sdktrace};
 use opentelemetry_semantic_conventions::resource::{SERVICE_NAME, SERVICE_VERSION};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 pub struct TelemetryConfig {
     pub service_name: String,
@@ -32,7 +32,10 @@ pub fn init_telemetry_with_subscriber(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let resource = Resource::builder_empty()
         .with_attribute(KeyValue::new(SERVICE_NAME, config.service_name.clone()))
-        .with_attribute(KeyValue::new(SERVICE_VERSION, config.service_version.clone()))
+        .with_attribute(KeyValue::new(
+            SERVICE_VERSION,
+            config.service_version.clone(),
+        ))
         .with_attribute(KeyValue::new(
             "deployment.environment.name",
             config.environment.clone(),

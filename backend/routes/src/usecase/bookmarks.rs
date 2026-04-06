@@ -81,10 +81,7 @@ where
     ) -> Result<Vec<ExploreRouteRow>, UsecaseError> {
         tracing::debug!("listing bookmarks");
 
-        let rows = self
-            .bookmark_repository
-            .find_by_user_id(user_id)
-            .await?;
+        let rows = self.bookmark_repository.find_by_user_id(user_id).await?;
 
         tracing::debug!(user_id = %user_id, count = rows.len(), "bookmarks listed");
         Ok(rows)

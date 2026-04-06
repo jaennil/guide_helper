@@ -1,21 +1,24 @@
-use std::sync::Arc;
 use std::convert::Infallible;
+use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, sse::{Event, Sse}},
-    Extension, Json,
+    response::{
+        IntoResponse,
+        sse::{Event, Sse},
+    },
 };
 use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::chat::{ChatAction, ChatStreamEvent};
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
@@ -200,10 +203,7 @@ pub async fn list_conversations(
         .list_conversations(user.user_id, limit, offset)
         .await?;
 
-    let total = state
-        .chat_usecase
-        .count_conversations(user.user_id)
-        .await?;
+    let total = state.chat_usecase.count_conversations(user.user_id).await?;
 
     let items: Vec<ConversationSummaryResponse> = conversations
         .into_iter()
@@ -218,10 +218,13 @@ pub async fn list_conversations(
         .collect();
 
     tracing::debug!(count = items.len(), total, "conversations listed");
-    Ok((StatusCode::OK, Json(ListConversationsResponse {
-        conversations: items,
-        total,
-    })))
+    Ok((
+        StatusCode::OK,
+        Json(ListConversationsResponse {
+            conversations: items,
+            total,
+        }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id, conversation_id = %conversation_id))]
@@ -283,24 +286,24 @@ pub async fn send_chat_message_stream(
         .send_message_stream(user.user_id, conversation_id, body.message)
         .await?;
 
-    let sse_stream = event_stream.map(|result: Result<ChatStreamEvent, _>| {
-        match result {
-            Ok(event) => {
-                let data = serde_json::to_string(&event).unwrap_or_default();
-                let event_type = match &event {
-                    ChatStreamEvent::Token { .. } => "token",
-                    ChatStreamEvent::Actions { .. } => "actions",
-                    ChatStreamEvent::Done { .. } => "done",
-                    ChatStreamEvent::Error { .. } => "error",
-                };
-                Ok(Event::default().event(event_type).data(data))
-            }
-            Err(e) => {
-                tracing::error!(error = %e, "stream error");
-                let error_event = ChatStreamEvent::Error { message: e.to_string() };
-                let data = serde_json::to_string(&error_event).unwrap_or_default();
-                Ok(Event::default().event("error").data(data))
-            }
+    let sse_stream = event_stream.map(|result: Result<ChatStreamEvent, _>| match result {
+        Ok(event) => {
+            let data = serde_json::to_string(&event).unwrap_or_default();
+            let event_type = match &event {
+                ChatStreamEvent::Token { .. } => "token",
+                ChatStreamEvent::Actions { .. } => "actions",
+                ChatStreamEvent::Done { .. } => "done",
+                ChatStreamEvent::Error { .. } => "error",
+            };
+            Ok(Event::default().event(event_type).data(data))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "stream error");
+            let error_event = ChatStreamEvent::Error {
+                message: e.to_string(),
+            };
+            let data = serde_json::to_string(&error_event).unwrap_or_default();
+            Ok(Event::default().event("error").data(data))
         }
     });
 
@@ -315,9 +318,7 @@ pub struct ChatHealthResponse {
 }
 
 #[tracing::instrument(skip(state))]
-pub async fn chat_health(
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+pub async fn chat_health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let available = state.chat_usecase.check_health().await;
     let model = state.chat_usecase.model_name().to_string();
 

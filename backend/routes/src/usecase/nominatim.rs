@@ -85,8 +85,7 @@ impl NominatimClient {
         first: (f64, f64),
         last: (f64, f64),
     ) -> (String, String) {
-        let coords_match =
-            (first.0 - last.0).abs() < 1e-9 && (first.1 - last.1).abs() < 1e-9;
+        let coords_match = (first.0 - last.0).abs() < 1e-9 && (first.1 - last.1).abs() < 1e-9;
 
         for zoom in [14u8, 16, 18] {
             let from = self.reverse_geocode_at_zoom(first.0, first.1, zoom).await;

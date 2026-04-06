@@ -133,11 +133,7 @@ pub trait ChatMessageRepository: Send + Sync {
         conversation_id: Uuid,
     ) -> Result<(), RepositoryError>;
     async fn count_conversations(&self, user_id: Uuid) -> Result<i64, RepositoryError>;
-    async fn delete_message(
-        &self,
-        user_id: Uuid,
-        message_id: Uuid,
-    ) -> Result<(), RepositoryError>;
+    async fn delete_message(&self, user_id: Uuid, message_id: Uuid) -> Result<(), RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -153,7 +149,8 @@ pub trait BookmarkRepository: Send + Sync {
         route_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<RouteBookmark>, RepositoryError>;
-    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<ExploreRouteRow>, RepositoryError>;
+    async fn find_by_user_id(&self, user_id: Uuid)
+    -> Result<Vec<ExploreRouteRow>, RepositoryError>;
 }
 
 #[cfg_attr(test, mockall::automock)]

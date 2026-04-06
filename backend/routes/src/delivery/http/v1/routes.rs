@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use axum_extra::extract::Multipart;
 use chrono::{DateTime, Utc};
@@ -12,12 +12,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::domain::route::{Route as DomainRoute, RoutePoint};
 use crate::usecase::error::UsecaseError;
-use crate::usecase::geojson_import::{parse_geojson, ImportError};
+use crate::usecase::geojson_import::{ImportError, parse_geojson};
 use crate::usecase::photo_tasks::PhotoProcessTask;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct RouteResponse {
@@ -99,7 +99,10 @@ pub async fn get_route(
 ) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!(user_id = %user.user_id, %route_id, "handling get route request");
 
-    let route = state.routes_usecase.get_route(user.user_id, route_id).await?;
+    let route = state
+        .routes_usecase
+        .get_route(user.user_id, route_id)
+        .await?;
 
     tracing::debug!(%route_id, "route retrieved successfully");
     Ok((StatusCode::OK, Json(route_to_response(route))))
@@ -120,7 +123,13 @@ pub async fn create_route(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, payload.name, payload.points, payload.category_ids, payload.seasons)
+        .create_route(
+            user.user_id,
+            payload.name,
+            payload.points,
+            payload.category_ids,
+            payload.seasons,
+        )
         .await?;
 
     tracing::debug!(route_id = %route.id, "route created successfully");
@@ -144,7 +153,14 @@ pub async fn update_route(
 
     let route = state
         .routes_usecase
-        .update_route(user.user_id, route_id, payload.name, payload.points, payload.category_ids, payload.seasons)
+        .update_route(
+            user.user_id,
+            route_id,
+            payload.name,
+            payload.points,
+            payload.category_ids,
+            payload.seasons,
+        )
         .await?;
 
     tracing::debug!(%route_id, "route updated successfully");
@@ -188,15 +204,20 @@ pub async fn import_route_from_geojson(
         tracing::debug!(field_name = %field_name, "processing multipart field");
 
         if field_name == "file" {
-            let bytes = field.bytes().await.map_err(|e| {
-                UsecaseError::Validation(format!("Failed to read file: {}", e))
-            })?;
+            let bytes = field
+                .bytes()
+                .await
+                .map_err(|e| UsecaseError::Validation(format!("Failed to read file: {}", e)))?;
 
-            file_content = Some(String::from_utf8(bytes.to_vec()).map_err(|_| {
-                UsecaseError::Validation("File must be valid UTF-8".to_string())
-            })?);
+            file_content =
+                Some(String::from_utf8(bytes.to_vec()).map_err(|_| {
+                    UsecaseError::Validation("File must be valid UTF-8".to_string())
+                })?);
 
-            tracing::debug!(content_len = file_content.as_ref().map(|c| c.len()), "read file content");
+            tracing::debug!(
+                content_len = file_content.as_ref().map(|c| c.len()),
+                "read file content"
+            );
             break;
         }
     }
@@ -212,9 +233,7 @@ pub async fn import_route_from_geojson(
             ImportError::InvalidGeoJson(_)
             | ImportError::MissingRouteName
             | ImportError::EmptyRoute
-            | ImportError::UnsupportedGeometry => {
-                UsecaseError::Validation(e.to_string())
-            }
+            | ImportError::UnsupportedGeometry => UsecaseError::Validation(e.to_string()),
         }
     })?;
 
@@ -384,7 +403,10 @@ pub async fn generate_description(
         .generate_description(user.user_id, route_id)
         .await?;
 
-    Ok((StatusCode::OK, Json(GenerateDescriptionResponse { description })))
+    Ok((
+        StatusCode::OK,
+        Json(GenerateDescriptionResponse { description }),
+    ))
 }
 
 #[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id, %route_id))]
@@ -410,28 +432,23 @@ async fn publish_photo_task(nats_client: &Option<async_nats::Client>, route: &Do
             match serde_json::to_vec(&task) {
                 Ok(payload) => {
                     let jetstream = async_nats::jetstream::new(client.clone());
-                    match jetstream
-                        .publish("photos.process", payload.into())
-                        .await
-                    {
-                        Ok(ack_future) => {
-                            match ack_future.await {
-                                Ok(_) => {
-                                    tracing::info!(
-                                        route_id = %task.route_id,
-                                        point_count = task.point_indices.len(),
-                                        "published photo processing task to NATS"
-                                    );
-                                }
-                                Err(e) => {
-                                    tracing::error!(
-                                        route_id = %task.route_id,
-                                        error = %e,
-                                        "failed to get NATS publish ack"
-                                    );
-                                }
+                    match jetstream.publish("photos.process", payload.into()).await {
+                        Ok(ack_future) => match ack_future.await {
+                            Ok(_) => {
+                                tracing::info!(
+                                    route_id = %task.route_id,
+                                    point_count = task.point_indices.len(),
+                                    "published photo processing task to NATS"
+                                );
                             }
-                        }
+                            Err(e) => {
+                                tracing::error!(
+                                    route_id = %task.route_id,
+                                    error = %e,
+                                    "failed to get NATS publish ack"
+                                );
+                            }
+                        },
                         Err(e) => {
                             tracing::error!(
                                 route_id = %task.route_id,

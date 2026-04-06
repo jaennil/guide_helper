@@ -8,7 +8,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::{usecase::jwt::TokenType, AppState};
+use crate::{AppState, usecase::jwt::TokenType};
 
 #[derive(Clone, Debug)]
 pub struct AuthenticatedUser {
@@ -50,10 +50,7 @@ pub async fn auth_middleware(
     // Ensure it's an access token, not a refresh token
     if claims.token_type != TokenType::Access {
         tracing::warn!("attempted to use non-access token for authentication");
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            "Invalid token type".to_string(),
-        ));
+        return Err((StatusCode::UNAUTHORIZED, "Invalid token type".to_string()));
     }
 
     let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {

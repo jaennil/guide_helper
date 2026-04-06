@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::contracts::{CommentRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct RoutesStatsResponse {
@@ -78,10 +78,20 @@ pub async fn get_routes_stats(
     tracing::debug!("getting routes admin stats");
 
     let total_routes = state.routes_usecase.route_repository().count_all().await?;
-    let total_comments = state.comments_usecase.comment_repository().count_all().await?;
+    let total_comments = state
+        .comments_usecase
+        .comment_repository()
+        .count_all()
+        .await?;
 
     tracing::debug!(total_routes, total_comments, "routes admin stats retrieved");
-    Ok((StatusCode::OK, Json(RoutesStatsResponse { total_routes, total_comments })))
+    Ok((
+        StatusCode::OK,
+        Json(RoutesStatsResponse {
+            total_routes,
+            total_comments,
+        }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -97,7 +107,11 @@ pub async fn list_admin_routes(
     tracing::debug!(limit, offset, "listing admin routes");
 
     let total = state.routes_usecase.route_repository().count_all().await?;
-    let rows = state.routes_usecase.route_repository().find_all_admin(limit, offset).await?;
+    let rows = state
+        .routes_usecase
+        .route_repository()
+        .find_all_admin(limit, offset)
+        .await?;
 
     let routes: Vec<AdminRouteResponse> = rows
         .into_iter()
@@ -113,7 +127,10 @@ pub async fn list_admin_routes(
         .collect();
 
     tracing::debug!(count = routes.len(), total, "admin routes listed");
-    Ok((StatusCode::OK, Json(AdminRoutesListResponse { routes, total })))
+    Ok((
+        StatusCode::OK,
+        Json(AdminRoutesListResponse { routes, total }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -128,8 +145,16 @@ pub async fn list_admin_comments(
     let offset = params.offset.unwrap_or(0);
     tracing::debug!(limit, offset, "listing admin comments");
 
-    let total = state.comments_usecase.comment_repository().count_all().await?;
-    let rows = state.comments_usecase.comment_repository().find_all_paginated(limit, offset).await?;
+    let total = state
+        .comments_usecase
+        .comment_repository()
+        .count_all()
+        .await?;
+    let rows = state
+        .comments_usecase
+        .comment_repository()
+        .find_all_paginated(limit, offset)
+        .await?;
 
     let comments: Vec<AdminCommentResponse> = rows
         .into_iter()
@@ -144,5 +169,8 @@ pub async fn list_admin_comments(
         .collect();
 
     tracing::debug!(count = comments.len(), total, "admin comments listed");
-    Ok((StatusCode::OK, Json(AdminCommentsListResponse { comments, total })))
+    Ok((
+        StatusCode::OK,
+        Json(AdminCommentsListResponse { comments, total }),
+    ))
 }

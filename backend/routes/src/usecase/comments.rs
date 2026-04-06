@@ -63,7 +63,12 @@ where
     }
 
     #[tracing::instrument(skip(self), fields(comment_id = %comment_id, user_id = %user_id, %role))]
-    pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, role: &str) -> Result<(), UsecaseError> {
+    pub async fn delete_comment(
+        &self,
+        comment_id: Uuid,
+        user_id: Uuid,
+        role: &str,
+    ) -> Result<(), UsecaseError> {
         tracing::debug!("deleting comment");
 
         let comment = self
@@ -89,7 +94,9 @@ where
                     user_id = %user_id,
                     "unauthorized comment delete attempt"
                 );
-                return Err(UsecaseError::Forbidden("Not authorized to delete this comment".to_string()));
+                return Err(UsecaseError::Forbidden(
+                    "Not authorized to delete this comment".to_string(),
+                ));
             }
         }
 
@@ -280,7 +287,9 @@ mod tests {
             .returning(|_| Ok(()));
 
         let usecase = CommentsUseCase::new(mock_comment_repo, mock_route_repo);
-        let result = usecase.delete_comment(comment_id, route_owner_id, "user").await;
+        let result = usecase
+            .delete_comment(comment_id, route_owner_id, "user")
+            .await;
 
         assert!(result.is_ok());
     }
@@ -332,7 +341,9 @@ mod tests {
             .returning(move |_| Ok(Some(route_clone.clone())));
 
         let usecase = CommentsUseCase::new(mock_comment_repo, mock_route_repo);
-        let result = usecase.delete_comment(comment_id, random_user_id, "user").await;
+        let result = usecase
+            .delete_comment(comment_id, random_user_id, "user")
+            .await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Not authorized"));

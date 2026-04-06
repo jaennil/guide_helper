@@ -11,40 +11,61 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
+    Router,
     extract::State,
     middleware,
     routing::{delete, get, post, put},
-    Router,
 };
-use tokio::sync::{broadcast, RwLock};
-use uuid::Uuid;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use tokio::sync::{RwLock, broadcast};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
+use uuid::Uuid;
 
-use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_routes, list_admin_comments};
-use crate::delivery::http::v1::bookmarks::{toggle_bookmark, get_user_bookmark_status, list_bookmarks};
-use crate::delivery::http::v1::categories::{list_categories, create_category, update_category, delete_category};
-use crate::delivery::http::v1::chat::{send_chat_message, send_chat_message_stream, get_chat_history, list_conversations, delete_conversation, delete_message, chat_health};
-use crate::delivery::http::v1::notifications::{list_notifications, get_unread_count, mark_as_read, mark_all_as_read};
-use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
-use crate::delivery::http::v1::comments::{count_comments, create_comment, delete_comment, list_comments};
+use crate::delivery::http::v1::admin::{get_routes_stats, list_admin_comments, list_admin_routes};
+use crate::delivery::http::v1::bookmarks::{
+    get_user_bookmark_status, list_bookmarks, toggle_bookmark,
+};
+use crate::delivery::http::v1::categories::{
+    create_category, delete_category, list_categories, update_category,
+};
+use crate::delivery::http::v1::chat::{
+    chat_health, delete_conversation, delete_message, get_chat_history, list_conversations,
+    send_chat_message, send_chat_message_stream,
+};
+use crate::delivery::http::v1::comments::{
+    count_comments, create_comment, delete_comment, list_comments,
+};
 use crate::delivery::http::v1::likes::{get_like_count, get_user_like_status, toggle_like};
 use crate::delivery::http::v1::middleware::auth_middleware;
-use crate::delivery::http::v1::ratings::{get_rating_aggregate, get_user_rating, remove_rating, set_rating};
-use crate::delivery::http::v1::routes::{create_route, delete_route, disable_share, enable_share, explore_routes, generate_description, get_route, get_shared_route, import_route_from_geojson, list_routes, save_description, update_route};
+use crate::delivery::http::v1::notifications::{
+    get_unread_count, list_notifications, mark_all_as_read, mark_as_read,
+};
+use crate::delivery::http::v1::ratings::{
+    get_rating_aggregate, get_user_rating, remove_rating, set_rating,
+};
+use crate::delivery::http::v1::routes::{
+    create_route, delete_route, disable_share, enable_share, explore_routes, generate_description,
+    get_route, get_shared_route, import_route_from_geojson, list_routes, save_description,
+    update_route,
+};
+use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::ws::websocket_handler;
-use crate::repository::postgres::{create_pool, PostgresBookmarkRepository, PostgresCategoryRepository, PostgresChatMessageRepository, PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository, PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository};
+use crate::repository::postgres::{
+    PostgresBookmarkRepository, PostgresCategoryRepository, PostgresChatMessageRepository,
+    PostgresCommentRepository, PostgresLikeRepository, PostgresNotificationRepository,
+    PostgresRatingRepository, PostgresRouteRepository, PostgresSettingsRepository, create_pool,
+};
+use crate::usecase::ai_client::AiChatClient;
+use crate::usecase::anthropic::AnthropicClient;
 use crate::usecase::bookmarks::BookmarksUseCase;
 use crate::usecase::categories::CategoriesUseCase;
 use crate::usecase::chat::ChatUseCase;
 use crate::usecase::comments::CommentsUseCase;
-use crate::usecase::notifications::NotificationsUseCase;
+use crate::usecase::dynamic_ai_client::{DynamicAiClient, UnleashPoller};
 use crate::usecase::jwt::JwtService;
 use crate::usecase::likes::LikesUseCase;
-use crate::usecase::ai_client::AiChatClient;
-use crate::usecase::anthropic::AnthropicClient;
-use crate::usecase::dynamic_ai_client::{DynamicAiClient, UnleashPoller};
+use crate::usecase::notifications::NotificationsUseCase;
 use crate::usecase::openai::OpenAIClient;
 use crate::usecase::ratings::RatingsUseCase;
 use crate::usecase::routes::RoutesUseCase;
@@ -125,11 +146,10 @@ fn build_openai_compatible_client(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = config::AppConfig::from_env()
-        .expect("failed to load configuration from environment");
+    let config =
+        config::AppConfig::from_env().expect("failed to load configuration from environment");
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     // Initialize tracing subscriber with optional OpenTelemetry layer
     if config.telemetry_enabled {
@@ -154,7 +174,10 @@ async fn main() -> anyhow::Result<()> {
     metrics_process::Collector::default().describe();
     tracing::info!("prometheus metrics initialized");
 
-    tracing::info!("config loaded, telemetry_enabled={}", config.telemetry_enabled);
+    tracing::info!(
+        "config loaded, telemetry_enabled={}",
+        config.telemetry_enabled
+    );
 
     let pool = create_pool(&config.database_url, config.database_max_connections)
         .await
@@ -179,7 +202,8 @@ async fn main() -> anyhow::Result<()> {
     let chat_message_repository = PostgresChatMessageRepository::new(pool.clone());
     let route_repository_for_chat = PostgresRouteRepository::new(pool);
     let jwt_service = JwtService::new(config.jwt_secret);
-    let nominatim_client = crate::usecase::nominatim::NominatimClient::new(config.nominatim_url.clone());
+    let nominatim_client =
+        crate::usecase::nominatim::NominatimClient::new(config.nominatim_url.clone());
     let ollama_client = non_empty(config.ollama_base_url.clone()).map(|base_url| {
         tracing::info!(%base_url, model = %config.ollama_vision_model, "Ollama vision client configured");
         OpenAIClient::new(
@@ -200,7 +224,8 @@ async fn main() -> anyhow::Result<()> {
     let comments_usecase = CommentsUseCase::new(comment_repository, route_repository_for_comments);
     let likes_usecase = LikesUseCase::new(like_repository, route_repository_for_likes);
     let ratings_usecase = RatingsUseCase::new(rating_repository, route_repository_for_ratings);
-    let bookmarks_usecase = BookmarksUseCase::new(bookmark_repository, route_repository_for_bookmarks);
+    let bookmarks_usecase =
+        BookmarksUseCase::new(bookmark_repository, route_repository_for_bookmarks);
     let settings_usecase = SettingsUseCase::new(settings_repository);
     let categories_usecase = CategoriesUseCase::new(category_repository);
     let notifications_usecase = NotificationsUseCase::new(notification_repository);
@@ -223,10 +248,11 @@ async fn main() -> anyhow::Result<()> {
         )) as Arc<dyn AiChatClient>
     });
 
-    let anthropic_client: Option<Arc<dyn AiChatClient>> = non_empty(config.anthropic_api_key.clone())
-        .map(|key| {
+    let anthropic_client: Option<Arc<dyn AiChatClient>> =
+        non_empty(config.anthropic_api_key.clone()).map(|key| {
             tracing::info!(model = %config.anthropic_model, "Anthropic client configured");
-            Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key)) as Arc<dyn AiChatClient>
+            Arc::new(AnthropicClient::new(config.anthropic_model.clone(), key))
+                as Arc<dyn AiChatClient>
         });
 
     let claude_proxy_client = build_openai_compatible_client(
@@ -341,9 +367,16 @@ async fn main() -> anyhow::Result<()> {
                 });
                 let cleaned = before - limits.len();
                 if cleaned > 0 {
-                    tracing::info!(cleaned, remaining = limits.len(), "rate limiter cleanup completed");
+                    tracing::info!(
+                        cleaned,
+                        remaining = limits.len(),
+                        "rate limiter cleanup completed"
+                    );
                 } else {
-                    tracing::debug!(entries = limits.len(), "rate limiter cleanup: nothing to clean");
+                    tracing::debug!(
+                        entries = limits.len(),
+                        "rate limiter cleanup: nothing to clean"
+                    );
                 }
             }
         });
@@ -435,32 +468,65 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/routes/{id}",
             get(get_route).put(update_route).delete(delete_route),
         )
-        .route("/api/v1/routes/{id}/share", post(enable_share).delete(disable_share))
+        .route(
+            "/api/v1/routes/{id}/share",
+            post(enable_share).delete(disable_share),
+        )
         .route("/api/v1/routes/{route_id}/comments", post(create_comment))
         .route("/api/v1/comments/{comment_id}", delete(delete_comment))
         .route("/api/v1/routes/{route_id}/like", post(toggle_like))
-        .route("/api/v1/routes/{route_id}/like/me", get(get_user_like_status))
-        .route("/api/v1/routes/{route_id}/rating", put(set_rating).delete(remove_rating))
+        .route(
+            "/api/v1/routes/{route_id}/like/me",
+            get(get_user_like_status),
+        )
+        .route(
+            "/api/v1/routes/{route_id}/rating",
+            put(set_rating).delete(remove_rating),
+        )
         .route("/api/v1/routes/{route_id}/rating/me", get(get_user_rating))
-        .route("/api/v1/routes/{route_id}/description/generate", post(generate_description))
-        .route("/api/v1/routes/{route_id}/description", post(save_description))
+        .route(
+            "/api/v1/routes/{route_id}/description/generate",
+            post(generate_description),
+        )
+        .route(
+            "/api/v1/routes/{route_id}/description",
+            post(save_description),
+        )
         .route("/api/v1/routes/{route_id}/bookmark", post(toggle_bookmark))
-        .route("/api/v1/routes/{route_id}/bookmark/me", get(get_user_bookmark_status))
+        .route(
+            "/api/v1/routes/{route_id}/bookmark/me",
+            get(get_user_bookmark_status),
+        )
         .route("/api/v1/bookmarks", get(list_bookmarks))
         .route("/api/v1/admin/routes/stats", get(get_routes_stats))
         .route("/api/v1/admin/routes", get(list_admin_routes))
         .route("/api/v1/admin/comments", get(list_admin_comments))
         .route("/api/v1/admin/categories", post(create_category))
-        .route("/api/v1/admin/categories/{id}", put(update_category).delete(delete_category))
+        .route(
+            "/api/v1/admin/categories/{id}",
+            put(update_category).delete(delete_category),
+        )
         .route("/api/v1/notifications", get(list_notifications))
         .route("/api/v1/notifications/unread-count", get(get_unread_count))
         .route("/api/v1/notifications/{id}/read", post(mark_as_read))
         .route("/api/v1/notifications/read-all", post(mark_all_as_read))
-        .route("/api/v1/admin/settings/difficulty", put(set_difficulty_thresholds))
-        .route("/api/v1/chat", get(list_conversations).post(send_chat_message))
-        .route("/api/v1/chat/{conversation_id}", get(get_chat_history).delete(delete_conversation))
+        .route(
+            "/api/v1/admin/settings/difficulty",
+            put(set_difficulty_thresholds),
+        )
+        .route(
+            "/api/v1/chat",
+            get(list_conversations).post(send_chat_message),
+        )
+        .route(
+            "/api/v1/chat/{conversation_id}",
+            get(get_chat_history).delete(delete_conversation),
+        )
         .route("/api/v1/chat/stream", post(send_chat_message_stream))
-        .route("/api/v1/chat/{conversation_id}/messages/{message_id}", delete(delete_message))
+        .route(
+            "/api/v1/chat/{conversation_id}/messages/{message_id}",
+            delete(delete_message),
+        )
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             auth_middleware,
@@ -473,10 +539,19 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/shared/{token}", get(get_shared_route))
         .route("/api/v1/routes/{route_id}/ws", get(websocket_handler))
         .route("/api/v1/routes/{route_id}/comments", get(list_comments))
-        .route("/api/v1/routes/{route_id}/comments/count", get(count_comments))
+        .route(
+            "/api/v1/routes/{route_id}/comments/count",
+            get(count_comments),
+        )
         .route("/api/v1/routes/{route_id}/like", get(get_like_count))
-        .route("/api/v1/routes/{route_id}/rating", get(get_rating_aggregate))
-        .route("/api/v1/settings/difficulty", get(get_difficulty_thresholds))
+        .route(
+            "/api/v1/routes/{route_id}/rating",
+            get(get_rating_aggregate),
+        )
+        .route(
+            "/api/v1/settings/difficulty",
+            get(get_difficulty_thresholds),
+        )
         .route("/api/v1/categories", get(list_categories))
         .route("/api/v1/chat/health", get(chat_health))
         .merge(routes_api)

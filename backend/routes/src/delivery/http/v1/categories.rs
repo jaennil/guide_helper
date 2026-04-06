@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::AppState;
 use crate::delivery::http::v1::admin::require_admin;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct CategoryResponse {
@@ -70,7 +70,10 @@ pub async fn create_category(
         return Err(UsecaseError::Validation(format!("{:?}", validation_errors)));
     }
 
-    let category = state.categories_usecase.create_category(payload.name).await?;
+    let category = state
+        .categories_usecase
+        .create_category(payload.name)
+        .await?;
 
     tracing::debug!(category_id = %category.id, "category created successfully");
     Ok((
@@ -98,7 +101,10 @@ pub async fn update_category(
         return Err(UsecaseError::Validation(format!("{:?}", validation_errors)));
     }
 
-    state.categories_usecase.update_category(id, payload.name).await?;
+    state
+        .categories_usecase
+        .update_category(id, payload.name)
+        .await?;
 
     tracing::debug!(category_id = %id, "category updated successfully");
     Ok(StatusCode::NO_CONTENT)

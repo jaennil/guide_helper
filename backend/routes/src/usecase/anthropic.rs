@@ -1,5 +1,5 @@
 /// Anthropic Messages API client with tool use support.
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -82,7 +82,11 @@ impl AnthropicClient {
 
         tracing::info!(%model, "AnthropicClient created");
 
-        Self { http_client, model, api_key }
+        Self {
+            http_client,
+            model,
+            api_key,
+        }
     }
 
     /// Convert our `AiMessage` slice into Anthropic's format.
@@ -99,9 +103,7 @@ impl AnthropicClient {
                 AiRole::User => {
                     out.push(AnthropicMessage {
                         role: "user".to_string(),
-                        content: AnthropicContent::Text(
-                            msg.content.clone().unwrap_or_default(),
-                        ),
+                        content: AnthropicContent::Text(msg.content.clone().unwrap_or_default()),
                     });
                 }
                 AiRole::Assistant => {
@@ -121,8 +123,8 @@ impl AnthropicClient {
                             }
                         }
                         for tc in &msg.tool_calls {
-                            let input: serde_json::Value =
-                                serde_json::from_str(&tc.arguments).unwrap_or(serde_json::Value::Object(Default::default()));
+                            let input: serde_json::Value = serde_json::from_str(&tc.arguments)
+                                .unwrap_or(serde_json::Value::Object(Default::default()));
                             blocks.push(AnthropicBlock::ToolUse {
                                 id: tc.id.clone(),
                                 name: tc.name.clone(),
@@ -202,7 +204,10 @@ impl AiChatClient for AnthropicClient {
             })?;
 
         let status = response.status();
-        let body = response.text().await.map_err(|e| anyhow!("Failed to read Anthropic response: {}", e))?;
+        let body = response
+            .text()
+            .await
+            .map_err(|e| anyhow!("Failed to read Anthropic response: {}", e))?;
 
         if !status.is_success() {
             tracing::error!(%status, %body, "Anthropic returned error");
@@ -239,7 +244,11 @@ impl AiChatClient for AnthropicClient {
             Some(text_parts.join("\n"))
         };
 
-        Ok(AiResponse { content, tool_calls, stop })
+        Ok(AiResponse {
+            content,
+            tool_calls,
+            stop,
+        })
     }
 
     fn model(&self) -> &str {

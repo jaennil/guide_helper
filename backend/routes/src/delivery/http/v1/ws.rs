@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, Query, State, WebSocketUpgrade},
     response::{IntoResponse, Response},
 };
-use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
 use tokio::sync::broadcast;
@@ -60,12 +60,10 @@ async fn handle_socket(socket: WebSocket, route_id: Uuid, user_id: String, state
     // Get or create broadcast channel for this route
     let mut rx = {
         let mut channels = state.ws_channels.write().await;
-        let tx = channels
-            .entry(route_id)
-            .or_insert_with(|| {
-                tracing::debug!(route_id = %route_id, "creating new broadcast channel");
-                broadcast::channel(64).0
-            });
+        let tx = channels.entry(route_id).or_insert_with(|| {
+            tracing::debug!(route_id = %route_id, "creating new broadcast channel");
+            broadcast::channel(64).0
+        });
         tx.subscribe()
     };
 

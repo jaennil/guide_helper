@@ -16,7 +16,9 @@ where
     N: NotificationRepository,
 {
     pub fn new(notification_repository: N) -> Self {
-        Self { notification_repository }
+        Self {
+            notification_repository,
+        }
     }
 
     pub fn notification_repository(&self) -> &N {
@@ -34,7 +36,8 @@ where
     ) -> Result<Notification, UsecaseError> {
         tracing::debug!("creating notification");
 
-        let notification = Notification::new(user_id, notification_type, route_id, actor_name, message);
+        let notification =
+            Notification::new(user_id, notification_type, route_id, actor_name, message);
         self.notification_repository.create(&notification).await?;
 
         tracing::info!(notification_id = %notification.id, user_id = %user_id, "notification created");
@@ -50,7 +53,10 @@ where
     ) -> Result<Vec<Notification>, UsecaseError> {
         tracing::debug!("listing notifications");
 
-        let notifications = self.notification_repository.find_by_user_id(user_id, limit, offset).await?;
+        let notifications = self
+            .notification_repository
+            .find_by_user_id(user_id, limit, offset)
+            .await?;
 
         tracing::debug!(user_id = %user_id, count = notifications.len(), "retrieved notifications");
         Ok(notifications)
@@ -70,7 +76,9 @@ where
     pub async fn mark_as_read(&self, id: Uuid, user_id: Uuid) -> Result<(), UsecaseError> {
         tracing::debug!("marking notification as read");
 
-        self.notification_repository.mark_as_read(id, user_id).await?;
+        self.notification_repository
+            .mark_as_read(id, user_id)
+            .await?;
 
         tracing::debug!(notification_id = %id, "notification marked as read");
         Ok(())
@@ -80,7 +88,9 @@ where
     pub async fn mark_all_as_read(&self, user_id: Uuid) -> Result<(), UsecaseError> {
         tracing::debug!("marking all notifications as read");
 
-        self.notification_repository.mark_all_as_read(user_id).await?;
+        self.notification_repository
+            .mark_all_as_read(user_id)
+            .await?;
 
         tracing::debug!(user_id = %user_id, "all notifications marked as read");
         Ok(())
@@ -98,10 +108,7 @@ mod tests {
     async fn test_create_notification_success() {
         let mut mock_repo = MockNotificationRepository::new();
 
-        mock_repo
-            .expect_create()
-            .times(1)
-            .returning(|_| Ok(()));
+        mock_repo.expect_create().times(1).returning(|_| Ok(()));
 
         let usecase = NotificationsUseCase::new(mock_repo);
         let user_id = Uuid::new_v4();

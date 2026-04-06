@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct CommentResponse {
@@ -56,16 +56,28 @@ pub async fn create_comment(
     tracing::debug!(comment_id = %comment.id, "comment created successfully");
 
     // Emit notification to route owner (best-effort)
-    if let Ok(Some(route)) = state.routes_usecase.route_repository().find_by_id(route_id).await {
+    if let Ok(Some(route)) = state
+        .routes_usecase
+        .route_repository()
+        .find_by_id(route_id)
+        .await
+    {
         if route.user_id != user.user_id {
-            let msg = format!("{} commented on your route \"{}\"", &comment.author_name, &route.name);
-            if let Err(e) = state.notifications_usecase.create_notification(
-                route.user_id,
-                "comment".to_string(),
-                route_id,
-                comment.author_name.clone(),
-                msg,
-            ).await {
+            let msg = format!(
+                "{} commented on your route \"{}\"",
+                &comment.author_name, &route.name
+            );
+            if let Err(e) = state
+                .notifications_usecase
+                .create_notification(
+                    route.user_id,
+                    "comment".to_string(),
+                    route_id,
+                    comment.author_name.clone(),
+                    msg,
+                )
+                .await
+            {
                 tracing::error!(error = %e, "failed to create comment notification");
             }
         }

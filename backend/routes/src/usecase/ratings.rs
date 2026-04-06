@@ -35,7 +35,9 @@ where
         tracing::debug!("setting rating");
 
         if !(1..=5).contains(&rating) {
-            return Err(UsecaseError::Validation("Rating must be between 1 and 5".to_string()));
+            return Err(UsecaseError::Validation(
+                "Rating must be between 1 and 5".to_string(),
+            ));
         }
 
         // Verify route exists
@@ -146,9 +148,7 @@ mod tests {
         let mock_route_repo = MockRouteRepository::new();
 
         let usecase = RatingsUseCase::new(mock_rating_repo, mock_route_repo);
-        let result = usecase
-            .set_rating(Uuid::new_v4(), Uuid::new_v4(), 0)
-            .await;
+        let result = usecase.set_rating(Uuid::new_v4(), Uuid::new_v4(), 0).await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("between 1 and 5"));
@@ -156,9 +156,7 @@ mod tests {
         let mock_rating_repo = MockRatingRepository::new();
         let mock_route_repo = MockRouteRepository::new();
         let usecase = RatingsUseCase::new(mock_rating_repo, mock_route_repo);
-        let result = usecase
-            .set_rating(Uuid::new_v4(), Uuid::new_v4(), 6)
-            .await;
+        let result = usecase.set_rating(Uuid::new_v4(), Uuid::new_v4(), 6).await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("between 1 and 5"));

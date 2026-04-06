@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct NotificationListParams {
@@ -78,7 +78,13 @@ pub async fn list_notifications(
         .collect();
 
     tracing::debug!(count = response.len(), unread_count, "notifications listed");
-    Ok((StatusCode::OK, Json(NotificationsListResponse { notifications: response, unread_count })))
+    Ok((
+        StatusCode::OK,
+        Json(NotificationsListResponse {
+            notifications: response,
+            unread_count,
+        }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]

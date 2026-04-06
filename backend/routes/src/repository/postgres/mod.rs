@@ -1,4 +1,4 @@
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 
 use crate::{
@@ -11,7 +11,11 @@ use crate::{
     domain::rating::RouteRating,
     domain::route::{AdminRouteRow, ExploreRouteRow, Route},
     repository::errors::RepositoryError,
-    usecase::contracts::{BookmarkRepository, CategoryRepository, ChatMessageRepository, CommentRepository, LikeRepository, NotificationRepository, RatingRepository, RouteRepository, SettingsRepository},
+    usecase::contracts::{
+        BookmarkRepository, CategoryRepository, ChatMessageRepository, CommentRepository,
+        LikeRepository, NotificationRepository, RatingRepository, RouteRepository,
+        SettingsRepository,
+    },
 };
 
 #[derive(Clone)]
@@ -30,7 +34,11 @@ impl RouteRepository for PostgresRouteRepository {
     async fn create(&self, route: &Route) -> Result<(), RepositoryError> {
         tracing::debug!("creating route");
 
-        let mut tx = self.pool.begin().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         sqlx::query(
             r#"
@@ -55,7 +63,7 @@ impl RouteRepository for PostgresRouteRepository {
                 r#"
                 INSERT INTO route_categories (route_id, category_id)
                 VALUES ($1, $2)
-                "#
+                "#,
             )
             .bind(route.id)
             .bind(category_id)
@@ -64,7 +72,9 @@ impl RouteRepository for PostgresRouteRepository {
             .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
         }
 
-        tx.commit().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         tracing::debug!(route_id = %route.id, category_count = route.category_ids.len(), "route created successfully");
         Ok(())
@@ -118,14 +128,18 @@ impl RouteRepository for PostgresRouteRepository {
     async fn update(&self, route: &Route) -> Result<(), RepositoryError> {
         tracing::debug!("updating route");
 
-        let mut tx = self.pool.begin().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         let result = sqlx::query(
             r#"
             UPDATE routes
             SET name = $2, points = $3, updated_at = $4, seasons = $5, description = $6
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(route.id)
         .bind(&route.name)
@@ -152,7 +166,7 @@ impl RouteRepository for PostgresRouteRepository {
                 r#"
                 INSERT INTO route_categories (route_id, category_id)
                 VALUES ($1, $2)
-                "#
+                "#,
             )
             .bind(route.id)
             .bind(category_id)
@@ -161,7 +175,9 @@ impl RouteRepository for PostgresRouteRepository {
             .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
         }
 
-        tx.commit().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         tracing::debug!(route_id = %route.id, category_count = route.category_ids.len(), "route updated successfully");
         Ok(())
@@ -176,7 +192,7 @@ impl RouteRepository for PostgresRouteRepository {
             UPDATE routes
             SET share_token = $2
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .bind(token)
@@ -221,7 +237,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             DELETE FROM routes
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .execute(&self.pool)
@@ -286,7 +302,12 @@ impl RouteRepository for PostgresRouteRepository {
     }
 
     #[tracing::instrument(skip(self), fields(?search, ?category_id))]
-    async fn count_explore_shared(&self, search: Option<String>, category_id: Option<Uuid>, season: Option<String>) -> Result<i64, RepositoryError> {
+    async fn count_explore_shared(
+        &self,
+        search: Option<String>,
+        category_id: Option<Uuid>,
+        season: Option<String>,
+    ) -> Result<i64, RepositoryError> {
         tracing::debug!("counting explore shared routes");
 
         let count: (i64,) = sqlx::query_as(
@@ -758,13 +779,12 @@ impl SettingsRepository for PostgresSettingsRepository {
     async fn get_value(&self, key: &str) -> Result<Option<serde_json::Value>, RepositoryError> {
         tracing::debug!("getting setting value");
 
-        let row: Option<(serde_json::Value,)> = sqlx::query_as(
-            "SELECT value FROM settings WHERE key = $1",
-        )
-        .bind(key)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        let row: Option<(serde_json::Value,)> =
+            sqlx::query_as("SELECT value FROM settings WHERE key = $1")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         tracing::debug!(key, found = row.is_some(), "setting value retrieved");
         Ok(row.map(|r| r.0))
@@ -997,14 +1017,13 @@ impl NotificationRepository for PostgresNotificationRepository {
     async fn mark_as_read(&self, id: Uuid, user_id: Uuid) -> Result<(), RepositoryError> {
         tracing::debug!("marking notification as read");
 
-        let result = sqlx::query(
-            "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
-        )
-        .bind(id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        let result =
+            sqlx::query("UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2")
+                .bind(id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         if result.rows_affected() == 0 {
             return Err(RepositoryError::NotFound);
@@ -1176,26 +1195,23 @@ impl ChatMessageRepository for PostgresChatMessageRepository {
             return Err(RepositoryError::NotFound);
         }
 
-        tracing::debug!(rows_deleted = result.rows_affected(), "conversation deleted");
+        tracing::debug!(
+            rows_deleted = result.rows_affected(),
+            "conversation deleted"
+        );
         Ok(())
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id, message_id = %message_id))]
-    async fn delete_message(
-        &self,
-        user_id: Uuid,
-        message_id: Uuid,
-    ) -> Result<(), RepositoryError> {
+    async fn delete_message(&self, user_id: Uuid, message_id: Uuid) -> Result<(), RepositoryError> {
         tracing::debug!("deleting chat message");
 
-        let result = sqlx::query(
-            "DELETE FROM chat_messages WHERE id = $1 AND user_id = $2",
-        )
-        .bind(message_id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        let result = sqlx::query("DELETE FROM chat_messages WHERE id = $1 AND user_id = $2")
+            .bind(message_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
         if result.rows_affected() == 0 {
             return Err(RepositoryError::NotFound);
@@ -1308,7 +1324,10 @@ impl BookmarkRepository for PostgresBookmarkRepository {
     }
 
     #[tracing::instrument(skip(self), fields(user_id = %user_id))]
-    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<ExploreRouteRow>, RepositoryError> {
+    async fn find_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<ExploreRouteRow>, RepositoryError> {
         tracing::debug!("finding bookmarked routes by user_id");
 
         let rows = sqlx::query_as::<_, ExploreRouteRow>(

@@ -99,7 +99,13 @@ pub struct AdminRouteRow {
 }
 
 impl Route {
-    pub fn new(user_id: Uuid, name: String, points: Vec<RoutePoint>, category_ids: Vec<Uuid>, seasons: Vec<String>) -> Self {
+    pub fn new(
+        user_id: Uuid,
+        name: String,
+        points: Vec<RoutePoint>,
+        category_ids: Vec<Uuid>,
+        seasons: Vec<String>,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -117,7 +123,14 @@ impl Route {
         }
     }
 
-    pub fn update(&mut self, name: Option<String>, points: Option<Vec<RoutePoint>>, category_ids: Option<Vec<Uuid>>, seasons: Option<Vec<String>>, description: Option<String>) {
+    pub fn update(
+        &mut self,
+        name: Option<String>,
+        points: Option<Vec<RoutePoint>>,
+        category_ids: Option<Vec<Uuid>>,
+        seasons: Option<Vec<String>>,
+        description: Option<String>,
+    ) {
         if let Some(n) = name {
             self.name = n;
         }
@@ -165,7 +178,13 @@ mod tests {
             },
         ];
 
-        let route = Route::new(user_id, "Test Route".to_string(), points.clone(), vec![], vec![]);
+        let route = Route::new(
+            user_id,
+            "Test Route".to_string(),
+            points.clone(),
+            vec![],
+            vec![],
+        );
 
         assert_eq!(route.user_id, user_id);
         assert_eq!(route.name, "Test Route");
@@ -205,7 +224,13 @@ mod tests {
                 photo: None,
             },
         ];
-        route.update(Some("Updated".to_string()), Some(new_points), None, None, None);
+        route.update(
+            Some("Updated".to_string()),
+            Some(new_points),
+            None,
+            None,
+            None,
+        );
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);

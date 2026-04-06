@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::delivery::http::v1::routes::ExploreRouteResponse;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct ToggleBookmarkResponse {
@@ -55,7 +55,10 @@ pub async fn get_user_bookmark_status(
         .await?;
 
     tracing::debug!(route_id = %route_id, bookmarked, "user bookmark status retrieved");
-    Ok((StatusCode::OK, Json(UserBookmarkStatusResponse { bookmarked })))
+    Ok((
+        StatusCode::OK,
+        Json(UserBookmarkStatusResponse { bookmarked }),
+    ))
 }
 
 #[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
@@ -65,10 +68,7 @@ pub async fn list_bookmarks(
 ) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("handling list bookmarks request");
 
-    let rows = state
-        .bookmarks_usecase
-        .list_bookmarks(user.user_id)
-        .await?;
+    let rows = state.bookmarks_usecase.list_bookmarks(user.user_id).await?;
 
     let response: Vec<ExploreRouteResponse> = rows
         .into_iter()

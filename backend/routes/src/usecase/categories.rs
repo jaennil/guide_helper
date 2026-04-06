@@ -16,7 +16,9 @@ where
     C: CategoryRepository,
 {
     pub fn new(category_repository: C) -> Self {
-        Self { category_repository }
+        Self {
+            category_repository,
+        }
     }
 
     #[tracing::instrument(skip(self, name), fields(%name))]
@@ -82,10 +84,7 @@ mod tests {
     async fn test_create_category_success() {
         let mut mock_repo = MockCategoryRepository::new();
 
-        mock_repo
-            .expect_create()
-            .times(1)
-            .returning(|_| Ok(()));
+        mock_repo.expect_create().times(1).returning(|_| Ok(()));
 
         let usecase = CategoriesUseCase::new(mock_repo);
         let result = usecase.create_category("Hiking".to_string()).await;
@@ -171,7 +170,9 @@ mod tests {
             .returning(|_, _| Ok(()));
 
         let usecase = CategoriesUseCase::new(mock_repo);
-        let result = usecase.update_category(category_id, "New Name".to_string()).await;
+        let result = usecase
+            .update_category(category_id, "New Name".to_string())
+            .await;
 
         assert!(result.is_ok());
     }
@@ -187,7 +188,9 @@ mod tests {
             .returning(|_| Ok(None));
 
         let usecase = CategoriesUseCase::new(mock_repo);
-        let result = usecase.update_category(category_id, "New".to_string()).await;
+        let result = usecase
+            .update_category(category_id, "New".to_string())
+            .await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not found"));

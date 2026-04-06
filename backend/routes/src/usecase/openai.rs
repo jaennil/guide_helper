@@ -189,7 +189,10 @@ impl OpenAIClient {
         })
     }
 
-    pub async fn vision_chat(&self, request: VisionChatRequest) -> anyhow::Result<OpenAIChatResponse> {
+    pub async fn vision_chat(
+        &self,
+        request: VisionChatRequest,
+    ) -> anyhow::Result<OpenAIChatResponse> {
         let url = format!("{}/chat/completions", self.base_url);
         tracing::debug!(%url, model = %request.model, "sending vision chat request");
 
@@ -204,7 +207,10 @@ impl OpenAIClient {
             })?;
 
         let status = response.status();
-        let body = response.text().await.map_err(|e| anyhow!("Failed to read vision response: {}", e))?;
+        let body = response
+            .text()
+            .await
+            .map_err(|e| anyhow!("Failed to read vision response: {}", e))?;
 
         if !status.is_success() {
             tracing::error!(%status, %body, "vision API returned error");
@@ -282,7 +288,11 @@ impl AiChatClient for OpenAIClient {
         let request = OpenAIChatRequest {
             model: self.model.clone(),
             messages: oai_messages,
-            tools: if oai_tools.is_empty() { None } else { Some(oai_tools) },
+            tools: if oai_tools.is_empty() {
+                None
+            } else {
+                Some(oai_tools)
+            },
             tool_choice: Some("auto".to_string()),
         };
 

@@ -34,7 +34,9 @@ pub struct SettingsUseCase<R: SettingsRepository> {
 
 impl<R: SettingsRepository> SettingsUseCase<R> {
     pub fn new(settings_repository: R) -> Self {
-        Self { settings_repository }
+        Self {
+            settings_repository,
+        }
     }
 
     pub fn settings_repository(&self) -> &R {
@@ -45,12 +47,19 @@ impl<R: SettingsRepository> SettingsUseCase<R> {
     pub async fn get_difficulty_thresholds(&self) -> Result<DifficultyThresholds, RepositoryError> {
         tracing::debug!("getting difficulty thresholds");
 
-        let value = self.settings_repository.get_value(DIFFICULTY_THRESHOLDS_KEY).await?;
+        let value = self
+            .settings_repository
+            .get_value(DIFFICULTY_THRESHOLDS_KEY)
+            .await?;
 
         match value {
             Some(v) => {
-                let thresholds: DifficultyThresholds = serde_json::from_value(v)
-                    .map_err(|e| RepositoryError::DatabaseError(format!("failed to deserialize difficulty thresholds: {}", e)))?;
+                let thresholds: DifficultyThresholds = serde_json::from_value(v).map_err(|e| {
+                    RepositoryError::DatabaseError(format!(
+                        "failed to deserialize difficulty thresholds: {}",
+                        e
+                    ))
+                })?;
                 tracing::debug!(?thresholds, "difficulty thresholds loaded");
                 Ok(thresholds)
             }
@@ -62,13 +71,22 @@ impl<R: SettingsRepository> SettingsUseCase<R> {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn set_difficulty_thresholds(&self, thresholds: &DifficultyThresholds) -> Result<(), RepositoryError> {
+    pub async fn set_difficulty_thresholds(
+        &self,
+        thresholds: &DifficultyThresholds,
+    ) -> Result<(), RepositoryError> {
         tracing::debug!(?thresholds, "saving difficulty thresholds");
 
-        let value = serde_json::to_value(thresholds)
-            .map_err(|e| RepositoryError::DatabaseError(format!("failed to serialize difficulty thresholds: {}", e)))?;
+        let value = serde_json::to_value(thresholds).map_err(|e| {
+            RepositoryError::DatabaseError(format!(
+                "failed to serialize difficulty thresholds: {}",
+                e
+            ))
+        })?;
 
-        self.settings_repository.set_value(DIFFICULTY_THRESHOLDS_KEY, &value).await?;
+        self.settings_repository
+            .set_value(DIFFICULTY_THRESHOLDS_KEY, &value)
+            .await?;
 
         tracing::info!("difficulty thresholds saved");
         Ok(())

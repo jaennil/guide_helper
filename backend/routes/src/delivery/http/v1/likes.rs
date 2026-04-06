@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Serialize)]
 pub struct LikeCountResponse {
@@ -47,16 +47,25 @@ pub async fn toggle_like(
 
     // Emit notification to route owner on like (not unlike)
     if liked {
-        if let Ok(Some(route)) = state.routes_usecase.route_repository().find_by_id(route_id).await {
+        if let Ok(Some(route)) = state
+            .routes_usecase
+            .route_repository()
+            .find_by_id(route_id)
+            .await
+        {
             if route.user_id != user.user_id {
                 let msg = format!("{} liked your route \"{}\"", &user.email, &route.name);
-                if let Err(e) = state.notifications_usecase.create_notification(
-                    route.user_id,
-                    "like".to_string(),
-                    route_id,
-                    user.email.clone(),
-                    msg,
-                ).await {
+                if let Err(e) = state
+                    .notifications_usecase
+                    .create_notification(
+                        route.user_id,
+                        "like".to_string(),
+                        route_id,
+                        user.email.clone(),
+                        msg,
+                    )
+                    .await
+                {
                     tracing::error!(error = %e, "failed to create like notification");
                 }
             }

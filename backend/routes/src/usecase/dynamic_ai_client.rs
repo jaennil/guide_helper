@@ -178,10 +178,16 @@ impl DynamicAiClient {
 impl AiChatClient for DynamicAiClient {
     async fn chat(&self, messages: &[AiMessage], tools: &[AiTool]) -> Result<AiResponse> {
         let provider = self.resolve_provider().await;
-        tracing::debug!(provider = provider.as_str(), "DynamicAiClient resolved provider");
-        let client = self
-            .active_client_for(provider)
-            .ok_or_else(|| anyhow::anyhow!("no AI client configured for provider '{}'", provider.as_str()))?;
+        tracing::debug!(
+            provider = provider.as_str(),
+            "DynamicAiClient resolved provider"
+        );
+        let client = self.active_client_for(provider).ok_or_else(|| {
+            anyhow::anyhow!(
+                "no AI client configured for provider '{}'",
+                provider.as_str()
+            )
+        })?;
         client.chat(messages, tools).await
     }
 

@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
-use crate::AppState;
 
 #[derive(Deserialize, Validate)]
 pub struct SetRatingRequest {
@@ -64,16 +64,28 @@ pub async fn set_rating(
         .await?;
 
     // Emit notification to route owner (best-effort)
-    if let Ok(Some(route)) = state.routes_usecase.route_repository().find_by_id(route_id).await {
+    if let Ok(Some(route)) = state
+        .routes_usecase
+        .route_repository()
+        .find_by_id(route_id)
+        .await
+    {
         if route.user_id != user.user_id {
-            let msg = format!("{} rated your route \"{}\" with {}/5", &user.email, &route.name, payload.rating);
-            if let Err(e) = state.notifications_usecase.create_notification(
-                route.user_id,
-                "rating".to_string(),
-                route_id,
-                user.email.clone(),
-                msg,
-            ).await {
+            let msg = format!(
+                "{} rated your route \"{}\" with {}/5",
+                &user.email, &route.name, payload.rating
+            );
+            if let Err(e) = state
+                .notifications_usecase
+                .create_notification(
+                    route.user_id,
+                    "rating".to_string(),
+                    route_id,
+                    user.email.clone(),
+                    msg,
+                )
+                .await
+            {
                 tracing::error!(error = %e, "failed to create rating notification");
             }
         }
@@ -114,7 +126,10 @@ pub async fn get_rating_aggregate(
 ) -> Result<impl IntoResponse, UsecaseError> {
     tracing::debug!("handling get rating aggregate request");
 
-    let info = state.ratings_usecase.get_rating_info(route_id, None).await?;
+    let info = state
+        .ratings_usecase
+        .get_rating_info(route_id, None)
+        .await?;
 
     tracing::debug!(route_id = %route_id, average = info.average, count = info.count, "rating aggregate retrieved");
     Ok((
