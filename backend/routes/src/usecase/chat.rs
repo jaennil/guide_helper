@@ -84,6 +84,12 @@ struct DirectRouteRequest {
     geocoding_queries: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DirectLocationRequest {
+    display_name: String,
+    geocoding_query: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum ChatStreamEvent {
@@ -363,100 +369,171 @@ where
         &self,
         text: &str,
     ) -> Result<Option<DirectChatResponse>, UsecaseError> {
-        let Some(route_request) = extract_direct_route_request(text) else {
+        let is_russian = contains_cyrillic(text);
+
+        if let Some(route_request) = extract_direct_route_request(text) {
+            tracing::info!(
+                places = ?route_request.display_places,
+                geocoding_queries = ?route_request.geocoding_queries,
+                "matched direct route request"
+            );
+
+            let mut found_points = Vec::new();
+            let mut missing_places = Vec::new();
+
+            for (display_place, geocoding_query) in route_request
+                .display_places
+                .iter()
+                .zip(route_request.geocoding_queries.iter())
+            {
+                match self.geocode_place(geocoding_query).await {
+                    Ok(Some(point)) => found_points.push(point),
+                    Ok(None) => missing_places.push(display_place.clone()),
+                    Err(error) => {
+                        tracing::warn!(
+                            place = %display_place,
+                            query = %geocoding_query,
+                            %error,
+                            "direct route geocoding failed"
+                        );
+                        missing_places.push(display_place.clone());
+                    }
+                }
+            }
+
+            if missing_places.is_empty() && found_points.len() >= 2 {
+                let summary = route_request.display_places.join(" -> ");
+                let message = if is_russian {
+                    format!(
+                        "Построил маршрут через точки: {}. Маршрут добавлен на карту.",
+                        summary
+                    )
+                } else {
+                    format!(
+                        "I plotted a route through these points: {}. It has been added to the map.",
+                        summary
+                    )
+                };
+
+                return Ok(Some(DirectChatResponse {
+                    message,
+                    actions: vec![ChatAction::ShowPoints {
+                        points: found_points,
+                    }],
+                }));
+            }
+
+            let missing_summary = missing_places.join(", ");
+            if !found_points.is_empty() {
+                let message = if is_russian {
+                    format!(
+                        "Я добавил найденные точки на карту, но не смог найти: {}. Уточните эти названия.",
+                        missing_summary
+                    )
+                } else {
+                    format!(
+                        "I added the places I could find to the map, but I could not locate: {}. Please clarify those names.",
+                        missing_summary
+                    )
+                };
+
+                return Ok(Some(DirectChatResponse {
+                    message,
+                    actions: vec![ChatAction::ShowPoints {
+                        points: found_points,
+                    }],
+                }));
+            }
+
+            let message = if is_russian {
+                format!(
+                    "Не удалось найти на карте: {}. Уточните названия мест.",
+                    missing_summary
+                )
+            } else {
+                format!(
+                    "I could not find these places on the map: {}. Please clarify the place names.",
+                    missing_summary
+                )
+            };
+
+            return Ok(Some(DirectChatResponse {
+                message,
+                actions: vec![],
+            }));
+        }
+
+        let Some(location_request) = extract_direct_location_request(text) else {
             return Ok(None);
         };
 
         tracing::info!(
-            places = ?route_request.display_places,
-            geocoding_queries = ?route_request.geocoding_queries,
-            "matched direct route request"
+            place = %location_request.display_name,
+            query = %location_request.geocoding_query,
+            "matched direct location request"
         );
 
-        let is_russian = contains_cyrillic(text);
-        let mut found_points = Vec::new();
-        let mut missing_places = Vec::new();
+        let direct_response = match self.geocode_place(&location_request.geocoding_query).await {
+            Ok(Some(point)) => {
+                let message = if is_russian {
+                    format!("Нашёл место: {}. Добавил его на карту.", point.name)
+                } else {
+                    format!("I found this place: {}. I added it to the map.", point.name)
+                };
 
-        for (display_place, geocoding_query) in route_request
-            .display_places
-            .iter()
-            .zip(route_request.geocoding_queries.iter())
-        {
-            match self.geocode_place(geocoding_query).await {
-                Ok(Some(point)) => found_points.push(point),
-                Ok(None) => missing_places.push(display_place.clone()),
-                Err(error) => {
-                    tracing::warn!(
-                        place = %display_place,
-                        query = %geocoding_query,
-                        %error,
-                        "direct route geocoding failed"
-                    );
-                    missing_places.push(display_place.clone());
+                DirectChatResponse {
+                    message,
+                    actions: vec![ChatAction::ShowPoints {
+                        points: vec![point],
+                    }],
                 }
             }
-        }
+            Ok(None) => {
+                let message = if is_russian {
+                    format!(
+                        "Не удалось найти на карте: {}. Уточните название или адрес.",
+                        location_request.display_name
+                    )
+                } else {
+                    format!(
+                        "I could not find this place on the map: {}. Please clarify the name or address.",
+                        location_request.display_name
+                    )
+                };
 
-        if missing_places.is_empty() && found_points.len() >= 2 {
-            let summary = route_request.display_places.join(" -> ");
-            let message = if is_russian {
-                format!(
-                    "Построил маршрут через точки: {}. Маршрут добавлен на карту.",
-                    summary
-                )
-            } else {
-                format!(
-                    "I plotted a route through these points: {}. It has been added to the map.",
-                    summary
-                )
-            };
+                DirectChatResponse {
+                    message,
+                    actions: vec![],
+                }
+            }
+            Err(error) => {
+                tracing::warn!(
+                    place = %location_request.display_name,
+                    query = %location_request.geocoding_query,
+                    %error,
+                    "direct location geocoding failed"
+                );
 
-            return Ok(Some(DirectChatResponse {
-                message,
-                actions: vec![ChatAction::ShowPoints {
-                    points: found_points,
-                }],
-            }));
-        }
+                let message = if is_russian {
+                    format!(
+                        "Не удалось найти на карте: {}. Уточните название или адрес.",
+                        location_request.display_name
+                    )
+                } else {
+                    format!(
+                        "I could not find this place on the map: {}. Please clarify the name or address.",
+                        location_request.display_name
+                    )
+                };
 
-        let missing_summary = missing_places.join(", ");
-        if !found_points.is_empty() {
-            let message = if is_russian {
-                format!(
-                    "Я добавил найденные точки на карту, но не смог найти: {}. Уточните эти названия.",
-                    missing_summary
-                )
-            } else {
-                format!(
-                    "I added the places I could find to the map, but I could not locate: {}. Please clarify those names.",
-                    missing_summary
-                )
-            };
-
-            return Ok(Some(DirectChatResponse {
-                message,
-                actions: vec![ChatAction::ShowPoints {
-                    points: found_points,
-                }],
-            }));
-        }
-
-        let message = if is_russian {
-            format!(
-                "Не удалось найти на карте: {}. Уточните названия мест.",
-                missing_summary
-            )
-        } else {
-            format!(
-                "I could not find these places on the map: {}. Please clarify the place names.",
-                missing_summary
-            )
+                DirectChatResponse {
+                    message,
+                    actions: vec![],
+                }
+            }
         };
 
-        Ok(Some(DirectChatResponse {
-            message,
-            actions: vec![],
-        }))
+        Ok(Some(direct_response))
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -943,6 +1020,47 @@ fn extract_route_locations(text: &str) -> Option<Vec<String>> {
     extract_direct_route_request(text).map(|request| request.display_places)
 }
 
+fn extract_direct_location_request(text: &str) -> Option<DirectLocationRequest> {
+    let normalized = normalize_whitespace(text);
+    let trimmed = normalized.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let lowered = trimmed.to_lowercase();
+    let prefixes = [
+        "найди на карте ",
+        "покажи на карте ",
+        "отметь на карте ",
+        "найди ",
+        "покажи ",
+        "отметь ",
+        "где ",
+        "find ",
+        "show ",
+        "mark ",
+        "where is ",
+        "locate ",
+    ];
+
+    for prefix in prefixes {
+        if let Some(rest) = lowered.strip_prefix(prefix) {
+            let raw_start = trimmed.len() - rest.len();
+            let place = trim_place_name(&trimmed[raw_start..]);
+            if place.is_empty() {
+                return None;
+            }
+
+            return Some(DirectLocationRequest {
+                display_name: place.clone(),
+                geocoding_query: place,
+            });
+        }
+    }
+
+    None
+}
+
 fn extract_direct_route_request(text: &str) -> Option<DirectRouteRequest> {
     let normalized = format!(" {} ", normalize_whitespace(text).to_lowercase());
     let patterns = [
@@ -1183,6 +1301,19 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_extract_direct_location_request_from_russian_query() {
+        let request = extract_direct_location_request("найди бутлерова 2к2").unwrap();
+        assert_eq!(request.display_name, "бутлерова 2к2");
+        assert_eq!(request.geocoding_query, "бутлерова 2к2");
+    }
+
+    #[test]
+    fn test_extract_direct_location_request_from_where_query() {
+        let request = extract_direct_location_request("где москва-сити").unwrap();
+        assert_eq!(request.display_name, "москва-сити");
+    }
+
     #[tokio::test]
     async fn test_send_message_direct_route_request_returns_points_without_assistant() {
         let mock_server = wiremock::MockServer::start().await;
@@ -1300,6 +1431,50 @@ mod tests {
                 assert_eq!(points.len(), 2);
                 assert!(points[0].name.contains("Москва"));
                 assert!(points[1].name.contains("Москва"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_direct_location_request_returns_point_without_assistant() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.6495",
+                    "lon": "37.5408",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+
+        let uc =
+            make_usecase_with_nominatim(mock_chat, MockRouteRepository::new(), mock_server.uri());
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "найди бутлерова 2к2".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("Добавил"));
+        assert_eq!(result.actions.len(), 1);
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 1);
+                assert!(points[0].name.contains("Бутлерова"));
             }
             _ => panic!("expected ShowPoints action"),
         }
