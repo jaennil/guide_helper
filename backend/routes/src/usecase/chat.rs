@@ -4,9 +4,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::domain::chat_message::{ChatMessage, ConversationSummary};
+use crate::usecase::ai_client::{AiChatClient, AiMessage, AiRole, AiTool};
 use crate::usecase::contracts::{ChatMessageRepository, RouteRepository};
 use crate::usecase::error::UsecaseError;
-use crate::usecase::ai_client::{AiChatClient, AiMessage, AiRole, AiTool};
 
 const SYSTEM_PROMPT: &str = r#"You are a helpful route planning assistant for the Guide Helper application.
 You help users find routes, plan trips, search the route catalog, and answer questions about places.
@@ -70,6 +70,12 @@ pub struct ChatResponse {
     pub message: String,
     pub actions: Vec<ChatAction>,
     pub conversation_id: Uuid,
+}
+
+#[derive(Debug)]
+struct DirectChatResponse {
+    message: String,
+    actions: Vec<ChatAction>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -147,10 +153,7 @@ where
     }
 
     pub fn model_name(&self) -> &str {
-        self.assistant
-            .as_ref()
-            .map(|a| a.model())
-            .unwrap_or("none")
+        self.assistant.as_ref().map(|a| a.model()).unwrap_or("none")
     }
 
     pub async fn check_health(&self) -> bool {
@@ -170,16 +173,39 @@ where
         conversation_id: Uuid,
         text: String,
     ) -> Result<ChatResponse, UsecaseError> {
-        let assistant = self
-            .assistant
-            .as_ref()
-            .ok_or_else(|| UsecaseError::Unavailable("AI assistant is not available".to_string()))?;
-
         tracing::info!(%user_id, %conversation_id, "processing chat message");
+
+        let direct_response = self.try_handle_direct_request(&text).await?;
+
+        let assistant = if direct_response.is_none() {
+            Some(self.assistant.as_ref().ok_or_else(|| {
+                UsecaseError::Unavailable("AI assistant is not available".to_string())
+            })?)
+        } else {
+            None
+        };
 
         let user_msg = ChatMessage::new_user_message(user_id, conversation_id, text);
         self.chat_repo.create(&user_msg).await?;
         tracing::debug!(message_id = %user_msg.id, "user message saved");
+
+        if let Some(response) = direct_response {
+            tracing::info!(
+                actions_count = response.actions.len(),
+                "handled chat message via direct route fallback"
+            );
+            return self
+                .persist_assistant_response(
+                    user_id,
+                    conversation_id,
+                    response.message,
+                    response.actions,
+                )
+                .await;
+        }
+
+        let assistant =
+            assistant.expect("assistant must exist when no direct response is available");
 
         let history = self
             .chat_repo
@@ -211,94 +237,80 @@ where
 
         let ai_timeout = std::time::Duration::from_secs(60);
         let ai_result = tokio::time::timeout(ai_timeout, async {
-        for iteration in 0..self.max_tool_iterations {
-            tracing::debug!(iteration, provider = %assistant.model(), "sending request to AI");
+            for iteration in 0..self.max_tool_iterations {
+                tracing::debug!(iteration, provider = %assistant.model(), "sending request to AI");
 
-            let resp = assistant.chat(&messages, &tools).await
-                .map_err(|e| UsecaseError::Internal(format!("AI request failed: {}", e)))?;
+                let resp = assistant
+                    .chat(&messages, &tools)
+                    .await
+                    .map_err(|e| UsecaseError::Internal(format!("AI request failed: {}", e)))?;
 
-            if !resp.tool_calls.is_empty() {
-                tracing::info!(
-                    iteration,
-                    tool_count = resp.tool_calls.len(),
-                    "LLM requested tool calls"
-                );
-
-                // Add assistant message with tool_calls
-                messages.push(AiMessage {
-                    role: AiRole::Assistant,
-                    content: resp.content.clone(),
-                    tool_calls: resp.tool_calls.clone(),
-                    tool_call_id: None,
-                });
-
-                // Execute each tool and append results
-                for tool_call in &resp.tool_calls {
+                if !resp.tool_calls.is_empty() {
                     tracing::info!(
                         iteration,
-                        tool_name = %tool_call.name,
-                        tool_call_id = %tool_call.id,
-                        "executing tool call"
+                        tool_count = resp.tool_calls.len(),
+                        "LLM requested tool calls"
                     );
 
-                    let tool_args = parse_function_arguments(&tool_call.arguments);
-                    let (result_text, new_actions) =
-                        self.execute_tool(&tool_call.name, &tool_args).await;
-
-                    actions.extend(new_actions);
-
+                    // Add assistant message with tool_calls
                     messages.push(AiMessage {
-                        role: AiRole::Tool,
-                        content: Some(result_text),
-                        tool_calls: vec![],
-                        tool_call_id: Some(tool_call.id.clone()),
+                        role: AiRole::Assistant,
+                        content: resp.content.clone(),
+                        tool_calls: resp.tool_calls.clone(),
+                        tool_call_id: None,
                     });
-                }
-            } else {
-                let assistant_text = resp.content.unwrap_or_default();
-                tracing::info!(
-                    iteration,
-                    response_len = assistant_text.len(),
-                    actions_count = actions.len(),
-                    "AI returned final text response"
-                );
 
-                let actions_json = if actions.is_empty() {
-                    None
+                    // Execute each tool and append results
+                    for tool_call in &resp.tool_calls {
+                        tracing::info!(
+                            iteration,
+                            tool_name = %tool_call.name,
+                            tool_call_id = %tool_call.id,
+                            "executing tool call"
+                        );
+
+                        let tool_args = parse_function_arguments(&tool_call.arguments);
+                        let (result_text, new_actions) =
+                            self.execute_tool(&tool_call.name, &tool_args).await;
+
+                        actions.extend(new_actions);
+
+                        messages.push(AiMessage {
+                            role: AiRole::Tool,
+                            content: Some(result_text),
+                            tool_calls: vec![],
+                            tool_call_id: Some(tool_call.id.clone()),
+                        });
+                    }
                 } else {
-                    Some(serde_json::to_value(&actions).map_err(|e| {
-                        UsecaseError::Internal(
-                            format!("failed to serialize actions: {}", e)
+                    let assistant_text = resp.content.unwrap_or_default();
+                    tracing::info!(
+                        iteration,
+                        response_len = assistant_text.len(),
+                        actions_count = actions.len(),
+                        "AI returned final text response"
+                    );
+
+                    return self
+                        .persist_assistant_response(
+                            user_id,
+                            conversation_id,
+                            assistant_text,
+                            actions,
                         )
-                    })?)
-                };
-
-                let assistant_msg = ChatMessage::new_assistant_message(
-                    user_id,
-                    conversation_id,
-                    assistant_text.clone(),
-                    actions_json,
-                );
-                self.chat_repo.create(&assistant_msg).await?;
-                tracing::debug!(message_id = %assistant_msg.id, "assistant message saved");
-
-                return Ok(ChatResponse {
-                    id: assistant_msg.id,
-                    message: assistant_text,
-                    actions,
-                    conversation_id,
-                });
+                        .await;
+                }
             }
-        }
 
-        tracing::warn!(
-            "tool-calling loop exhausted after {} iterations",
-            self.max_tool_iterations
-        );
-        Err(UsecaseError::Internal(
-            "AI assistant exceeded maximum tool call iterations".to_string(),
-        ))
-        }).await;
+            tracing::warn!(
+                "tool-calling loop exhausted after {} iterations",
+                self.max_tool_iterations
+            );
+            Err(UsecaseError::Internal(
+                "AI assistant exceeded maximum tool call iterations".to_string(),
+            ))
+        })
+        .await;
 
         match ai_result {
             Ok(result) => result,
@@ -309,13 +321,138 @@ where
         }
     }
 
+    async fn persist_assistant_response(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        message: String,
+        actions: Vec<ChatAction>,
+    ) -> Result<ChatResponse, UsecaseError> {
+        let actions_json = if actions.is_empty() {
+            None
+        } else {
+            Some(serde_json::to_value(&actions).map_err(|e| {
+                UsecaseError::Internal(format!("failed to serialize actions: {}", e))
+            })?)
+        };
+
+        let assistant_msg = ChatMessage::new_assistant_message(
+            user_id,
+            conversation_id,
+            message.clone(),
+            actions_json,
+        );
+        self.chat_repo.create(&assistant_msg).await?;
+        tracing::debug!(message_id = %assistant_msg.id, "assistant message saved");
+
+        Ok(ChatResponse {
+            id: assistant_msg.id,
+            message,
+            actions,
+            conversation_id,
+        })
+    }
+
+    async fn try_handle_direct_request(
+        &self,
+        text: &str,
+    ) -> Result<Option<DirectChatResponse>, UsecaseError> {
+        let Some(places) = extract_route_locations(text) else {
+            return Ok(None);
+        };
+
+        tracing::info!(places = ?places, "matched direct route request");
+
+        let is_russian = contains_cyrillic(text);
+        let mut found_points = Vec::new();
+        let mut missing_places = Vec::new();
+
+        for place in &places {
+            match self.geocode_place(place).await {
+                Ok(Some(point)) => found_points.push(point),
+                Ok(None) => missing_places.push(place.clone()),
+                Err(error) => {
+                    tracing::warn!(%place, %error, "direct route geocoding failed");
+                    missing_places.push(place.clone());
+                }
+            }
+        }
+
+        if missing_places.is_empty() && found_points.len() >= 2 {
+            let summary = places.join(" -> ");
+            let message = if is_russian {
+                format!(
+                    "Построил маршрут через точки: {}. Маршрут добавлен на карту.",
+                    summary
+                )
+            } else {
+                format!(
+                    "I plotted a route through these points: {}. It has been added to the map.",
+                    summary
+                )
+            };
+
+            return Ok(Some(DirectChatResponse {
+                message,
+                actions: vec![ChatAction::ShowPoints {
+                    points: found_points,
+                }],
+            }));
+        }
+
+        let missing_summary = missing_places.join(", ");
+        if !found_points.is_empty() {
+            let message = if is_russian {
+                format!(
+                    "Я добавил найденные точки на карту, но не смог найти: {}. Уточните эти названия.",
+                    missing_summary
+                )
+            } else {
+                format!(
+                    "I added the places I could find to the map, but I could not locate: {}. Please clarify those names.",
+                    missing_summary
+                )
+            };
+
+            return Ok(Some(DirectChatResponse {
+                message,
+                actions: vec![ChatAction::ShowPoints {
+                    points: found_points,
+                }],
+            }));
+        }
+
+        let message = if is_russian {
+            format!(
+                "Не удалось найти на карте: {}. Уточните названия мест.",
+                missing_summary
+            )
+        } else {
+            format!(
+                "I could not find these places on the map: {}. Please clarify the place names.",
+                missing_summary
+            )
+        };
+
+        Ok(Some(DirectChatResponse {
+            message,
+            actions: vec![],
+        }))
+    }
+
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
     pub async fn send_message_stream(
         &self,
         user_id: Uuid,
         conversation_id: Uuid,
         text: String,
-    ) -> Result<(ChatResponse, std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, UsecaseError>> + Send>>), UsecaseError> {
+    ) -> Result<
+        (
+            ChatResponse,
+            std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, UsecaseError>> + Send>>,
+        ),
+        UsecaseError,
+    > {
         // Run full non-streaming call first (tool loop + final answer)
         let response = self.send_message(user_id, conversation_id, text).await?;
 
@@ -371,7 +508,13 @@ where
             "navigate" => self.tool_navigate(args).await,
             _ => {
                 tracing::warn!(%name, "unknown tool called");
-                (format!("Error: tool '{}' is not available. Only these tools exist: geocode, search_routes, get_route_details, navigate. Do NOT use any other tools.", name), vec![])
+                (
+                    format!(
+                        "Unknown tool '{}'. Only these tools exist: geocode, search_routes, get_route_details, navigate. Do NOT use any other tools.",
+                        name
+                    ),
+                    vec![],
+                )
             }
         }
     }
@@ -387,53 +530,33 @@ where
 
         tracing::info!(%query, "executing geocode tool");
 
-        let url = format!(
-            "{}/search?q={}&format=json&limit=1",
-            self.nominatim_url,
-            urlencoding::encode(query)
-        );
+        match self.geocode_place(query).await {
+            Ok(Some(point)) => {
+                tracing::info!(
+                    %query,
+                    lat = point.lat,
+                    lng = point.lng,
+                    display_name = %point.name,
+                    "geocode result found"
+                );
 
-        match self
-            .http_client
-            .get(&url)
-            .header("User-Agent", "GuideHelper/1.0")
-            .send()
-            .await
-        {
-            Ok(response) => {
-                if let Ok(results) = response.json::<Vec<NominatimResult>>().await {
-                    if let Some(result) = results.first() {
-                        let lat: f64 = result.lat.parse().unwrap_or(0.0);
-                        let lng: f64 = result.lon.parse().unwrap_or(0.0);
-                        let display_name = &result.display_name;
+                let action = ChatAction::ShowPoints {
+                    points: vec![point.clone()],
+                };
 
-                        tracing::info!(%query, lat, lng, %display_name, "geocode result found");
-
-                        let action = ChatAction::ShowPoints {
-                            points: vec![ChatPoint {
-                                lat,
-                                lng,
-                                name: display_name.clone(),
-                            }],
-                        };
-
-                        (
-                            serde_json::json!({
-                                "lat": lat,
-                                "lng": lng,
-                                "display_name": display_name
-                            })
-                            .to_string(),
-                            vec![action],
-                        )
-                    } else {
-                        tracing::info!(%query, "no geocode results found");
-                        ("No results found for this query.".to_string(), vec![])
-                    }
-                } else {
-                    tracing::error!(%query, "failed to parse geocode response");
-                    ("Failed to parse geocoding response.".to_string(), vec![])
-                }
+                (
+                    serde_json::json!({
+                        "lat": point.lat,
+                        "lng": point.lng,
+                        "display_name": point.name
+                    })
+                    .to_string(),
+                    vec![action],
+                )
+            }
+            Ok(None) => {
+                tracing::info!(%query, "no geocode results found");
+                ("No results found for this query.".to_string(), vec![])
             }
             Err(e) => {
                 tracing::error!(%query, error = %e, "geocode request failed");
@@ -442,12 +565,51 @@ where
         }
     }
 
+    async fn geocode_place(&self, query: &str) -> Result<Option<ChatPoint>, String> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(None);
+        }
+
+        let url = format!(
+            "{}/search?q={}&format=json&limit=1",
+            self.nominatim_url,
+            urlencoding::encode(query)
+        );
+
+        let response = self
+            .http_client
+            .get(&url)
+            .header("User-Agent", "GuideHelper/1.0")
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !response.status().is_success() {
+            return Err(format!("unexpected geocoding status {}", response.status()));
+        }
+
+        let results = response
+            .json::<Vec<NominatimResult>>()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(results.first().map(|result| ChatPoint {
+            lat: result.lat.parse().unwrap_or(0.0),
+            lng: result.lon.parse().unwrap_or(0.0),
+            name: result.display_name.clone(),
+        }))
+    }
+
     async fn tool_search_routes(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
     ) -> (String, Vec<ChatAction>) {
         let search = args.get("query").and_then(|v| v.as_str()).map(String::from);
-        let category_id = args.get("category_id").and_then(|v| v.as_str()).and_then(|s| Uuid::parse_str(s).ok());
+        let category_id = args
+            .get("category_id")
+            .and_then(|v| v.as_str())
+            .and_then(|s| Uuid::parse_str(s).ok());
         let sort = args
             .get("sort")
             .and_then(|v| v.as_str())
@@ -490,9 +652,7 @@ where
                 let actions = if route_refs.is_empty() {
                     vec![]
                 } else {
-                    vec![ChatAction::ShowRoutes {
-                        routes: route_refs,
-                    }]
+                    vec![ChatAction::ShowRoutes { routes: route_refs }]
                 };
 
                 (result_text, actions)
@@ -641,9 +801,7 @@ where
     ) -> Result<(), UsecaseError> {
         tracing::info!("deleting message");
 
-        self.chat_repo
-            .delete_message(user_id, message_id)
-            .await?;
+        self.chat_repo.delete_message(user_id, message_id).await?;
 
         tracing::info!("message deleted");
         Ok(())
@@ -748,9 +906,7 @@ fn build_tools() -> Vec<AiTool> {
     ]
 }
 
-fn parse_function_arguments(
-    input: &str,
-) -> std::collections::HashMap<String, serde_json::Value> {
+fn parse_function_arguments(input: &str) -> std::collections::HashMap<String, serde_json::Value> {
     match serde_json::from_str::<serde_json::Value>(input) {
         Ok(serde_json::Value::Object(map)) => map.into_iter().collect(),
         Ok(_) => {
@@ -762,6 +918,72 @@ fn parse_function_arguments(
             std::collections::HashMap::new()
         }
     }
+}
+
+fn extract_route_locations(text: &str) -> Option<Vec<String>> {
+    let normalized = format!(" {} ", normalize_whitespace(text).to_lowercase());
+    let patterns = [(" от ", " до "), (" из ", " в "), (" from ", " to ")];
+
+    for (from_token, to_token) in patterns {
+        let Some(from_idx) = normalized.find(from_token) else {
+            continue;
+        };
+
+        let after_from = &normalized[from_idx + from_token.len()..];
+        let Some(to_idx) = after_from.rfind(to_token) else {
+            continue;
+        };
+
+        let start_and_waypoints = trim_place_name(&after_from[..to_idx]);
+        let end = trim_place_name(&after_from[to_idx + to_token.len()..]);
+
+        if start_and_waypoints.is_empty() || end.is_empty() {
+            continue;
+        }
+
+        let mut places = split_place_list(&start_and_waypoints);
+        places.push(end);
+        places.retain(|place| !place.is_empty());
+
+        if places.len() >= 2 {
+            return Some(places);
+        }
+    }
+
+    None
+}
+
+fn normalize_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn split_place_list(input: &str) -> Vec<String> {
+    input
+        .replace(" через ", ",")
+        .replace(" via ", ",")
+        .replace(" и ", ",")
+        .replace(" and ", ",")
+        .split(',')
+        .map(trim_place_name)
+        .filter(|value| !value.is_empty())
+        .collect()
+}
+
+fn trim_place_name(input: &str) -> String {
+    input
+        .trim_matches(|c: char| {
+            c.is_whitespace()
+                || matches!(
+                    c,
+                    ',' | '.' | '!' | '?' | ':' | ';' | '"' | '\'' | '(' | ')' | '[' | ']'
+                )
+        })
+        .to_string()
+}
+
+fn contains_cyrillic(text: &str) -> bool {
+    text.chars()
+        .any(|ch| ('\u{0400}'..='\u{04FF}').contains(&ch))
 }
 
 // Need urlencoding for Nominatim queries
@@ -854,10 +1076,79 @@ mod tests {
             .await;
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not available"));
+        assert!(result.unwrap_err().to_string().contains("not available"));
+    }
+
+    #[test]
+    fn test_extract_route_locations_from_russian_query() {
+        let places = extract_route_locations("построй маршрут от владивостока до самары").unwrap();
+        assert_eq!(places, vec!["владивостока", "самары"]);
+    }
+
+    #[test]
+    fn test_extract_route_locations_with_waypoints() {
+        let places =
+            extract_route_locations("построй маршрут от владивостока через уфу и казань до самары")
+                .unwrap();
+        assert_eq!(places, vec!["владивостока", "уфу", "казань", "самары"]);
+    }
+
+    #[tokio::test]
+    async fn test_send_message_direct_route_request_returns_points_without_assistant() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "владивостока"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "43.1155",
+                    "lon": "131.8855",
+                    "display_name": "Vladivostok, Russia"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "самары"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "53.1959",
+                    "lon": "50.1008",
+                    "display_name": "Samara, Russia"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+
+        let uc =
+            make_usecase_with_nominatim(mock_chat, MockRouteRepository::new(), mock_server.uri());
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут от владивостока до самары".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("Маршрут добавлен на карту"));
+        assert_eq!(result.actions.len(), 1);
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 2);
+                assert!(points[0].name.contains("Vladivostok"));
+                assert!(points[1].name.contains("Samara"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
     }
 
     // --- get_history ---
@@ -1210,7 +1501,10 @@ mod tests {
             false,
         );
         let mut args = std::collections::HashMap::new();
-        args.insert("path".to_string(), serde_json::Value::String("/profile".to_string()));
+        args.insert(
+            "path".to_string(),
+            serde_json::Value::String("/profile".to_string()),
+        );
         let (text, actions) = uc.tool_navigate(&args).await;
         assert!(text.contains("Profile & Settings"));
         assert_eq!(actions.len(), 1);
@@ -1231,7 +1525,10 @@ mod tests {
             false,
         );
         let mut args = std::collections::HashMap::new();
-        args.insert("path".to_string(), serde_json::Value::String("/unknown".to_string()));
+        args.insert(
+            "path".to_string(),
+            serde_json::Value::String("/unknown".to_string()),
+        );
         let (text, actions) = uc.tool_navigate(&args).await;
         assert!(text.contains("Unknown page"));
         assert!(actions.is_empty());
@@ -1289,9 +1586,7 @@ mod tests {
         let resp = ChatResponse {
             id: Uuid::new_v4(),
             message: "Here are results".to_string(),
-            actions: vec![ChatAction::ShowPoints {
-                points: vec![],
-            }],
+            actions: vec![ChatAction::ShowPoints { points: vec![] }],
             conversation_id: Uuid::new_v4(),
         };
 
@@ -1424,13 +1719,13 @@ mod tests {
 
         wiremock::Mock::given(wiremock::matchers::method("GET"))
             .and(wiremock::matchers::path("/search"))
-            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(
-                serde_json::json!([{
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
                     "lat": "55.7558",
                     "lon": "37.6173",
                     "display_name": "Moscow, Russia"
-                }]),
-            ))
+                }])),
+            )
             .mount(&mock_server)
             .await;
 
@@ -1468,9 +1763,7 @@ mod tests {
 
         wiremock::Mock::given(wiremock::matchers::method("GET"))
             .and(wiremock::matchers::path("/search"))
-            .respond_with(
-                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([])),
-            )
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
             .mount(&mock_server)
             .await;
 
