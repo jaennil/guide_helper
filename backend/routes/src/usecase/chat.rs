@@ -26,6 +26,8 @@ Rules for tool usage — follow these strictly:
 5. NEVER say you cannot display maps or show locations on the map. You CAN show locations by calling the geocode tool — it will place markers on the map automatically.
 6. If the user names two or more places, call geocode separately for each one.
 7. When the user says anything that means OPENING or NAVIGATING to a section of this app — ALWAYS call navigate immediately without asking for clarification. Do not ask "what do you want to configure" — just navigate.
+8. For any place or address lookup, geocode.query MUST contain the exact place or address text from the user's message. Never send an empty query.
+9. You may ONLY use these tools: geocode, search_routes, get_route_details, navigate. Never call WebSearch, ToolSearch, Bash, Read, Write, or any other tools.
 
 Page mapping (use navigate tool with these paths):
 - /profile → when user says: "открой профиль", "профиль", "настройки", "открой настройки", "open settings", "go to profile", "мои настройки", "мой профиль", "settings", "profile"
@@ -34,6 +36,11 @@ Page mapping (use navigate tool with these paths):
 - /admin → when user says: "открой админку", "панель администратора", "admin", "admin panel", "администрирование"
 
 CRITICAL: For ALL navigation requests, call navigate IMMEDIATELY. Never ask clarifying questions about navigation. If the user wants to open any page or section, use the navigate tool.
+
+Examples:
+- User: "найди бутлерова 2к2" → call geocode with {"query":"бутлерова 2к2"}
+- User: "где москва-сити" → call geocode with {"query":"москва-сити"}
+- User: "build a route from Rome to Milan" → call geocode with {"query":"Rome"} and geocode with {"query":"Milan"}
 
 Be concise and helpful. After calling tools, summarize the results naturally."#;
 
@@ -82,12 +89,6 @@ struct DirectChatResponse {
 struct DirectRouteRequest {
     display_places: Vec<String>,
     geocoding_queries: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct DirectLocationRequest {
-    display_name: String,
-    geocoding_query: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -282,6 +283,18 @@ where
                         );
 
                         let tool_args = parse_function_arguments(&tool_call.arguments);
+                        if let Some(result_text) =
+                            self.validate_tool_call(&tool_call.name, &tool_args, &user_msg.content)
+                        {
+                            messages.push(AiMessage {
+                                role: AiRole::Tool,
+                                content: Some(result_text),
+                                tool_calls: vec![],
+                                tool_call_id: Some(tool_call.id.clone()),
+                            });
+                            continue;
+                        }
+
                         let (result_text, new_actions) =
                             self.execute_tool(&tool_call.name, &tool_args).await;
 
@@ -463,77 +476,8 @@ where
             }));
         }
 
-        let Some(location_request) = extract_direct_location_request(text) else {
-            return Ok(None);
-        };
-
-        tracing::info!(
-            place = %location_request.display_name,
-            query = %location_request.geocoding_query,
-            "matched direct location request"
-        );
-
-        let direct_response = match self.geocode_place(&location_request.geocoding_query).await {
-            Ok(Some(point)) => {
-                let message = if is_russian {
-                    format!("Нашёл место: {}. Добавил его на карту.", point.name)
-                } else {
-                    format!("I found this place: {}. I added it to the map.", point.name)
-                };
-
-                DirectChatResponse {
-                    message,
-                    actions: vec![ChatAction::ShowPoints {
-                        points: vec![point],
-                    }],
-                }
-            }
-            Ok(None) => {
-                let message = if is_russian {
-                    format!(
-                        "Не удалось найти на карте: {}. Уточните название или адрес.",
-                        location_request.display_name
-                    )
-                } else {
-                    format!(
-                        "I could not find this place on the map: {}. Please clarify the name or address.",
-                        location_request.display_name
-                    )
-                };
-
-                DirectChatResponse {
-                    message,
-                    actions: vec![],
-                }
-            }
-            Err(error) => {
-                tracing::warn!(
-                    place = %location_request.display_name,
-                    query = %location_request.geocoding_query,
-                    %error,
-                    "direct location geocoding failed"
-                );
-
-                let message = if is_russian {
-                    format!(
-                        "Не удалось найти на карте: {}. Уточните название или адрес.",
-                        location_request.display_name
-                    )
-                } else {
-                    format!(
-                        "I could not find this place on the map: {}. Please clarify the name or address.",
-                        location_request.display_name
-                    )
-                };
-
-                DirectChatResponse {
-                    message,
-                    actions: vec![],
-                }
-            }
-        };
-
-        Ok(Some(direct_response))
+        let _ = is_russian;
+        Ok(None)
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -615,6 +559,39 @@ where
         }
     }
 
+    fn validate_tool_call(
+        &self,
+        name: &str,
+        args: &std::collections::HashMap<String, serde_json::Value>,
+        latest_user_message: &str,
+    ) -> Option<String> {
+        let latest_user_message = summarize_user_message(latest_user_message);
+
+        match name {
+            "geocode" => {
+                let query = args
+                    .get("query")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .unwrap_or_default();
+
+                if query.is_empty() {
+                    return Some(format!(
+                        "Invalid tool call: geocode requires a non-empty 'query'. Copy the exact place or address from the latest user message into query. Latest user message: \"{}\". Only these tools exist: geocode, search_routes, get_route_details, navigate.",
+                        latest_user_message
+                    ));
+                }
+
+                None
+            }
+            "search_routes" | "get_route_details" | "navigate" => None,
+            _ => Some(format!(
+                "Unknown tool '{}'. Only these tools exist: geocode, search_routes, get_route_details, navigate. Do not use WebSearch, ToolSearch, Bash, Read, Write, or any other tools. Latest user message: \"{}\". If the user asked to locate a place or address, call geocode with the exact place or address text from that message.",
+                name, latest_user_message
+            )),
+        }
+    }
+
     async fn tool_geocode(
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
@@ -625,6 +602,14 @@ where
             .unwrap_or_default();
 
         tracing::info!(%query, "executing geocode tool");
+
+        if query.trim().is_empty() {
+            return (
+                "Invalid geocode request: 'query' must be a non-empty place name or address."
+                    .to_string(),
+                vec![],
+            );
+        }
 
         match self.geocode_place(query).await {
             Ok(Some(point)) => {
@@ -1020,47 +1005,6 @@ fn extract_route_locations(text: &str) -> Option<Vec<String>> {
     extract_direct_route_request(text).map(|request| request.display_places)
 }
 
-fn extract_direct_location_request(text: &str) -> Option<DirectLocationRequest> {
-    let normalized = normalize_whitespace(text);
-    let trimmed = normalized.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let lowered = trimmed.to_lowercase();
-    let prefixes = [
-        "найди на карте ",
-        "покажи на карте ",
-        "отметь на карте ",
-        "найди ",
-        "покажи ",
-        "отметь ",
-        "где ",
-        "find ",
-        "show ",
-        "mark ",
-        "where is ",
-        "locate ",
-    ];
-
-    for prefix in prefixes {
-        if let Some(rest) = lowered.strip_prefix(prefix) {
-            let raw_start = trimmed.len() - rest.len();
-            let place = trim_place_name(&trimmed[raw_start..]);
-            if place.is_empty() {
-                return None;
-            }
-
-            return Some(DirectLocationRequest {
-                display_name: place.clone(),
-                geocoding_query: place,
-            });
-        }
-    }
-
-    None
-}
-
 fn extract_direct_route_request(text: &str) -> Option<DirectRouteRequest> {
     let normalized = format!(" {} ", normalize_whitespace(text).to_lowercase());
     let patterns = [
@@ -1139,6 +1083,17 @@ fn normalize_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn summarize_user_message(text: &str) -> String {
+    let normalized = normalize_whitespace(text);
+    let mut chars = normalized.chars();
+    let summary: String = chars.by_ref().take(160).collect();
+    if chars.next().is_some() {
+        format!("{}...", summary)
+    } else {
+        summary
+    }
+}
+
 fn split_place_list(input: &str) -> Vec<String> {
     input
         .replace(" через ", ",")
@@ -1192,11 +1147,12 @@ mod tests {
     use crate::domain::chat_message::ChatMessage;
     use crate::domain::route::{ExploreRouteRow, Route};
     use crate::repository::errors::RepositoryError;
-    use crate::usecase::ai_client::AiChatClient;
+    use crate::usecase::ai_client::{AiChatClient, AiResponse, AiToolCall};
     use crate::usecase::contracts::{MockChatMessageRepository, MockRouteRepository};
     use crate::usecase::openai::OpenAIClient;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, VecDeque};
     use std::sync::Arc;
+    use std::sync::Mutex;
 
     fn make_usecase(
         chat_repo: MockChatMessageRepository,
@@ -1220,6 +1176,63 @@ mod tests {
             5,
             2000,
         )
+    }
+
+    fn make_usecase_with_custom_assistant(
+        chat_repo: MockChatMessageRepository,
+        route_repo: MockRouteRepository,
+        assistant: Arc<dyn AiChatClient>,
+        nominatim_url: String,
+    ) -> ChatUseCase<MockChatMessageRepository, MockRouteRepository> {
+        ChatUseCase::new(
+            chat_repo,
+            route_repo,
+            Some(assistant),
+            nominatim_url,
+            5,
+            2000,
+        )
+    }
+
+    struct SequenceAiClient {
+        responses: Mutex<VecDeque<anyhow::Result<AiResponse>>>,
+        model: String,
+    }
+
+    impl SequenceAiClient {
+        fn new(responses: Vec<anyhow::Result<AiResponse>>) -> Self {
+            Self {
+                responses: Mutex::new(VecDeque::from(responses)),
+                model: "test-sequence-model".to_string(),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl AiChatClient for SequenceAiClient {
+        async fn chat(
+            &self,
+            _messages: &[AiMessage],
+            _tools: &[AiTool],
+        ) -> anyhow::Result<AiResponse> {
+            self.responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .unwrap_or_else(|| Err(anyhow::anyhow!("no more test AI responses configured")))
+        }
+
+        fn model(&self) -> &str {
+            &self.model
+        }
+
+        fn is_configured(&self) -> bool {
+            true
+        }
+
+        async fn health_check(&self) -> bool {
+            true
+        }
     }
 
     // --- is_available ---
@@ -1301,17 +1314,19 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_extract_direct_location_request_from_russian_query() {
-        let request = extract_direct_location_request("найди бутлерова 2к2").unwrap();
-        assert_eq!(request.display_name, "бутлерова 2к2");
-        assert_eq!(request.geocoding_query, "бутлерова 2к2");
-    }
+    #[tokio::test]
+    async fn test_try_handle_direct_request_does_not_special_case_single_location_queries() {
+        let uc = make_usecase(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            false,
+        );
 
-    #[test]
-    fn test_extract_direct_location_request_from_where_query() {
-        let request = extract_direct_location_request("где москва-сити").unwrap();
-        assert_eq!(request.display_name, "москва-сити");
+        let result = uc
+            .try_handle_direct_request("найди бутлерова 2к2")
+            .await
+            .unwrap();
+        assert!(result.is_none());
     }
 
     #[tokio::test]
@@ -1437,7 +1452,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_send_message_direct_location_request_returns_point_without_assistant() {
+    async fn test_send_message_ai_recovers_from_invalid_tool_calls_for_single_location_lookup() {
         let mock_server = wiremock::MockServer::start().await;
 
         wiremock::Mock::given(wiremock::matchers::method("GET"))
@@ -1455,9 +1470,57 @@ mod tests {
 
         let mut mock_chat = MockChatMessageRepository::new();
         mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "найди бутлерова 2к2".to_string(),
+                )])
+            },
+        );
 
-        let uc =
-            make_usecase_with_nominatim(mock_chat, MockRouteRepository::new(), mock_server.uri());
+        let assistant = Arc::new(SequenceAiClient::new(vec![
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-1".to_string(),
+                    name: "ToolSearch".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                }],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-2".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":""}"#.to_string(),
+                }],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-3".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                }],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: Some("Нашёл место и добавил его на карту.".to_string()),
+                tool_calls: vec![],
+                stop: true,
+            }),
+        ]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
 
         let result = uc
             .send_message(
@@ -1468,7 +1531,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(result.message.contains("Добавил"));
+        assert!(result.message.contains("добавил"));
         assert_eq!(result.actions.len(), 1);
 
         match &result.actions[0] {
@@ -2111,6 +2174,26 @@ mod tests {
         let (text, actions) = uc.tool_geocode(&args).await;
 
         assert!(text.contains("No results"));
+        assert!(actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_tool_geocode_empty_query_returns_validation_error() {
+        let uc = make_usecase_with_nominatim(
+            MockChatMessageRepository::new(),
+            MockRouteRepository::new(),
+            "https://nominatim.openstreetmap.org".to_string(),
+        );
+
+        let mut args = HashMap::new();
+        args.insert(
+            "query".to_string(),
+            serde_json::Value::String("".to_string()),
+        );
+
+        let (text, actions) = uc.tool_geocode(&args).await;
+
+        assert!(text.contains("non-empty"));
         assert!(actions.is_empty());
     }
 
