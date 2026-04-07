@@ -51,6 +51,7 @@ const TILE_PROVIDERS = [
 export interface RoutePoint {
   id: number;
   position: [number, number];
+  name?: string;
   photo?: PhotoData;
 }
 
@@ -332,6 +333,7 @@ const PointPopup = React.memo(function PointPopup({
       <div className="point-popup-header">
         <strong>{t("map.point", { index: index + 1 })}</strong>
       </div>
+      {point.name && <div className="point-popup-name">{point.name}</div>}
       <div className="point-popup-coords">
         {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
         {point.position[1].toFixed(6)}
@@ -802,10 +804,34 @@ export function MapPage() {
     localStorage.setItem("tileProvider", providerId);
   };
 
+  const focusMapOnPoints = (points: RoutePoint[]) => {
+    const map = mapRef.current;
+    if (!map || points.length === 0) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+
+      if (points.length === 1) {
+        map.setView(points[0].position, Math.max(map.getZoom(), 16), {
+          animate: true,
+        });
+        return;
+      }
+
+      const bounds = L.latLngBounds(
+        points.map((point) => L.latLng(point.position[0], point.position[1]))
+      );
+      map.fitBounds(bounds.pad(0.2), { animate: true, maxZoom: 16 });
+    });
+  };
+
   const handleChatShowPoints = (points: ChatPoint[]) => {
     const newPoints: RoutePoint[] = points.map((p) => ({
       id: pointIdRef.current++,
       position: [p.lat, p.lng] as [number, number],
+      name: p.name,
     }));
     setRoutePoints((prev) => {
       const newSegments: RouteSegment[] = [];
@@ -826,6 +852,7 @@ export function MapPage() {
       setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
       return [...prev, ...newPoints];
     });
+    focusMapOnPoints(newPoints);
   };
 
   const handleChatShowRoutes = (routeIds: string[]) => {
@@ -1274,6 +1301,13 @@ export function MapPage() {
         onClose={() => setChatOpen(false)}
         onShowPoints={handleChatShowPoints}
         onShowRoutes={handleChatShowRoutes}
+        mapContext={{
+          points: routePoints.slice(-8).map((point) => ({
+            lat: point.position[0],
+            lng: point.position[1],
+            name: point.name,
+          })),
+        }}
       />
       {showConfirmClear && (
         <ConfirmDialog

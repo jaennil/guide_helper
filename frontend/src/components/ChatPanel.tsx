@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
-import { chatApi, type ChatAction, type ChatPoint, type ChatRouteRef, type ConversationSummary } from '../api/chat';
+import {
+  chatApi,
+  type ChatAction,
+  type ChatMapContext,
+  type ChatPoint,
+  type ChatRouteRef,
+  type ConversationSummary,
+} from '../api/chat';
 import { useLanguage } from '../context/LanguageContext';
 import './ChatPanel.css';
 
@@ -128,9 +135,16 @@ interface ChatPanelProps {
   onClose: () => void;
   onShowPoints: (points: ChatPoint[]) => void;
   onShowRoutes: (routeIds: string[]) => void;
+  mapContext?: ChatMapContext;
 }
 
-export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatPanelProps) {
+export function ChatPanel({
+  isOpen,
+  onClose,
+  onShowPoints,
+  onShowRoutes,
+  mapContext,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -211,6 +225,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
       await chatApi.sendMessageStream(
         text,
         conversationId,
+        mapContext,
         (content) => {
           streamingContent += content;
           setMessages((prev) =>
@@ -254,7 +269,7 @@ export function ChatPanel({ isOpen, onClose, onShowPoints, onShowRoutes }: ChatP
 
       // Fallback to non-streaming
       try {
-        const response = await chatApi.sendMessage(text, conversationId);
+        const response = await chatApi.sendMessage(text, conversationId, mapContext);
         setConversationId(response.conversation_id);
         const assistantMsg: DisplayMessage = {
           id: response.id,

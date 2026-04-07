@@ -26,7 +26,7 @@ Rules for tool usage — follow these strictly:
 5. NEVER say you cannot display maps or show locations on the map. You CAN show locations by calling the geocode tool — it will place markers on the map automatically.
 6. If the user names two or more places, call geocode separately for each one.
 7. When the user says anything that means OPENING or NAVIGATING to a section of this app — ALWAYS call navigate immediately without asking for clarification. Do not ask "what do you want to configure" — just navigate.
-8. For any place or address lookup, geocode.query MUST contain the exact place or address text from the user's message. Never send an empty query.
+8. For any place or address lookup, geocode.query MUST contain the place or address text from the user's message. Never send an empty query. If the user asks a follow-up question and the current map context already contains a relevant city or route point, you may enrich an ambiguous landmark query with that context, for example "кремль, Москва".
 9. You may ONLY use these tools: geocode, search_routes, get_route_details, navigate. Never call WebSearch, ToolSearch, Bash, Read, Write, or any other tools.
 
 Page mapping (use navigate tool with these paths):
@@ -41,6 +41,7 @@ Examples:
 - User: "найди бутлерова 2к2" → call geocode with {"query":"бутлерова 2к2"}
 - User: "где москва-сити" → call geocode with {"query":"москва-сити"}
 - User: "build a route from Rome to Milan" → call geocode with {"query":"Rome"} and geocode with {"query":"Milan"}
+- If the current map already has a point in Moscow and the user says "построй маршрут до кремля" → geocode the new destination with a context-aware query such as {"query":"кремль, Москва"}
 
 Be concise and helpful. After calling tools, summarize the results naturally."#;
 
@@ -60,6 +61,18 @@ pub struct ChatPoint {
     pub lat: f64,
     pub lng: f64,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChatMapPointContext {
+    pub lat: f64,
+    pub lng: f64,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChatMapContext {
+    pub points: Vec<ChatMapPointContext>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,6 +199,18 @@ where
         conversation_id: Uuid,
         text: String,
     ) -> Result<ChatResponse, UsecaseError> {
+        self.send_message_with_context(user_id, conversation_id, text, None)
+            .await
+    }
+
+    #[tracing::instrument(skip(self, text, map_context), fields(user_id = %user_id, conversation_id = %conversation_id))]
+    pub async fn send_message_with_context(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        text: String,
+        map_context: Option<ChatMapContext>,
+    ) -> Result<ChatResponse, UsecaseError> {
         tracing::info!(%user_id, %conversation_id, "processing chat message");
 
         let direct_response = self.try_handle_direct_request(&text).await?;
@@ -232,6 +257,16 @@ where
             tool_calls: vec![],
             tool_call_id: None,
         }];
+        let active_map_context =
+            merge_map_contexts(map_context, map_context_from_history(&history));
+        if let Some(context_message) = build_map_context_message(&active_map_context) {
+            messages.push(AiMessage {
+                role: AiRole::System,
+                content: Some(context_message),
+                tool_calls: vec![],
+                tool_call_id: None,
+            });
+        }
         for msg in &history {
             let role = match msg.role.as_str() {
                 "assistant" => AiRole::Assistant,
@@ -309,8 +344,14 @@ where
                             saw_supported_non_geocode_tool = true;
                         }
 
-                        let (result_text, new_actions) =
-                            self.execute_tool(&tool_call.name, &tool_args).await;
+                        let (result_text, new_actions) = self
+                            .execute_tool_with_context(
+                                &tool_call.name,
+                                &tool_args,
+                                &user_msg.content,
+                                active_map_context.as_ref(),
+                            )
+                            .await;
 
                         if !is_supported_tool(&tool_call.name) {
                             saw_unsupported_tool = true;
@@ -533,8 +574,28 @@ where
         ),
         UsecaseError,
     > {
+        self.send_message_stream_with_context(user_id, conversation_id, text, None)
+            .await
+    }
+
+    #[tracing::instrument(skip(self, text, map_context), fields(user_id = %user_id, conversation_id = %conversation_id))]
+    pub async fn send_message_stream_with_context(
+        &self,
+        user_id: Uuid,
+        conversation_id: Uuid,
+        text: String,
+        map_context: Option<ChatMapContext>,
+    ) -> Result<
+        (
+            ChatResponse,
+            std::pin::Pin<Box<dyn Stream<Item = Result<ChatStreamEvent, UsecaseError>> + Send>>,
+        ),
+        UsecaseError,
+    > {
         // Run full non-streaming call first (tool loop + final answer)
-        let response = self.send_message(user_id, conversation_id, text).await?;
+        let response = self
+            .send_message_with_context(user_id, conversation_id, text, map_context)
+            .await?;
 
         tracing::info!(
             response_id = %response.id,
@@ -617,10 +678,23 @@ where
         name: &str,
         args: &std::collections::HashMap<String, serde_json::Value>,
     ) -> (String, Vec<ChatAction>) {
+        self.execute_tool_with_context(name, args, "", None).await
+    }
+
+    async fn execute_tool_with_context(
+        &self,
+        name: &str,
+        args: &std::collections::HashMap<String, serde_json::Value>,
+        latest_user_message: &str,
+        map_context: Option<&ChatMapContext>,
+    ) -> (String, Vec<ChatAction>) {
         metrics::counter!("chat_tool_calls_total", "tool" => name.to_string()).increment(1);
 
         match name {
-            "geocode" => self.tool_geocode(args).await,
+            "geocode" => {
+                self.tool_geocode_with_context(args, latest_user_message, map_context)
+                    .await
+            }
             "search_routes" => self.tool_search_routes(args).await,
             "get_route_details" => self.tool_get_route_details(args).await,
             "navigate" => self.tool_navigate(args).await,
@@ -674,6 +748,15 @@ where
         &self,
         args: &std::collections::HashMap<String, serde_json::Value>,
     ) -> (String, Vec<ChatAction>) {
+        self.tool_geocode_with_context(args, "", None).await
+    }
+
+    async fn tool_geocode_with_context(
+        &self,
+        args: &std::collections::HashMap<String, serde_json::Value>,
+        latest_user_message: &str,
+        map_context: Option<&ChatMapContext>,
+    ) -> (String, Vec<ChatAction>) {
         let query = args
             .get("query")
             .and_then(|v| v.as_str())
@@ -689,7 +772,19 @@ where
             );
         }
 
-        match self.geocode_place(query).await {
+        let geocode_result = if should_bias_geocode_to_existing_route(latest_user_message, query) {
+            match map_context.and_then(most_recent_map_point) {
+                Some(anchor) => match self.geocode_place_near_existing_point(query, anchor).await {
+                    Ok(Some(point)) => Ok(Some(point)),
+                    Ok(None) | Err(_) => self.geocode_place(query).await,
+                },
+                None => self.geocode_place(query).await,
+            }
+        } else {
+            self.geocode_place(query).await
+        };
+
+        match geocode_result {
             Ok(Some(point)) => {
                 tracing::info!(
                     %query,
@@ -758,6 +853,61 @@ where
             lng: result.lon.parse().unwrap_or(0.0),
             name: result.display_name.clone(),
         }))
+    }
+
+    async fn geocode_place_near_existing_point(
+        &self,
+        query: &str,
+        anchor: &ChatMapPointContext,
+    ) -> Result<Option<ChatPoint>, String> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(None);
+        }
+
+        let url = format!(
+            "{}/search?q={}&format=json&limit=5",
+            self.nominatim_url,
+            urlencoding::encode(query)
+        );
+
+        let response = self
+            .http_client
+            .get(&url)
+            .header("User-Agent", "GuideHelper/1.0")
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !response.status().is_success() {
+            return Err(format!("unexpected geocoding status {}", response.status()));
+        }
+
+        let results = response
+            .json::<Vec<NominatimResult>>()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(results
+            .into_iter()
+            .filter_map(|result| {
+                let lat = result.lat.parse::<f64>().ok()?;
+                let lng = result.lon.parse::<f64>().ok()?;
+                Some((
+                    distance_squared(anchor.lat, anchor.lng, lat, lng),
+                    ChatPoint {
+                        lat,
+                        lng,
+                        name: result.display_name,
+                    },
+                ))
+            })
+            .min_by(|(left_distance, _), (right_distance, _)| {
+                left_distance
+                    .partial_cmp(right_distance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(_, point)| point))
     }
 
     async fn tool_search_routes(
@@ -1109,6 +1259,123 @@ fn collect_points_from_actions(actions: &[ChatAction]) -> Vec<ChatPoint> {
     }
 
     points
+}
+
+fn map_context_from_history(history: &[ChatMessage]) -> Option<ChatMapContext> {
+    history.iter().rev().find_map(|message| {
+        let actions = message.actions.clone()?;
+        let parsed_actions = serde_json::from_value::<Vec<ChatAction>>(actions).ok()?;
+        let points = collect_points_from_actions(&parsed_actions);
+        if points.is_empty() {
+            return None;
+        }
+
+        Some(ChatMapContext {
+            points: points
+                .into_iter()
+                .map(|point| ChatMapPointContext {
+                    lat: point.lat,
+                    lng: point.lng,
+                    name: Some(point.name),
+                })
+                .collect(),
+        })
+    })
+}
+
+fn merge_map_contexts(
+    preferred: Option<ChatMapContext>,
+    fallback: Option<ChatMapContext>,
+) -> Option<ChatMapContext> {
+    preferred
+        .filter(|context| !context.points.is_empty())
+        .or_else(|| fallback.filter(|context| !context.points.is_empty()))
+}
+
+fn build_map_context_message(map_context: &Option<ChatMapContext>) -> Option<String> {
+    let context = map_context.as_ref()?;
+    if context.points.is_empty() {
+        return None;
+    }
+
+    let point_lines = context
+        .points
+        .iter()
+        .rev()
+        .take(4)
+        .enumerate()
+        .map(|(index, point)| {
+            let label = point
+                .name
+                .clone()
+                .filter(|name| !name.trim().is_empty())
+                .unwrap_or_else(|| format!("{:.6}, {:.6}", point.lat, point.lng));
+            format!(
+                "{}. {} ({:.6}, {:.6})",
+                index + 1,
+                label,
+                point.lat,
+                point.lng
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Some(format!(
+        "Current map context for this request:\n- There are already {} point(s) on the map.\n- Most recent map points:\n{}\nUse this context when the user asks a follow-up route question. If they ask to build a route to or from one new place, treat the existing map point(s) as the other route endpoint(s). When a landmark query is ambiguous, prefer the candidate nearest to the existing map points.",
+        context.points.len(),
+        point_lines
+    ))
+}
+
+fn most_recent_map_point(map_context: &ChatMapContext) -> Option<&ChatMapPointContext> {
+    map_context.points.last()
+}
+
+fn should_bias_geocode_to_existing_route(latest_user_message: &str, query: &str) -> bool {
+    if query.trim().is_empty() || extract_direct_route_request(latest_user_message).is_some() {
+        return false;
+    }
+
+    let normalized_message = format!(
+        " {} ",
+        normalize_whitespace(latest_user_message).to_lowercase()
+    );
+    let has_route_intent = [
+        " маршрут ",
+        " route ",
+        " добраться ",
+        " доехать ",
+        " проложи ",
+        " построи ",
+        " построить ",
+        " путь ",
+    ]
+    .iter()
+    .any(|token| normalized_message.contains(token));
+
+    if !has_route_intent {
+        return false;
+    }
+
+    let has_partial_endpoint = [" до ", " to ", " к ", " from ", " от ", " из "]
+        .iter()
+        .any(|token| normalized_message.contains(token));
+
+    if !has_partial_endpoint {
+        return false;
+    }
+
+    let normalized_query = normalize_whitespace(query);
+    let query_word_count = normalized_query.split_whitespace().count();
+    let query_has_digits = normalized_query.chars().any(|ch| ch.is_ascii_digit());
+    !query_has_digits && query_word_count <= 4
+}
+
+fn distance_squared(from_lat: f64, from_lng: f64, to_lat: f64, to_lng: f64) -> f64 {
+    let lat_delta = from_lat - to_lat;
+    let lng_delta = from_lng - to_lng;
+    lat_delta * lat_delta + lng_delta * lng_delta
 }
 
 fn extract_route_locations(text: &str) -> Option<Vec<String>> {
@@ -1800,6 +2067,92 @@ mod tests {
             ChatAction::ShowPoints { points } => {
                 assert_eq!(points.len(), 1);
                 assert!(points[0].name.contains("Бутлерова"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_with_map_context_prefers_geocode_result_near_existing_point() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "кремля"))
+            .and(wiremock::matchers::query_param("limit", "5"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                    {
+                        "lat": "54.1921",
+                        "lon": "37.6177",
+                        "display_name": "Тульский кремль, Тула, Россия"
+                    },
+                    {
+                        "lat": "55.7517",
+                        "lon": "37.6176",
+                        "display_name": "Московский Кремль, Москва, Россия"
+                    }
+                ])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "построй маршрут до кремля".to_string(),
+                )])
+            },
+        );
+
+        let assistant = Arc::new(SequenceAiClient::new(vec![
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-geocode".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"кремля"}"#.to_string(),
+                }],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: Some("Построил маршрут до кремля.".to_string()),
+                tool_calls: vec![],
+                stop: true,
+            }),
+        ]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
+
+        let result = uc
+            .send_message_with_context(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут до кремля".to_string(),
+                Some(ChatMapContext {
+                    points: vec![ChatMapPointContext {
+                        lat: 55.653531,
+                        lng: 37.5225759,
+                        name: Some("улица Бутлерова, 2к2, Москва, Россия".to_string()),
+                    }],
+                }),
+            )
+            .await
+            .unwrap();
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 1);
+                assert!(points[0].name.contains("Москва"));
             }
             _ => panic!("expected ShowPoints action"),
         }

@@ -9,6 +9,16 @@ export interface ChatPoint {
   name: string;
 }
 
+export interface ChatContextPoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+export interface ChatMapContext {
+  points: ChatContextPoint[];
+}
+
 export interface ChatRouteRef {
   id: string;
   name: string;
@@ -69,12 +79,18 @@ const getAuthHeader = () => {
 };
 
 export const chatApi = {
-  async sendMessage(message: string, conversationId?: string): Promise<ChatMessageResponse> {
+  async sendMessage(
+    message: string,
+    conversationId?: string,
+    mapContext?: ChatMapContext,
+  ): Promise<ChatMessageResponse> {
     const response = await axios.post(
       CHAT_URL,
       {
         message,
         conversation_id: conversationId || undefined,
+        map_context:
+          mapContext && mapContext.points.length > 0 ? mapContext : undefined,
       },
       {
         headers: getAuthHeader(),
@@ -87,6 +103,7 @@ export const chatApi = {
   async sendMessageStream(
     message: string,
     conversationId: string | undefined,
+    mapContext: ChatMapContext | undefined,
     onToken: (content: string) => void,
     onActions: (actions: ChatAction[]) => void,
     onDone: (id: string, conversationId: string) => void,
@@ -102,6 +119,8 @@ export const chatApi = {
       body: JSON.stringify({
         message,
         conversation_id: conversationId || undefined,
+        map_context:
+          mapContext && mapContext.points.length > 0 ? mapContext : undefined,
       }),
     });
 

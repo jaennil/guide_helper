@@ -17,13 +17,27 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::delivery::http::v1::middleware::AuthenticatedUser;
-use crate::usecase::chat::{ChatAction, ChatStreamEvent};
+use crate::usecase::chat::{ChatAction, ChatMapContext, ChatMapPointContext, ChatStreamEvent};
 use crate::usecase::error::UsecaseError;
 
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
     pub message: String,
     pub conversation_id: Option<Uuid>,
+    pub map_context: Option<ChatMapContextRequest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChatMapContextRequest {
+    #[serde(default)]
+    pub points: Vec<ChatMapPointContextRequest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChatMapPointContextRequest {
+    pub lat: f64,
+    pub lng: f64,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,6 +99,25 @@ async fn enforce_rate_limit(state: &Arc<AppState>, user_id: Uuid) -> Result<(), 
     Ok(())
 }
 
+fn convert_map_context(map_context: Option<ChatMapContextRequest>) -> Option<ChatMapContext> {
+    let map_context = map_context?;
+    if map_context.points.is_empty() {
+        return None;
+    }
+
+    Some(ChatMapContext {
+        points: map_context
+            .points
+            .into_iter()
+            .map(|point| ChatMapPointContext {
+                lat: point.lat,
+                lng: point.lng,
+                name: point.name,
+            })
+            .collect(),
+    })
+}
+
 fn validate_message(message: &str, max_len: usize) -> Result<(), UsecaseError> {
     if message.is_empty() || message.len() > max_len {
         return Err(UsecaseError::Validation(format!(
@@ -122,7 +155,12 @@ pub async fn send_chat_message(
 
     let result = state
         .chat_usecase
-        .send_message(user.user_id, conversation_id, body.message)
+        .send_message_with_context(
+            user.user_id,
+            conversation_id,
+            body.message,
+            convert_map_context(body.map_context),
+        )
         .await?;
 
     let elapsed = start.elapsed().as_secs_f64();
@@ -270,7 +308,12 @@ pub async fn send_chat_message_stream(
 
     let (_response, event_stream) = state
         .chat_usecase
-        .send_message_stream(user.user_id, conversation_id, body.message)
+        .send_message_stream_with_context(
+            user.user_id,
+            conversation_id,
+            body.message,
+            convert_map_context(body.map_context),
+        )
         .await?;
 
     let sse_stream = event_stream.map(|result: Result<ChatStreamEvent, _>| match result {
