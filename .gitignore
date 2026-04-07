@@ -8,6 +8,7 @@ code
 .idea/
 .VSCodeCounter/
 .codex
+.codex-tmp/
 
 # Build artifacts
 **/target/
