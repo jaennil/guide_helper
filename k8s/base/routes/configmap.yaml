@@ -15,6 +15,6 @@ data:
   OLLAMA_CHAT_BASE_URL: "http://ollama:11434"
   OLLAMA_CHAT_MODEL: "llama3.2"
   AI_PROVIDER: "ollama"
-  CLAUDE_BASE_URL: "http://claude-code-api.claude-code-api.svc.cluster.local:8000"
+  CLAUDE_BASE_URL: "http://192.168.3.4:8000"
   CLAUDE_MODEL: "claude-sonnet-4-20250514"
   UNLEASH_URL: "http://unleash.unleash.svc.cluster.local:4242/api"
