@@ -275,7 +275,6 @@ where
                         tool_call_id: None,
                     });
 
-                    let mut iteration_actions: Vec<ChatAction> = Vec::new();
                     let mut saw_supported_non_geocode_tool = false;
 
                     // Execute each tool and append results
@@ -317,7 +316,6 @@ where
                             saw_unsupported_tool = true;
                         }
 
-                        iteration_actions.extend(new_actions.clone());
                         actions.extend(new_actions);
 
                         messages.push(AiMessage {
@@ -332,7 +330,7 @@ where
                         &user_msg.content,
                         saw_unsupported_tool,
                         saw_supported_non_geocode_tool,
-                        &iteration_actions,
+                        &actions,
                     ) {
                         tracing::info!(
                             iteration,
@@ -581,7 +579,7 @@ where
         latest_user_message: &str,
         saw_unsupported_tool: bool,
         saw_supported_non_geocode_tool: bool,
-        iteration_actions: &[ChatAction],
+        accumulated_actions: &[ChatAction],
     ) -> Option<DirectChatResponse> {
         if !saw_unsupported_tool || saw_supported_non_geocode_tool {
             return None;
@@ -591,7 +589,7 @@ where
             return None;
         }
 
-        let points = collect_points_from_actions(iteration_actions);
+        let points = collect_points_from_actions(accumulated_actions);
         if points.is_empty() {
             return None;
         }
@@ -1700,6 +1698,84 @@ mod tests {
             ],
             stop: false,
         })]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "найди бутлерова 2к2".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("добавил"));
+        assert_eq!(result.actions.len(), 1);
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 1);
+                assert!(points[0].name.contains("Бутлерова"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_short_circuits_when_unsupported_tool_follows_geocode() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.6495",
+                    "lon": "37.5408",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "найди бутлерова 2к2".to_string(),
+                )])
+            },
+        );
+
+        let assistant = Arc::new(SequenceAiClient::new(vec![
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-geocode".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                }],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![AiToolCall {
+                    id: "tool-search".to_string(),
+                    name: "ToolSearch".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                }],
+                stop: false,
+            }),
+        ]));
 
         let uc = make_usecase_with_custom_assistant(
             mock_chat,
