@@ -250,6 +250,8 @@ where
 
         let ai_timeout = std::time::Duration::from_secs(60);
         let ai_result = tokio::time::timeout(ai_timeout, async {
+            let mut saw_unsupported_tool = false;
+
             for iteration in 0..self.max_tool_iterations {
                 tracing::debug!(iteration, provider = %assistant.model(), "sending request to AI");
 
@@ -274,7 +276,6 @@ where
                     });
 
                     let mut iteration_actions: Vec<ChatAction> = Vec::new();
-                    let mut saw_unsupported_tool = false;
                     let mut saw_supported_non_geocode_tool = false;
 
                     // Execute each tool and append results
