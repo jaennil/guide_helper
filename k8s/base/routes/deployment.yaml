@@ -4,6 +4,8 @@ metadata:
   name: routes
   labels:
     app: routes
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 2
   selector:
@@ -11,6 +13,8 @@ spec:
       app: routes
   template:
     metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
       labels:
         app: routes
     spec:
