@@ -98,7 +98,15 @@ impl AnthropicClient {
         for msg in messages {
             match msg.role {
                 AiRole::System => {
-                    system = msg.content.clone().unwrap_or_default();
+                    let content = msg.content.clone().unwrap_or_default();
+                    if content.trim().is_empty() {
+                        continue;
+                    }
+
+                    if !system.is_empty() {
+                        system.push_str("\n\n");
+                    }
+                    system.push_str(&content);
                 }
                 AiRole::User => {
                     out.push(AnthropicMessage {
@@ -286,5 +294,42 @@ impl AiChatClient for AnthropicClient {
                 false
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::usecase::ai_client::{AiMessage, AiRole};
+
+    #[test]
+    fn test_build_messages_concatenates_multiple_system_messages() {
+        let messages = vec![
+            AiMessage {
+                role: AiRole::System,
+                content: Some("base prompt".to_string()),
+                tool_calls: vec![],
+                tool_call_id: None,
+            },
+            AiMessage {
+                role: AiRole::System,
+                content: Some("map context".to_string()),
+                tool_calls: vec![],
+                tool_call_id: None,
+            },
+            AiMessage {
+                role: AiRole::User,
+                content: Some("привет".to_string()),
+                tool_calls: vec![],
+                tool_call_id: None,
+            },
+        ];
+
+        let (system, anthropic_messages) = AnthropicClient::build_messages(&messages);
+
+        assert!(system.contains("base prompt"));
+        assert!(system.contains("map context"));
+        assert_eq!(anthropic_messages.len(), 1);
+        assert_eq!(anthropic_messages[0].role, "user");
     }
 }

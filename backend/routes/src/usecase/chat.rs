@@ -20,13 +20,13 @@ You have access to these tools:
 
 Rules for tool usage — follow these strictly:
 1. When the user asks to SHOW, FIND, MARK, or DISPLAY a location — call geocode for that location.
-2. When the user asks to BUILD A ROUTE, PLAN A TRIP, or GO FROM one place TO another — call geocode for EACH location mentioned (start, end, and any waypoints), then describe the route between them. Do NOT give text-only directions; always geocode the places first.
+2. When the user asks to BUILD A ROUTE, PLAN A TRIP, or GO FROM one place TO another — call geocode for each MISSING location needed to build the route, then describe the route between them. If the current map context already contains route points, treat those existing points as already known route endpoints and geocode only the new destination(s). Do NOT give text-only directions; always geocode the places first.
 3. When the user asks to search or browse routes in the catalog — use search_routes.
 4. When the user mentions a specific route ID — use get_route_details.
 5. NEVER say you cannot display maps or show locations on the map. You CAN show locations by calling the geocode tool — it will place markers on the map automatically.
 6. If the user names two or more places, call geocode separately for each one.
 7. When the user says anything that means OPENING or NAVIGATING to a section of this app — ALWAYS call navigate immediately without asking for clarification. Do not ask "what do you want to configure" — just navigate.
-8. For any place or address lookup, geocode.query MUST contain the place or address text from the user's message. Never send an empty query. If the user asks a follow-up question and the current map context already contains a relevant city or route point, you may enrich an ambiguous landmark query with that context, for example "кремль, Москва".
+8. For any place or address lookup, geocode.query MUST contain the place or address text from the user's message. Never send an empty query. If the user asks a follow-up question and the current map context already contains a relevant city or route point, you should enrich an ambiguous landmark query with that context, for example "кремль, Москва" or "Московский Кремль".
 9. You may ONLY use these tools: geocode, search_routes, get_route_details, navigate. Never call WebSearch, ToolSearch, Bash, Read, Write, or any other tools.
 
 Page mapping (use navigate tool with these paths):
@@ -212,25 +212,30 @@ where
         map_context: Option<ChatMapContext>,
     ) -> Result<ChatResponse, UsecaseError> {
         tracing::info!(%user_id, %conversation_id, "processing chat message");
-
-        let direct_response = self.try_handle_direct_request(&text).await?;
-
-        let assistant = if direct_response.is_none() {
-            Some(self.assistant.as_ref().ok_or_else(|| {
-                UsecaseError::Unavailable("AI assistant is not available".to_string())
-            })?)
+        let configured_assistant = self
+            .assistant
+            .as_ref()
+            .filter(|assistant| assistant.is_configured());
+        let fallback_response = if configured_assistant.is_none() {
+            self.try_handle_direct_request(&text).await?
         } else {
             None
         };
+
+        if configured_assistant.is_none() && fallback_response.is_none() {
+            return Err(UsecaseError::Unavailable(
+                "AI assistant is not available".to_string(),
+            ));
+        }
 
         let user_msg = ChatMessage::new_user_message(user_id, conversation_id, text);
         self.chat_repo.create(&user_msg).await?;
         tracing::debug!(message_id = %user_msg.id, "user message saved");
 
-        if let Some(response) = direct_response {
+        if let Some(response) = fallback_response {
             tracing::info!(
                 actions_count = response.actions.len(),
-                "handled chat message via direct route fallback"
+                "handled chat message via direct route fallback because AI is unavailable"
             );
             return self
                 .persist_assistant_response(
@@ -242,8 +247,9 @@ where
                 .await;
         }
 
-        let assistant =
-            assistant.expect("assistant must exist when no direct response is available");
+        let assistant = configured_assistant.ok_or_else(|| {
+            UsecaseError::Unavailable("AI assistant is not available".to_string())
+        })?;
 
         let history = self
             .chat_repo
@@ -251,22 +257,14 @@ where
             .await?;
         tracing::debug!(history_count = history.len(), "loaded conversation history");
 
+        let active_map_context =
+            merge_map_contexts(map_context, map_context_from_history(&history));
         let mut messages = vec![AiMessage {
             role: AiRole::System,
-            content: Some(SYSTEM_PROMPT.to_string()),
+            content: Some(build_system_prompt(active_map_context.as_ref())),
             tool_calls: vec![],
             tool_call_id: None,
         }];
-        let active_map_context =
-            merge_map_contexts(map_context, map_context_from_history(&history));
-        if let Some(context_message) = build_map_context_message(&active_map_context) {
-            messages.push(AiMessage {
-                role: AiRole::System,
-                content: Some(context_message),
-                tool_calls: vec![],
-                tool_call_id: None,
-            });
-        }
         for msg in &history {
             let role = match msg.role.as_str() {
                 "assistant" => AiRole::Assistant,
@@ -434,6 +432,7 @@ where
         message: String,
         actions: Vec<ChatAction>,
     ) -> Result<ChatResponse, UsecaseError> {
+        let actions = normalize_actions(actions);
         let actions_json = if actions.is_empty() {
             None
         } else {
@@ -480,7 +479,11 @@ where
                 .iter()
                 .zip(route_request.geocoding_queries.iter())
             {
-                match self.geocode_place(geocoding_query).await {
+                let anchor_point = found_points.last();
+                match self
+                    .geocode_route_place(geocoding_query, anchor_point)
+                    .await
+                {
                     Ok(Some(point)) => found_points.push(point),
                     Ok(None) => missing_places.push(display_place.clone()),
                     Err(error) => {
@@ -559,6 +562,29 @@ where
 
         let _ = is_russian;
         Ok(None)
+    }
+
+    async fn geocode_route_place(
+        &self,
+        query: &str,
+        anchor_point: Option<&ChatPoint>,
+    ) -> Result<Option<ChatPoint>, String> {
+        if is_ambiguous_place_query(query) {
+            if let Some(anchor_point) = anchor_point {
+                let anchor = ChatMapPointContext {
+                    lat: anchor_point.lat,
+                    lng: anchor_point.lng,
+                    name: Some(anchor_point.name.clone()),
+                };
+
+                match self.geocode_place_near_existing_point(query, &anchor).await {
+                    Ok(Some(point)) => return Ok(Some(point)),
+                    Ok(None) | Err(_) => {}
+                }
+            }
+        }
+
+        self.geocode_place(query).await
     }
 
     #[tracing::instrument(skip(self, text), fields(user_id = %user_id, conversation_id = %conversation_id))]
@@ -643,10 +669,6 @@ where
         accumulated_actions: &[ChatAction],
     ) -> Option<DirectChatResponse> {
         if !saw_unsupported_tool || saw_supported_non_geocode_tool {
-            return None;
-        }
-
-        if extract_direct_route_request(latest_user_message).is_some() {
             return None;
         }
 
@@ -1261,6 +1283,41 @@ fn collect_points_from_actions(actions: &[ChatAction]) -> Vec<ChatPoint> {
     points
 }
 
+fn normalize_actions(actions: Vec<ChatAction>) -> Vec<ChatAction> {
+    let mut normalized = Vec::new();
+
+    let points = collect_points_from_actions(&actions);
+    if !points.is_empty() {
+        normalized.push(ChatAction::ShowPoints { points });
+    }
+
+    let mut routes: Vec<ChatRouteRef> = Vec::new();
+    for action in &actions {
+        if let ChatAction::ShowRoutes {
+            routes: action_routes,
+        } = action
+        {
+            for route in action_routes {
+                let is_duplicate = routes.iter().any(|existing| existing.id == route.id);
+                if !is_duplicate {
+                    routes.push(route.clone());
+                }
+            }
+        }
+    }
+
+    if !routes.is_empty() {
+        normalized.push(ChatAction::ShowRoutes { routes });
+    }
+
+    normalized.extend(actions.into_iter().filter_map(|action| match action {
+        ChatAction::Navigate { path, label } => Some(ChatAction::Navigate { path, label }),
+        _ => None,
+    }));
+
+    normalized
+}
+
 fn map_context_from_history(history: &[ChatMessage]) -> Option<ChatMapContext> {
     history.iter().rev().find_map(|message| {
         let actions = message.actions.clone()?;
@@ -1292,11 +1349,10 @@ fn merge_map_contexts(
         .or_else(|| fallback.filter(|context| !context.points.is_empty()))
 }
 
-fn build_map_context_message(map_context: &Option<ChatMapContext>) -> Option<String> {
-    let context = map_context.as_ref()?;
-    if context.points.is_empty() {
-        return None;
-    }
+fn build_system_prompt(map_context: Option<&ChatMapContext>) -> String {
+    let Some(context) = map_context.filter(|context| !context.points.is_empty()) else {
+        return SYSTEM_PROMPT.to_string();
+    };
 
     let point_lines = context
         .points
@@ -1321,11 +1377,11 @@ fn build_map_context_message(map_context: &Option<ChatMapContext>) -> Option<Str
         .collect::<Vec<_>>()
         .join("\n");
 
-    Some(format!(
-        "Current map context for this request:\n- There are already {} point(s) on the map.\n- Most recent map points:\n{}\nUse this context when the user asks a follow-up route question. If they ask to build a route to or from one new place, treat the existing map point(s) as the other route endpoint(s). When a landmark query is ambiguous, prefer the candidate nearest to the existing map points.",
+    format!(
+        "{SYSTEM_PROMPT}\n\nCurrent map context for this request:\n- There are already {} point(s) on the map.\n- Most recent map points:\n{}\nUse this context when the user asks a follow-up route question. If they ask to build a route to or from one new place, treat the existing map point(s) as the other route endpoint(s). When a landmark query is ambiguous, prefer the candidate nearest to the existing map points.",
         context.points.len(),
         point_lines
-    ))
+    )
 }
 
 fn most_recent_map_point(map_context: &ChatMapContext) -> Option<&ChatMapPointContext> {
@@ -1366,7 +1422,15 @@ fn should_bias_geocode_to_existing_route(latest_user_message: &str, query: &str)
         return false;
     }
 
+    is_ambiguous_place_query(query)
+}
+
+fn is_ambiguous_place_query(query: &str) -> bool {
     let normalized_query = normalize_whitespace(query);
+    if normalized_query.is_empty() || normalized_query.contains(',') {
+        return false;
+    }
+
     let query_word_count = normalized_query.split_whitespace().count();
     let query_has_digits = normalized_query.chars().any(|ch| ch.is_ascii_digit());
     !query_has_digits && query_word_count <= 4
@@ -1822,6 +1886,253 @@ mod tests {
             ChatAction::ShowPoints { points } => {
                 assert_eq!(points.len(), 2);
                 assert!(points[0].name.contains("Москва"));
+                assert!(points[1].name.contains("Москва"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_direct_route_request_biases_ambiguous_destination_to_previous_point()
+    {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .and(wiremock::matchers::query_param("limit", "1"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.653531",
+                    "lon": "37.5225759",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "кремля"))
+            .and(wiremock::matchers::query_param("limit", "5"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                    {
+                        "lat": "54.1921",
+                        "lon": "37.6177",
+                        "display_name": "Тульский кремль, Тула, Россия"
+                    },
+                    {
+                        "lat": "55.7517",
+                        "lon": "37.6176",
+                        "display_name": "Московский Кремль, Москва, Россия"
+                    }
+                ])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+
+        let uc =
+            make_usecase_with_nominatim(mock_chat, MockRouteRepository::new(), mock_server.uri());
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут от бутлерова 2к2 до кремля".to_string(),
+            )
+            .await
+            .unwrap();
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 2);
+                assert!(points[0].name.contains("Москва"));
+                assert!(points[1].name.contains("Московский Кремль"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_route_request_uses_ai_path_when_assistant_is_available() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.653531",
+                    "lon": "37.5225759",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "Московский Кремль"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.7517",
+                    "lon": "37.6176",
+                    "display_name": "Московский Кремль, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "построй маршрут от бутлерова 2к2 до кремля".to_string(),
+                )])
+            },
+        );
+
+        let assistant = Arc::new(SequenceAiClient::new(vec![
+            Ok(AiResponse {
+                content: None,
+                tool_calls: vec![
+                    AiToolCall {
+                        id: "tool-start".to_string(),
+                        name: "geocode".to_string(),
+                        arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                    },
+                    AiToolCall {
+                        id: "tool-end".to_string(),
+                        name: "geocode".to_string(),
+                        arguments: r#"{"query":"Московский Кремль"}"#.to_string(),
+                    },
+                ],
+                stop: false,
+            }),
+            Ok(AiResponse {
+                content: Some("Построил маршрут до кремля и добавил его на карту.".to_string()),
+                tool_calls: vec![],
+                stop: true,
+            }),
+        ]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут от бутлерова 2к2 до кремля".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("маршрут"));
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 2);
+                assert!(points[0].name.contains("Бутлерова"));
+                assert!(points[1].name.contains("Кремль"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_route_request_short_circuits_after_geocode_with_unsupported_tool() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.653531",
+                    "lon": "37.5225759",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "кремль, Москва"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.7517",
+                    "lon": "37.6176",
+                    "display_name": "Московский Кремль, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "построй маршрут от бутлерова 2к2 до кремля".to_string(),
+                )])
+            },
+        );
+
+        let assistant = Arc::new(SequenceAiClient::new(vec![Ok(AiResponse {
+            content: None,
+            tool_calls: vec![
+                AiToolCall {
+                    id: "tool-start".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                },
+                AiToolCall {
+                    id: "tool-end".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"кремль, Москва"}"#.to_string(),
+                },
+                AiToolCall {
+                    id: "tool-search".to_string(),
+                    name: "ToolSearch".to_string(),
+                    arguments: r#"{"query":"маршрут до кремля"}"#.to_string(),
+                },
+            ],
+            stop: false,
+        })]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "построй маршрут от бутлерова 2к2 до кремля".to_string(),
+            )
+            .await
+            .unwrap();
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 2);
                 assert!(points[1].name.contains("Москва"));
             }
             _ => panic!("expected ShowPoints action"),
