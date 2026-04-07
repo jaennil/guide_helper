@@ -273,6 +273,10 @@ where
                         tool_call_id: None,
                     });
 
+                    let mut iteration_actions: Vec<ChatAction> = Vec::new();
+                    let mut saw_unsupported_tool = false;
+                    let mut saw_supported_non_geocode_tool = false;
+
                     // Execute each tool and append results
                     for tool_call in &resp.tool_calls {
                         tracing::info!(
@@ -286,6 +290,12 @@ where
                         if let Some(result_text) =
                             self.validate_tool_call(&tool_call.name, &tool_args, &user_msg.content)
                         {
+                            if !is_supported_tool(&tool_call.name) {
+                                saw_unsupported_tool = true;
+                            } else if tool_call.name != "geocode" {
+                                saw_supported_non_geocode_tool = true;
+                            }
+
                             messages.push(AiMessage {
                                 role: AiRole::Tool,
                                 content: Some(result_text),
@@ -295,9 +305,18 @@ where
                             continue;
                         }
 
+                        if tool_call.name != "geocode" {
+                            saw_supported_non_geocode_tool = true;
+                        }
+
                         let (result_text, new_actions) =
                             self.execute_tool(&tool_call.name, &tool_args).await;
 
+                        if !is_supported_tool(&tool_call.name) {
+                            saw_unsupported_tool = true;
+                        }
+
+                        iteration_actions.extend(new_actions.clone());
                         actions.extend(new_actions);
 
                         messages.push(AiMessage {
@@ -306,6 +325,28 @@ where
                             tool_calls: vec![],
                             tool_call_id: Some(tool_call.id.clone()),
                         });
+                    }
+
+                    if let Some(direct_response) = self.maybe_finish_after_geocode_iteration(
+                        &user_msg.content,
+                        saw_unsupported_tool,
+                        saw_supported_non_geocode_tool,
+                        &iteration_actions,
+                    ) {
+                        tracing::info!(
+                            iteration,
+                            points = direct_response.actions.len(),
+                            "finishing response after successful geocode despite unsupported tool calls"
+                        );
+
+                        return self
+                            .persist_assistant_response(
+                                user_id,
+                                conversation_id,
+                                direct_response.message,
+                                direct_response.actions,
+                            )
+                            .await;
                     }
                 } else {
                     let assistant_text = resp.content.unwrap_or_default();
@@ -532,6 +573,44 @@ where
         };
 
         Ok((response, Box::pin(stream)))
+    }
+
+    fn maybe_finish_after_geocode_iteration(
+        &self,
+        latest_user_message: &str,
+        saw_unsupported_tool: bool,
+        saw_supported_non_geocode_tool: bool,
+        iteration_actions: &[ChatAction],
+    ) -> Option<DirectChatResponse> {
+        if !saw_unsupported_tool || saw_supported_non_geocode_tool {
+            return None;
+        }
+
+        if extract_direct_route_request(latest_user_message).is_some() {
+            return None;
+        }
+
+        let points = collect_points_from_actions(iteration_actions);
+        if points.is_empty() {
+            return None;
+        }
+
+        let message = if contains_cyrillic(latest_user_message) {
+            if points.len() == 1 {
+                "Нашёл место и добавил его на карту.".to_string()
+            } else {
+                "Нашёл места и добавил их на карту.".to_string()
+            }
+        } else if points.len() == 1 {
+            "I found the location and added it to the map.".to_string()
+        } else {
+            "I found the locations and added them to the map.".to_string()
+        };
+
+        Some(DirectChatResponse {
+            message,
+            actions: vec![ChatAction::ShowPoints { points }],
+        })
     }
 
     async fn execute_tool(
@@ -999,6 +1078,38 @@ fn parse_function_arguments(input: &str) -> std::collections::HashMap<String, se
             std::collections::HashMap::new()
         }
     }
+}
+
+fn is_supported_tool(name: &str) -> bool {
+    matches!(
+        name,
+        "geocode" | "search_routes" | "get_route_details" | "navigate"
+    )
+}
+
+fn collect_points_from_actions(actions: &[ChatAction]) -> Vec<ChatPoint> {
+    let mut points: Vec<ChatPoint> = Vec::new();
+
+    for action in actions {
+        if let ChatAction::ShowPoints {
+            points: action_points,
+        } = action
+        {
+            for point in action_points {
+                let is_duplicate = points.iter().any(|existing| {
+                    existing.name == point.name
+                        && (existing.lat - point.lat).abs() < f64::EPSILON
+                        && (existing.lng - point.lng).abs() < f64::EPSILON
+                });
+
+                if !is_duplicate {
+                    points.push(point.clone());
+                }
+            }
+        }
+    }
+
+    points
 }
 
 fn extract_route_locations(text: &str) -> Option<Vec<String>> {
@@ -1514,6 +1625,80 @@ mod tests {
                 stop: true,
             }),
         ]));
+
+        let uc = make_usecase_with_custom_assistant(
+            mock_chat,
+            MockRouteRepository::new(),
+            assistant,
+            mock_server.uri(),
+        );
+
+        let result = uc
+            .send_message(
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                "найди бутлерова 2к2".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.message.contains("добавил"));
+        assert_eq!(result.actions.len(), 1);
+
+        match &result.actions[0] {
+            ChatAction::ShowPoints { points } => {
+                assert_eq!(points.len(), 1);
+                assert!(points[0].name.contains("Бутлерова"));
+            }
+            _ => panic!("expected ShowPoints action"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_message_short_circuits_after_geocode_with_unsupported_tool() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/search"))
+            .and(wiremock::matchers::query_param("q", "бутлерова 2к2"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "lat": "55.6495",
+                    "lon": "37.5408",
+                    "display_name": "улица Бутлерова, 2к2, Москва, Россия"
+                }])),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let mut mock_chat = MockChatMessageRepository::new();
+        mock_chat.expect_create().times(2).returning(|_| Ok(()));
+        mock_chat.expect_find_by_conversation().times(1).returning(
+            |user_id, conversation_id, _| {
+                Ok(vec![ChatMessage::new_user_message(
+                    user_id,
+                    conversation_id,
+                    "найди бутлерова 2к2".to_string(),
+                )])
+            },
+        );
+
+        let assistant = Arc::new(SequenceAiClient::new(vec![Ok(AiResponse {
+            content: None,
+            tool_calls: vec![
+                AiToolCall {
+                    id: "tool-geocode".to_string(),
+                    name: "geocode".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                },
+                AiToolCall {
+                    id: "tool-search".to_string(),
+                    name: "ToolSearch".to_string(),
+                    arguments: r#"{"query":"бутлерова 2к2"}"#.to_string(),
+                },
+            ],
+            stop: false,
+        })]));
 
         let uc = make_usecase_with_custom_assistant(
             mock_chat,
