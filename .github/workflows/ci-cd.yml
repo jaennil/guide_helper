@@ -571,7 +571,7 @@ jobs:
               update_service_image frontend
             fi
 
-            cd ../..
+            cd ../../..
 
             if [ "$UPDATED" != "true" ]; then
               echo "No manifest changes needed"
@@ -670,7 +670,7 @@ jobs:
                 "photo-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-photo-worker:main-${IMAGE_TAG}"
             fi
 
-            cd ../..
+            cd ../../..
 
             git add k8s/overlays/production/kustomization.yaml
             git diff --cached --quiet && exit 0
