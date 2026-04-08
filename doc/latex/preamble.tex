@@ -160,6 +160,23 @@
 
 % --- Приложения ---
 \usepackage[title]{appendix}
+\newcommand{\appendixchapter}[2]{%
+  \clearpage
+  \refstepcounter{chapter}%
+  \renewcommand{\thechapter}{#1}%
+  \renewcommand{\thesection}{#1.\arabic{section}}%
+  \renewcommand{\thesubsection}{#1.\arabic{section}.\arabic{subsection}}%
+  \renewcommand{\thefigure}{#1.\arabic{figure}}%
+  \renewcommand{\thetable}{#1.\arabic{table}}%
+  \renewcommand{\theequation}{#1.\arabic{equation}}%
+  \setcounter{section}{0}%
+  \setcounter{subsection}{0}%
+  \setcounter{figure}{0}%
+  \setcounter{table}{0}%
+  \setcounter{equation}{0}%
+  \chapter*{ПРИЛОЖЕНИЕ #1}%
+  \addcontentsline{toc}{chapter}{ПРИЛОЖЕНИЕ #1. #2}%
+}
 
 % --- Перечисления ---
 \usepackage{enumitem}
