@@ -487,6 +487,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: main
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Kustomize
@@ -494,65 +496,98 @@ jobs:
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/
 
-      - name: Update image tags in kustomization
-        run: |
-          cd k8s/overlays/production
-
-          IMAGE_TAG="${GITHUB_SHA::7}"
-          IS_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
-
-          # Only update image tags for services whose merge job actually succeeded
-          if [ "${{ needs.merge-cache.result }}" == "success" ]; then
-            kustomize edit set image \
-              cache=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-cache:main-${IMAGE_TAG}
-          fi
-
-          if [ "${{ needs.merge-tiles.result }}" == "success" ]; then
-            kustomize edit set image \
-              tiles=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-tiles:main-${IMAGE_TAG}
-          fi
-
-          if [ "${{ needs.merge-auth.result }}" == "success" ]; then
-            kustomize edit set image \
-              auth=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-auth:main-${IMAGE_TAG}
-          fi
-
-          if [ "${{ needs.merge-routes.result }}" == "success" ]; then
-            kustomize edit set image \
-              routes=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-routes:main-${IMAGE_TAG}
-          fi
-
-          if [ "${{ needs.merge-photo-worker.result }}" == "success" ]; then
-            kustomize edit set image \
-              photo-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-photo-worker:main-${IMAGE_TAG}
-          fi
-
-          if [ "${{ needs.merge-frontend.result }}" == "success" ]; then
-            kustomize edit set image \
-              frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${IMAGE_TAG}
-          fi
-
-      - name: Commit and push changes
+      - name: Update manifests on latest main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main --depth=1
-          if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
-            echo "main advanced beyond $GITHUB_SHA; skipping stale manifest update"
-            exit 0
-          fi
-          git add k8s/overlays/production/kustomization.yaml
-          git diff --cached --quiet && exit 0
-          git commit -m "ci: update image tags to ${GITHUB_SHA::7}"
+
+          IMAGE_TAG="${GITHUB_SHA::7}"
+
+          current_tag_for() {
+            local service="$1"
+            awk -v svc="$service" '
+              $1 == "-" && $2 == "name:" && $3 == svc { in_block = 1; next }
+              in_block && $1 == "newTag:" { print $2; exit }
+            ' kustomization.yaml
+          }
+
+          should_update_service() {
+            local service="$1"
+            local current_tag
+            current_tag="$(current_tag_for "$service")"
+
+            if [ -z "$current_tag" ]; then
+              return 0
+            fi
+
+            local current_sha="${current_tag#main-}"
+            if [ "$current_sha" = "$IMAGE_TAG" ]; then
+              echo "Image for $service already points to $IMAGE_TAG"
+              return 1
+            fi
+
+            if git rev-parse --verify "${current_sha}^{commit}" >/dev/null 2>&1; then
+              if git merge-base --is-ancestor "$IMAGE_TAG" "$current_sha"; then
+                echo "Skipping stale image update for $service: current tag $current_sha is newer than $IMAGE_TAG"
+                return 1
+              fi
+            fi
+
+            return 0
+          }
+
+          update_service_image() {
+            local service="$1"
+            if should_update_service "$service"; then
+              kustomize edit set image \
+                "${service}=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${service}:main-${IMAGE_TAG}"
+              UPDATED=true
+            fi
+          }
 
           for attempt in 1 2 3; do
-            if git push origin HEAD:main; then
+            git fetch origin main
+            git checkout -f -B ci-update-manifests origin/main
+
+            UPDATED=false
+            cd k8s/overlays/production
+
+            if [ "${{ needs.merge-cache.result }}" == "success" ]; then
+              update_service_image cache
+            fi
+
+            if [ "${{ needs.merge-tiles.result }}" == "success" ]; then
+              update_service_image tiles
+            fi
+
+            if [ "${{ needs.merge-auth.result }}" == "success" ]; then
+              update_service_image auth
+            fi
+
+            if [ "${{ needs.merge-routes.result }}" == "success" ]; then
+              update_service_image routes
+            fi
+
+            if [ "${{ needs.merge-photo-worker.result }}" == "success" ]; then
+              update_service_image photo-worker
+            fi
+
+            if [ "${{ needs.merge-frontend.result }}" == "success" ]; then
+              update_service_image frontend
+            fi
+
+            cd ../..
+
+            if [ "$UPDATED" != "true" ]; then
+              echo "No manifest changes needed"
               exit 0
             fi
 
-            git fetch origin main --depth=1
-            if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
-              echo "main advanced while pushing; skipping stale manifest update"
+            git add k8s/overlays/production/kustomization.yaml
+            git diff --cached --quiet && exit 0
+            git commit -m "ci: update image tags to ${GITHUB_SHA::7}"
+
+            if git push origin HEAD:main; then
               exit 0
             fi
 
