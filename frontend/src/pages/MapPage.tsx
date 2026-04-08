@@ -74,6 +74,71 @@ const ROUTE_COLORS = [
   '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
 ];
 
+const CHAT_POINT_MATCH_EPSILON = 0.00001;
+
+function routePointsMatch(
+  left: Pick<RoutePoint, "position" | "name">,
+  right: Pick<RoutePoint, "position" | "name">,
+) {
+  const [leftLat, leftLng] = left.position;
+  const [rightLat, rightLng] = right.position;
+  const namesMatch = !left.name || !right.name || left.name === right.name;
+
+  return (
+    namesMatch &&
+    Math.abs(leftLat - rightLat) <= CHAT_POINT_MATCH_EPSILON &&
+    Math.abs(leftLng - rightLng) <= CHAT_POINT_MATCH_EPSILON
+  );
+}
+
+function overlappingRouteTailLength(
+  existingPoints: RoutePoint[],
+  incomingPoints: RoutePoint[],
+) {
+  const maxOverlap = Math.min(existingPoints.length, incomingPoints.length);
+
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    const existingTail = existingPoints.slice(existingPoints.length - overlap);
+    const incomingHead = incomingPoints.slice(0, overlap);
+
+    if (
+      existingTail.every((point, index) =>
+        routePointsMatch(point, incomingHead[index])
+      )
+    ) {
+      return overlap;
+    }
+  }
+
+  return 0;
+}
+
+function buildSegmentsForAppendedPoints(
+  existingCount: number,
+  appendedCount: number,
+  routeMode: RouteMode,
+) {
+  const segments: RouteSegment[] = [];
+
+  if (existingCount > 0 && appendedCount > 0) {
+    segments.push({
+      fromIndex: existingCount - 1,
+      toIndex: existingCount,
+      mode: routeMode,
+    });
+  }
+
+  for (let index = 1; index < appendedCount; index += 1) {
+    segments.push({
+      fromIndex: existingCount + index - 1,
+      toIndex: existingCount + index,
+      mode: routeMode,
+    });
+  }
+
+  return segments;
+}
+
 function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
   const map = useMapEvents({});
   mapRef.current = map;
@@ -827,32 +892,64 @@ export function MapPage() {
     });
   };
 
-  const handleChatShowPoints = (points: ChatPoint[]) => {
-    const newPoints: RoutePoint[] = points.map((p) => ({
+  const appendChatPointsToRoute = (points: ChatPoint[]) => {
+    const incomingPoints: RoutePoint[] = points.map((point) => ({
       id: pointIdRef.current++,
-      position: [p.lat, p.lng] as [number, number],
-      name: p.name,
+      position: [point.lat, point.lng] as [number, number],
+      name: point.name,
     }));
+
+    if (incomingPoints.length === 0) {
+      return [];
+    }
+
+    const overlap = overlappingRouteTailLength(routePoints, incomingPoints);
+    const previewPoints = [...routePoints, ...incomingPoints.slice(overlap)];
+
     setRoutePoints((prev) => {
-      const newSegments: RouteSegment[] = [];
-      if (prev.length > 0 && newPoints.length > 0) {
-        newSegments.push({
-          fromIndex: prev.length - 1,
-          toIndex: prev.length,
-          mode: routeMode,
-        });
+      const prevOverlap = overlappingRouteTailLength(prev, incomingPoints);
+      const appendedPoints = incomingPoints.slice(prevOverlap);
+      if (appendedPoints.length === 0) {
+        return prev;
       }
-      for (let i = 1; i < newPoints.length; i++) {
-        newSegments.push({
-          fromIndex: prev.length + i - 1,
-          toIndex: prev.length + i,
-          mode: routeMode,
-        });
-      }
+
+      const newSegments = buildSegmentsForAppendedPoints(
+        prev.length,
+        appendedPoints.length,
+        routeMode,
+      );
       setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
-      return [...prev, ...newPoints];
+
+      return [...prev, ...appendedPoints];
     });
-    focusMapOnPoints(newPoints);
+
+    return previewPoints;
+  };
+
+  const handleChatApplyPoints = (points: ChatPoint[]) => {
+    appendChatPointsToRoute(points);
+  };
+
+  const handleChatShowPoints = (points: ChatPoint[]) => {
+    const focusTargets = points.map((point) => ({
+      id: -1,
+      position: [point.lat, point.lng] as [number, number],
+      name: point.name,
+    }));
+
+    const allPointsAlreadyOnRoute =
+      focusTargets.length > 0 &&
+      focusTargets.every((target) =>
+        routePoints.some((routePoint) => routePointsMatch(routePoint, target))
+      );
+
+    if (allPointsAlreadyOnRoute) {
+      focusMapOnPoints(routePoints.length >= 2 ? routePoints : focusTargets);
+      return;
+    }
+
+    const previewPoints = appendChatPointsToRoute(points);
+    focusMapOnPoints(previewPoints.length > 0 ? previewPoints : focusTargets);
   };
 
   const handleChatShowRoutes = (routeIds: string[]) => {
@@ -1300,6 +1397,7 @@ export function MapPage() {
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         onShowPoints={handleChatShowPoints}
+        onApplyPoints={handleChatApplyPoints}
         onShowRoutes={handleChatShowRoutes}
         mapContext={{
           points: routePoints.slice(-8).map((point) => ({

@@ -24,7 +24,7 @@ interface ChatMessageItemProps {
   copiedId: string | null;
   onCopy: (id: string, content: string) => void;
   onDelete: (id: string) => void;
-  onShowPoints: (points: ChatPoint[]) => void;
+  onFocusPoints: (points: ChatPoint[]) => void;
   onShowRoutes: (routes: ChatRouteRef[]) => void;
   onNavigate: (path: string) => void;
   tCopied: string;
@@ -38,7 +38,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
   copiedId,
   onCopy,
   onDelete,
-  onShowPoints,
+  onFocusPoints,
   onShowRoutes,
   onNavigate,
   tCopied,
@@ -79,7 +79,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
                 <button
                   key={idx}
                   className="chat-action-btn"
-                  onClick={() => onShowPoints(action.points!)}
+                  onClick={() => onFocusPoints(action.points!)}
                 >
                   {tShowOnMap}
                 </button>
@@ -134,6 +134,7 @@ interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onShowPoints: (points: ChatPoint[]) => void;
+  onApplyPoints: (points: ChatPoint[]) => void;
   onShowRoutes: (routeIds: string[]) => void;
   mapContext?: ChatMapContext;
 }
@@ -142,6 +143,7 @@ export function ChatPanel({
   isOpen,
   onClose,
   onShowPoints,
+  onApplyPoints,
   onShowRoutes,
   mapContext,
 }: ChatPanelProps) {
@@ -199,6 +201,8 @@ export function ChatPanel({
     const text = input.trim();
     if (!text || loading) return;
 
+    let didAutoApplyPoints = false;
+
     setInput('');
     setError('');
 
@@ -209,6 +213,24 @@ export function ChatPanel({
     };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
+
+    const maybeAutoApplyActions = (actions: ChatAction[]) => {
+      if (didAutoApplyPoints) {
+        return;
+      }
+
+      let applied = false;
+      for (const action of actions) {
+        if (action.type === 'show_points' && action.points && action.points.length > 0) {
+          onApplyPoints(action.points);
+          applied = true;
+        }
+      }
+
+      if (applied) {
+        didAutoApplyPoints = true;
+      }
+    };
 
     // Try streaming first, fallback to non-streaming
     try {
@@ -236,6 +258,7 @@ export function ChatPanel({
         },
         (actions) => {
           streamingActions = actions;
+          maybeAutoApplyActions(actions);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingMsgId ? { ...m, actions } : m,
@@ -277,6 +300,7 @@ export function ChatPanel({
           content: response.message,
           actions: response.actions,
         };
+        maybeAutoApplyActions(response.actions);
         setMessages((prev) => [...prev, assistantMsg]);
       } catch (fallbackErr: any) {
         setError(resolveChatError(fallbackErr ?? err));
@@ -299,7 +323,7 @@ export function ChatPanel({
     setError('');
   };
 
-  const handleShowPoints = useCallback((points: ChatPoint[]) => {
+  const handleFocusPoints = useCallback((points: ChatPoint[]) => {
     onShowPoints(points);
   }, [onShowPoints]);
 
@@ -453,7 +477,7 @@ export function ChatPanel({
             copiedId={copiedId}
             onCopy={handleCopy}
             onDelete={handleDeleteMessage}
-            onShowPoints={handleShowPoints}
+            onFocusPoints={handleFocusPoints}
             onShowRoutes={handleShowRoutes}
             onNavigate={handleNavigate}
             tCopied={t('chat.copied')}
