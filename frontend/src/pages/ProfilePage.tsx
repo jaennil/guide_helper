@@ -14,6 +14,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
+import { getLocalizedCategoryName } from '../utils/categories';
 import L from 'leaflet';
 import { MapPin, ArrowLeftRight, ArrowRight, MessageCircle, Heart, Star } from 'lucide-react';
 
@@ -591,7 +592,7 @@ export default function ProfilePage() {
                             {(route.category_ids?.length ?? 0) > 0 && (
                               <div className="route-tags">
                                 {route.category_ids.map((id) => (
-                                  <span key={id} className="route-tag">{categoryMap[id] || id}</span>
+                                  <span key={id} className="route-tag">{getLocalizedCategoryName(categoryMap[id], t) || id}</span>
                                 ))}
                               </div>
                             )}

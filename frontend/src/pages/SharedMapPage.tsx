@@ -14,6 +14,7 @@ import { useParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { routesApi } from "../api/routes";
+import { categoriesApi, type Category } from "../api/categories";
 import {
   RoutingControl,
   ManualRoutes,
@@ -31,6 +32,7 @@ import { RoutePlayback } from "../components/RoutePlayback";
 import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeModal } from "../components/QRCodeModal";
+import { getLocalizedCategoryName } from "../utils/categories";
 
 type RouteMode = "auto" | "manual";
 
@@ -52,6 +54,7 @@ export function SharedMapPage() {
   const [routeCategoryIds, setRouteCategoryIds] = useState<string[]>([]);
   const [routeSeasons, setRouteSeasons] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
@@ -62,6 +65,12 @@ export function SharedMapPage() {
   const [embedOpen, setEmbedOpen] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    categoriesApi.getCategories().then(setAvailableCategories).catch((err) => {
+      console.error("[SharedMapPage] failed to load categories:", err);
+    });
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -168,7 +177,9 @@ export function SharedMapPage() {
           {routeCategoryIds.length > 0 && (
             <div className="route-tags">
               {routeCategoryIds.map((id) => (
-                <span key={id} className="route-tag">{id}</span>
+                <span key={id} className="route-tag">
+                  {getLocalizedCategoryName(availableCategories.find((category) => category.id === id)?.name, t) || id}
+                </span>
               ))}
             </div>
           )}

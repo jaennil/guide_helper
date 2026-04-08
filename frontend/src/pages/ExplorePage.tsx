@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
+import { getLocalizedCategoryName } from '../utils/categories';
 import { MapPin } from 'lucide-react';
 import './ExplorePage.css';
 
@@ -211,7 +212,7 @@ export default function ExplorePage() {
                     <div className="route-tags">
                       {route.category_ids.map((id) => {
                         const cat = availableCategories.find(c => c.id === id);
-                        return <span key={id} className="route-tag">{cat ? (t(`tags.${cat.name}` as any) || cat.name) : id}</span>;
+                        return <span key={id} className="route-tag">{cat ? getLocalizedCategoryName(cat.name, t) : id}</span>;
                       })}
                     </div>
                   )}

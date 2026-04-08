@@ -6,6 +6,7 @@ import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
 import { MapPin } from 'lucide-react';
+import { getLocalizedCategoryName } from '../utils/categories';
 import './BookmarksPage.css';
 
 export default function BookmarksPage() {
@@ -108,7 +109,7 @@ export default function BookmarksPage() {
                       const cat = availableCategories.find(c => c.id === id);
                       return (
                         <span key={id} className="route-tag">
-                          {cat ? (t(`tags.${cat.name}` as any) || cat.name) : id}
+                          {cat ? getLocalizedCategoryName(cat.name, t) : id}
                         </span>
                       );
                     })}
