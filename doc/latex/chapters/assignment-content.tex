@@ -1,0 +1,167 @@
+\pagestyle{empty}
+\thispagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\tabcolsep}{3pt}
+\setlist[itemize]{nosep,leftmargin=6mm}
+\setlist[enumerate]{nosep,leftmargin=6.5mm}
+
+\providecommand{\wk}{\cellcolor{black!15}}
+\providecommand{\blankwk}{}
+
+\begin{center}
+МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ\\
+РОССИЙСКОЙ ФЕДЕРАЦИИ
+
+\vspace{6pt}
+
+Федеральное государственное автономное образовательное учреждение высшего образования\\
+«МОСКОВСКИЙ ПОЛИТЕХНИЧЕСКИЙ УНИВЕРСИТЕТ»\\
+(МОСКОВСКИЙ ПОЛИТЕХ)
+
+\vspace{12pt}
+
+\textbf{ЗАДАНИЕ НА ВЫПУСКНУЮ КВАЛИФИКАЦИОННУЮ РАБОТУ}
+
+\vspace{6pt}
+
+по направлению 09.03.03 Прикладная информатика\\
+Образовательная программа (профиль) «Корпоративные информационные системы»
+\end{center}
+
+\vspace{10pt}
+
+\textbf{ТЕМА ВКР}
+
+«Разработка информационной системы для создания туристических маршрутов с геопривязкой фотографий и интерактивным обменом на основе микросервисной архитектуры»
+
+\vspace{8pt}
+
+\textbf{ПРАКТИЧЕСКИЙ РЕЗУЛЬТАТ}
+
+Программная система Guide Helper для создания, публикации и сопровождения туристических маршрутов с геопривязанными фотографиями, интерактивной картой и средствами совместного доступа.
+
+\vspace{4pt}
+
+\textbf{Назначение}
+
+Автоматизация деятельности гидов, инструкторов и туристических организаций по созданию, визуализации, публикации и сопровождению туристических маршрутов с мультимедийным контентом.
+
+\vspace{4pt}
+
+\textbf{Основные функции}
+
+\begin{itemize}
+\item регистрация и авторизация пользователей с ролевой моделью;
+\item создание маршрутов на интерактивной карте и прикрепление геопривязанных фотографий;
+\item автоматическое построение маршрута, расчёт расстояния, набора высоты, времени прохождения и сложности;
+\item асинхронная обработка фотографий и хранение медиафайлов;
+\item публикация маршрутов, поиск, фильтрация, социальные функции и публичный просмотр по ссылке;
+\item ИИ-ассистент для геокодирования, поиска мест, погодных и маршрутных подсказок;
+\item административная панель и средства модерации.
+\end{itemize}
+
+\textbf{Используемые технологии и платформы}
+
+Rust, Go, TypeScript, React, Tauri, PostgreSQL, NATS JetStream, Redis, MinIO, Docker, Kubernetes, GitHub Actions, OpenStreetMap/Nominatim, OSRM, API языковых моделей.
+
+\vspace{8pt}
+
+\textbf{ВЫПОЛНЕНИЕ РАБОТЫ}
+
+\vspace{4pt}
+
+\textbf{Решаемые задачи}
+
+\begin{enumerate}
+\item проанализировать предметную область цифрового туризма и существующие аналоги;
+\item сформулировать функциональные и нефункциональные требования к системе;
+\item спроектировать архитектуру системы, схему базы данных и пользовательские интерфейсы;
+\item реализовать серверную часть системы в виде набора взаимодействующих сервисов;
+\item разработать клиентское веб-приложение и настольную версию;
+\item реализовать обработку геопривязанных фотографий и интеграцию ИИ-функций;
+\item настроить контейнеризацию, CI/CD и развёртывание;
+\item провести тестирование, оценить производительность и подготовить документацию.
+\end{enumerate}
+
+\textbf{Состав технической документации}
+
+\begin{itemize}
+\item пояснительная записка к ВКР;
+\item техническое задание;
+\item программа и методика испытаний;
+\item руководство пользователя и администратора в составе пояснительной записки.
+\end{itemize}
+
+\textbf{Состав графической части}
+
+\begin{itemize}
+\item диаграмма бизнес-процесса;
+\item диаграмма контекста системы;
+\item диаграмма контейнеров;
+\item ER-диаграмма базы данных;
+\item макеты ключевых экранов и материалы презентации к защите.
+\end{itemize}
+
+\vspace{8pt}
+
+\textbf{ПЛАН РАБОТЫ НАД ВКР}
+
+\vspace{6pt}
+
+\begin{landscape}
+\small
+\begin{center}
+\begin{tabular}{|p{7.2cm}|*{18}{>{\centering\arraybackslash}p{0.6cm}|}}
+\hline
+\textbf{ЗАДАЧИ} & \multicolumn{18}{c|}{\textbf{НЕДЕЛИ}} \\
+\cline{2-19}
+& \textbf{1} & \textbf{2} & \textbf{3} & \textbf{4} & \textbf{5} & \textbf{6} & \textbf{7} & \textbf{8} & \textbf{9} & \textbf{10} & \textbf{11} & \textbf{12} & \textbf{13} & \textbf{14} & \textbf{15} & \textbf{16} & \textbf{17} & \textbf{18} \\
+\hline
+Анализ предметной области и аналогов
+& \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Формирование требований к системе
+& \blankwk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Проектирование архитектуры, БД и интерфейсов
+& \blankwk & \blankwk & \wk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Реализация сервисов аутентификации и маршрутов
+& \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Реализация обработки фотографий и ИИ-функций
+& \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Разработка клиентского веб-приложения и desktop-версии
+& \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Настройка Docker, Kubernetes и CI/CD
+& \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \blankwk & \blankwk & \blankwk & \blankwk \\
+\hline
+Тестирование, устранение дефектов и анализ производительности
+& \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \blankwk & \blankwk \\
+\hline
+Оформление пояснительной записки и материалов к защите
+& \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \blankwk & \wk & \wk & \wk & \wk \\
+\hline
+\end{tabular}
+\end{center}
+\end{landscape}
+
+\vspace{8pt}
+
+\textbf{РУКОВОДИТЕЛЬ ОП:}\\
+«\_\_\_» \_\_\_\_\_\_\_\_\_\_ 2026, \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ / А.\,Ю.~Филиппович, к.э.н. /\\
+подпись \hspace{3.2cm} ФИО, уч. звание и степень
+
+\vspace{10pt}
+
+\textbf{РУКОВОДИТЕЛЬ ВКР:}\\
+«\_\_\_» \_\_\_\_\_\_\_\_\_\_ 2026, \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ / Васильев~Д.\,Б., старший преподаватель /\\
+подпись \hspace{3.2cm} ФИО, уч. звание и степень
+
+\vspace{10pt}
+
+\textbf{СТУДЕНТ:}\\
+«\_\_\_» \_\_\_\_\_\_\_\_\_\_ 2026, \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ / Дубровских~Н.\,Е., 221-361 /\\
+подпись \hspace{3.2cm} ФИО, группа
