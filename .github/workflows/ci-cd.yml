@@ -465,7 +465,7 @@ jobs:
           docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:latest
 
   update-manifests:
-    needs: [changes, merge-cache, merge-tiles, merge-auth, merge-routes, merge-photo-worker, merge-frontend]
+    needs: [changes, merge-cache, merge-tiles, merge-auth, merge-routes, merge-frontend]
     if: |
       always() &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -474,10 +474,9 @@ jobs:
        needs.merge-tiles.result == 'success' ||
        needs.merge-auth.result == 'success' ||
        needs.merge-routes.result == 'success' ||
-       needs.merge-photo-worker.result == 'success' ||
        needs.merge-frontend.result == 'success')
     concurrency:
-      group: update-manifests-${{ github.ref }}
+      group: update-manifests-core-${{ github.ref }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
@@ -568,10 +567,6 @@ jobs:
               update_service_image routes
             fi
 
-            if [ "${{ needs.merge-photo-worker.result }}" == "success" ]; then
-              update_service_image photo-worker
-            fi
-
             if [ "${{ needs.merge-frontend.result }}" == "success" ]; then
               update_service_image frontend
             fi
@@ -595,4 +590,98 @@ jobs:
           done
 
           echo "Failed to push manifest update after retries"
+          exit 1
+
+  update-manifests-photo-worker:
+    needs: [changes, merge-photo-worker]
+    if: |
+      always() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.merge-photo-worker.result == 'success'
+    concurrency:
+      group: update-manifests-photo-worker-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update photo-worker manifest on latest main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          IMAGE_TAG="${GITHUB_SHA::7}"
+
+          current_tag_for() {
+            local service="$1"
+            awk -v svc="$service" '
+              $1 == "-" && $2 == "name:" && $3 == svc { in_block = 1; next }
+              in_block && $1 == "newTag:" { print $2; exit }
+            ' kustomization.yaml
+          }
+
+          should_update_service() {
+            local service="$1"
+            local current_tag
+            current_tag="$(current_tag_for "$service")"
+
+            if [ -z "$current_tag" ]; then
+              return 0
+            fi
+
+            local current_sha="${current_tag#main-}"
+            if [ "$current_sha" = "$IMAGE_TAG" ]; then
+              echo "Image for $service already points to $IMAGE_TAG"
+              return 1
+            fi
+
+            if git rev-parse --verify "${current_sha}^{commit}" >/dev/null 2>&1; then
+              if git merge-base --is-ancestor "$IMAGE_TAG" "$current_sha"; then
+                echo "Skipping stale image update for $service: current tag $current_sha is newer than $IMAGE_TAG"
+                return 1
+              fi
+            fi
+
+            return 0
+          }
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git checkout -f -B ci-update-manifests origin/main
+
+            cd k8s/overlays/production
+
+            if should_update_service photo-worker; then
+              kustomize edit set image \
+                "photo-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-photo-worker:main-${IMAGE_TAG}"
+            fi
+
+            cd ../..
+
+            git add k8s/overlays/production/kustomization.yaml
+            git diff --cached --quiet && exit 0
+            git commit -m "ci: update image tags to ${GITHUB_SHA::7}"
+
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "Failed to push photo-worker manifest update after retries"
           exit 1
