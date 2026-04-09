@@ -452,61 +452,6 @@ const PointPopup = React.memo(function PointPopup({
   );
 });
 
-const PointNotesPanel = React.memo(function PointNotesPanel({
-  points,
-  onNoteChange,
-  onFocusPoint,
-}: {
-  points: RoutePoint[];
-  onNoteChange: (pointId: number, note: string) => void;
-  onFocusPoint: (pointId: number) => void;
-}) {
-  const { t } = useLanguage();
-
-  if (points.length === 0) {
-    return null;
-  }
-
-  return (
-    <aside className="point-notes-panel">
-      <div className="point-notes-panel-header">
-        <div>
-          <div className="point-notes-panel-title">{t("map.pointNotesTitle")}</div>
-          <div className="point-notes-panel-hint">{t("map.pointNotesHint")}</div>
-        </div>
-      </div>
-      <div className="point-notes-list">
-        {points.map((point, index) => (
-          <div key={point.id} className="point-notes-item">
-            <div className="point-notes-item-header">
-              <div className="point-notes-item-title">
-                {point.name?.trim() || t("map.point", { index: index + 1 })}
-              </div>
-              <button
-                type="button"
-                className="point-notes-focus-btn"
-                onClick={() => onFocusPoint(point.id)}
-              >
-                {t("map.focusPoint")}
-              </button>
-            </div>
-            <div className="point-notes-item-coords">
-              {point.position[0].toFixed(5)}, {point.position[1].toFixed(5)}
-            </div>
-            <textarea
-              className="point-note-textarea"
-              rows={3}
-              value={point.note ?? ""}
-              onChange={(e) => onNoteChange(point.id, e.target.value)}
-              placeholder={t("map.pointNotePlaceholder")}
-            />
-          </div>
-        ))}
-      </div>
-    </aside>
-  );
-});
-
 export function MapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -993,25 +938,6 @@ export function MapPage() {
       map.fitBounds(bounds.pad(0.2), { animate: true, maxZoom: 16 });
     });
   };
-
-  const handleFocusPoint = React.useCallback((pointId: number) => {
-    const point = routePoints.find((item) => item.id === pointId);
-    if (!point) {
-      return;
-    }
-
-    const map = mapRef.current;
-    if (!map) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      map.setView(point.position, Math.max(map.getZoom(), 17), {
-        animate: true,
-      });
-    });
-  }, [routePoints]);
 
   const appendChatPointsToRoute = (points: ChatPoint[]) => {
     const incomingPoints: RoutePoint[] = points.map((point) => ({
@@ -1523,13 +1449,6 @@ export function MapPage() {
       {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
-        />
-      )}
-      {!playbackActive && routePoints.length > 0 && (
-        <PointNotesPanel
-          points={routePoints}
-          onNoteChange={handlePointNoteChange}
-          onFocusPoint={handleFocusPoint}
         />
       )}
       {loadedRouteInfo && (
