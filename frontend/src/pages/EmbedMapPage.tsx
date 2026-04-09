@@ -38,6 +38,8 @@ export function EmbedMapPage() {
         position: [p.lat, p.lng] as [number, number],
         name: p.name,
         note: p.note,
+        markerColor: p.marker_color,
+        markerSize: p.marker_size,
         previewSize: p.preview_size,
         previewShape: p.preview_shape as PhotoPreviewShape | undefined,
         photo: p.photo,
@@ -103,7 +105,7 @@ export function EmbedMapPage() {
           <Marker
             key={point.id}
             position={point.position}
-            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape)}
+            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
           >
             <Popup>
               <div>

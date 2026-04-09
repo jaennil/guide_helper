@@ -14,6 +14,8 @@ export interface RoutePoint {
   lng: number;
   name?: string;
   note?: string;
+  marker_color?: string;
+  marker_size?: number;
   preview_size?: number;
   preview_shape?: 'square' | 'circle';
   segment_mode?: 'auto' | 'manual'; // mode for segment TO this point

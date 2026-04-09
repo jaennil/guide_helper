@@ -55,6 +55,10 @@ pub struct RoutePoint {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marker_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marker_size: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_size: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_shape: Option<String>,
@@ -178,6 +182,8 @@ mod tests {
                 lng: 37.6173,
                 name: Some("Moscow".to_string()),
                 note: Some("Capital city point".to_string()),
+                marker_color: Some("#ef4444".to_string()),
+                marker_size: Some(30),
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
@@ -188,6 +194,8 @@ mod tests {
                 lng: 30.3351,
                 name: Some("Saint Petersburg".to_string()),
                 note: None,
+                marker_color: Some("#22c55e".to_string()),
+                marker_size: Some(34),
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: Some("auto".to_string()),
@@ -224,6 +232,8 @@ mod tests {
             lng: 37.6173,
             name: None,
             note: None,
+            marker_color: None,
+            marker_size: None,
             preview_size: None,
             preview_shape: None,
             segment_mode: None,
@@ -247,6 +257,8 @@ mod tests {
                 lng: 37.6173,
                 name: None,
                 note: None,
+                marker_color: None,
+                marker_size: None,
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
@@ -257,6 +269,8 @@ mod tests {
                 lng: 30.3351,
                 name: None,
                 note: None,
+                marker_color: None,
+                marker_size: None,
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: Some("auto".to_string()),
@@ -285,6 +299,8 @@ mod tests {
             lng: 37.6173,
             name: Some("Moscow".to_string()),
             note: Some("Historic center".to_string()),
+            marker_color: Some("#8b5cf6".to_string()),
+            marker_size: Some(32),
             preview_size: Some(52),
             preview_shape: Some("circle".to_string()),
             segment_mode: Some("auto".to_string()),
@@ -307,6 +323,8 @@ mod tests {
         let point: RoutePoint = serde_json::from_str(json).unwrap();
 
         assert!(point.note.is_none());
+        assert!(point.marker_color.is_none());
+        assert!(point.marker_size.is_none());
         assert!(point.preview_size.is_none());
         assert!(point.preview_shape.is_none());
         let photo = point.photo.unwrap();
@@ -320,6 +338,8 @@ mod tests {
         let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"photo":null}"#;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
         assert!(point.note.is_none());
+        assert!(point.marker_color.is_none());
+        assert!(point.marker_size.is_none());
         assert!(point.preview_size.is_none());
         assert!(point.preview_shape.is_none());
         assert!(point.photo.is_none());
@@ -327,10 +347,12 @@ mod tests {
 
     #[test]
     fn test_photo_data_struct_deserialization() {
-        let json = r#"{"lat":55.0,"lng":37.0,"name":null,"note":"Observation deck","segment_mode":null,"photo":{"original":"data:image/png;base64,abc","thumbnail_url":"/photos/thumb.jpg","status":"done"}}"#;
+        let json = r##"{"lat":55.0,"lng":37.0,"name":null,"note":"Observation deck","marker_color":"#14b8a6","marker_size":28,"segment_mode":null,"photo":{"original":"data:image/png;base64,abc","thumbnail_url":"/photos/thumb.jpg","status":"done"}}"##;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
 
         assert_eq!(point.note, Some("Observation deck".to_string()));
+        assert_eq!(point.marker_color, Some("#14b8a6".to_string()));
+        assert_eq!(point.marker_size, Some(28));
         let photo = point.photo.unwrap();
         assert_eq!(photo.original, "data:image/png;base64,abc");
         assert_eq!(photo.thumbnail_url, Some("/photos/thumb.jpg".to_string()));

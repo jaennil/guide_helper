@@ -462,6 +462,8 @@ mod tests {
             lng: 37.6173,
             name: None,
             note: None,
+            marker_color: None,
+            marker_size: None,
             preview_size: None,
             preview_shape: None,
             segment_mode: None,

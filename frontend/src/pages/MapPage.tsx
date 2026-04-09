@@ -68,6 +68,8 @@ export interface RoutePoint {
   position: [number, number];
   name?: string;
   note?: string;
+  markerColor?: string;
+  markerSize?: number;
   previewSize?: number;
   previewShape?: PhotoPreviewShape;
   photo?: PhotoData;
@@ -93,6 +95,11 @@ const ROUTE_COLORS = [
 ];
 
 const CHAT_POINT_MATCH_EPSILON = 0.00001;
+const DEFAULT_POINT_MARKER_COLOR = "#3388ff";
+const DEFAULT_POINT_MARKER_SIZE = 30;
+const MIN_POINT_MARKER_SIZE = 22;
+const MAX_POINT_MARKER_SIZE = 46;
+const POINT_MARKER_SIZE_STEP = 2;
 const DEFAULT_PHOTO_PREVIEW_SIZE = 44;
 const MIN_PHOTO_PREVIEW_SIZE = 28;
 const MAX_PHOTO_PREVIEW_SIZE = 84;
@@ -170,6 +177,24 @@ function clampPhotoPreviewSize(size?: number) {
     MIN_PHOTO_PREVIEW_SIZE,
     Math.min(MAX_PHOTO_PREVIEW_SIZE, Math.round(size / PHOTO_PREVIEW_STEP) * PHOTO_PREVIEW_STEP),
   );
+}
+
+function clampPointMarkerSize(size?: number) {
+  if (typeof size !== "number" || Number.isNaN(size)) {
+    return DEFAULT_POINT_MARKER_SIZE;
+  }
+  return Math.max(
+    MIN_POINT_MARKER_SIZE,
+    Math.min(MAX_POINT_MARKER_SIZE, Math.round(size / POINT_MARKER_SIZE_STEP) * POINT_MARKER_SIZE_STEP),
+  );
+}
+
+function normalizePointMarkerColor(color?: string) {
+  if (!color) {
+    return DEFAULT_POINT_MARKER_COLOR;
+  }
+  const trimmed = color.trim();
+  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : DEFAULT_POINT_MARKER_COLOR;
 }
 
 function normalizePhotoPreviewShape(shape?: string): PhotoPreviewShape {
@@ -393,37 +418,44 @@ function createPhotoMarkerHtml(
 ) {
   const size = clampPhotoPreviewSize(previewSize);
   const shape = normalizePhotoPreviewShape(previewShape);
-  const borderStyle = borderColor ? `border-color:${borderColor};` : "";
+  const normalizedBorderColor = borderColor ? normalizePointMarkerColor(borderColor) : "white";
+  const borderStyle = `border-color:${normalizedBorderColor};`;
   return `<div class="photo-marker-container" style="--marker-size:${size}px;--marker-radius:${shape === "circle" ? "50%" : "10px"};${borderStyle}"><img src="${src}" alt="Marker" /></div>`;
+}
+
+function createPointMarkerHtml(color?: string, markerSize?: number) {
+  const normalizedColor = normalizePointMarkerColor(color);
+  const size = clampPointMarkerSize(markerSize);
+  const centerSize = Math.max(8, Math.round(size * 0.34));
+
+  return `<div class="point-marker-container" style="--marker-color:${normalizedColor};--marker-size:${size}px;--marker-center-size:${centerSize}px"><span class="point-marker-center"></span></div>`;
 }
 
 export function createMarkerIcon(
   photo?: PhotoData,
   previewSize?: number,
   previewShape?: PhotoPreviewShape,
+  markerColor?: string,
+  markerSize?: number,
 ): L.Icon | L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
     const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "custom-photo-marker",
-      html: createPhotoMarkerHtml(src, size, previewShape),
+      html: createPhotoMarkerHtml(src, size, previewShape, markerColor),
       iconSize: [size, size],
       iconAnchor: [Math.round(size / 2), size],
       popupAnchor: [0, -size],
     });
   } else {
-    return L.icon({
-      iconUrl:
-        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-      iconRetinaUrl:
-        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-      shadowUrl:
-        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
+    const size = clampPointMarkerSize(markerSize);
+    return L.divIcon({
+      className: "custom-point-marker",
+      html: createPointMarkerHtml(markerColor, size),
+      iconSize: [size, size],
+      iconAnchor: [Math.round(size / 2), size],
+      popupAnchor: [0, -size],
     });
   }
 }
@@ -433,24 +465,27 @@ function createColoredMarkerIcon(
   photo?: PhotoData,
   previewSize?: number,
   previewShape?: PhotoPreviewShape,
+  markerColor?: string,
+  markerSize?: number,
 ): L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
     const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "overlay-marker",
-      html: createPhotoMarkerHtml(src, size, previewShape, color),
+      html: createPhotoMarkerHtml(src, size, previewShape, markerColor || color),
       iconSize: [size, size],
       iconAnchor: [Math.round(size / 2), size],
       popupAnchor: [0, -size],
     });
   }
+  const size = clampPointMarkerSize(markerSize);
   return L.divIcon({
     className: "overlay-marker",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid var(--bg-primary);box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-    popupAnchor: [0, -10],
+    html: createPointMarkerHtml(markerColor || color, size),
+    iconSize: [size, size],
+    iconAnchor: [Math.round(size / 2), size],
+    popupAnchor: [0, -size],
   });
 }
 
@@ -459,6 +494,8 @@ const PointPopup = React.memo(function PointPopup({
   index,
   onPhotoChange,
   onNoteChange,
+  onMarkerColorChange,
+  onMarkerSizeChange,
   onPreviewSizeChange,
   onPreviewShapeChange,
 }: {
@@ -466,6 +503,8 @@ const PointPopup = React.memo(function PointPopup({
   index: number;
   onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
   onNoteChange: (pointId: number, note: string) => void;
+  onMarkerColorChange: (pointId: number, markerColor: string) => void;
+  onMarkerSizeChange: (pointId: number, markerSize: number) => void;
   onPreviewSizeChange: (pointId: number, previewSize: number) => void;
   onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
 }) {
@@ -510,6 +549,16 @@ const PointPopup = React.memo(function PointPopup({
     onPreviewShapeChange(point.id, previewShape);
   };
 
+  const handleMarkerColorChange = (markerColor: string) => {
+    onMarkerColorChange(point.id, markerColor);
+  };
+
+  const handleMarkerSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onMarkerSizeChange(point.id, Number(e.target.value));
+  };
+
+  const markerColor = normalizePointMarkerColor(point.markerColor);
+  const markerSize = clampPointMarkerSize(point.markerSize);
   const photoSrc = getPhotoSrc(point.photo);
   const previewSize = clampPhotoPreviewSize(point.previewSize);
   const previewShape = normalizePhotoPreviewShape(point.previewShape);
@@ -536,6 +585,59 @@ const PointPopup = React.memo(function PointPopup({
           onChange={handleNoteChange}
           placeholder={t("map.pointNotePlaceholder")}
         />
+      </div>
+      <div className="point-style-controls">
+        <div className="point-style-header">
+          <label className="point-popup-note-label" htmlFor={`point-marker-color-${point.id}`}>
+            {t("map.pointMarkerColor")}
+          </label>
+          <input
+            id={`point-marker-color-${point.id}`}
+            type="color"
+            value={markerColor}
+            onChange={(e) => handleMarkerColorChange(e.target.value)}
+            className="point-marker-color-input"
+            aria-label={t("map.pointMarkerColor")}
+          />
+        </div>
+        <div className="point-style-swatches">
+          {ROUTE_LINE_COLOR_PRESETS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`point-style-swatch${markerColor === color ? " active" : ""}`}
+              style={{ backgroundColor: color }}
+              onClick={() => handleMarkerColorChange(color)}
+              aria-label={`${t("map.pointMarkerColor")} ${color}`}
+              title={color}
+            />
+          ))}
+        </div>
+        {!photoSrc && (
+          <>
+            <div className="point-style-size-header">
+              <label
+                className="point-popup-note-label"
+                htmlFor={`point-marker-size-${point.id}`}
+              >
+                {t("map.pointMarkerSize")}
+              </label>
+              <span className="point-photo-size-value">
+                {t("map.pointMarkerSizeValue", { size: markerSize })}
+              </span>
+            </div>
+            <input
+              id={`point-marker-size-${point.id}`}
+              className="point-style-size-range"
+              type="range"
+              min={MIN_POINT_MARKER_SIZE}
+              max={MAX_POINT_MARKER_SIZE}
+              step={POINT_MARKER_SIZE_STEP}
+              value={markerSize}
+              onChange={handleMarkerSizeChange}
+            />
+          </>
+        )}
       </div>
       {photoSrc && (
         <div className="point-popup-photo">
@@ -717,6 +819,8 @@ export function MapPage() {
         position: [p.lat, p.lng] as [number, number],
         name: p.name,
         note: p.note,
+        markerColor: p.marker_color,
+        markerSize: p.marker_size,
         previewSize: p.preview_size,
         previewShape: p.preview_shape as PhotoPreviewShape | undefined,
         photo: p.photo,
@@ -756,6 +860,8 @@ export function MapPage() {
           position: [p.lat, p.lng] as [number, number],
           name: p.name,
           note: p.note,
+          markerColor: p.marker_color,
+          markerSize: p.marker_size,
           previewSize: p.preview_size,
           previewShape: p.preview_shape as PhotoPreviewShape | undefined,
           photo: p.photo,
@@ -848,6 +954,8 @@ export function MapPage() {
           lng: p.position[1],
           name: normalizedName ? normalizedName : undefined,
           note: normalizedNote ? normalizedNote : undefined,
+          marker_color: p.markerColor ? normalizePointMarkerColor(p.markerColor) : undefined,
+          marker_size: p.markerSize ? clampPointMarkerSize(p.markerSize) : undefined,
           preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
           preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
@@ -911,6 +1019,8 @@ export function MapPage() {
     const newPoint: RoutePoint = {
       id: pointIdRef.current++,
       position: [lat, lng],
+      markerColor: DEFAULT_POINT_MARKER_COLOR,
+      markerSize: DEFAULT_POINT_MARKER_SIZE,
     };
     setRoutePoints((prev) => {
       const newPoints = [...prev, newPoint];
@@ -946,6 +1056,24 @@ export function MapPage() {
   const handlePointNoteChange = React.useCallback((pointId: number, note: string) => {
     setRoutePoints((prev) =>
       prev.map((point) => (point.id === pointId ? { ...point, note } : point))
+    );
+  }, []);
+
+  const handlePointMarkerColorChange = React.useCallback((pointId: number, markerColor: string) => {
+    const normalizedColor = normalizePointMarkerColor(markerColor);
+    setRoutePoints((prev) =>
+      prev.map((point) =>
+        point.id === pointId ? { ...point, markerColor: normalizedColor } : point
+      )
+    );
+  }, []);
+
+  const handlePointMarkerSizeChange = React.useCallback((pointId: number, markerSize: number) => {
+    const normalizedSize = clampPointMarkerSize(markerSize);
+    setRoutePoints((prev) =>
+      prev.map((point) =>
+        point.id === pointId ? { ...point, markerSize: normalizedSize } : point
+      )
     );
   }, []);
 
@@ -1063,6 +1191,8 @@ export function MapPage() {
     const newPoints: RoutePoint[] = parsed.map((photo) => ({
       id: pointIdRef.current++,
       position: [photo.lat, photo.lng] as [number, number],
+      markerColor: DEFAULT_POINT_MARKER_COLOR,
+      markerSize: DEFAULT_POINT_MARKER_SIZE,
       previewSize: DEFAULT_PHOTO_PREVIEW_SIZE,
       previewShape: DEFAULT_PHOTO_PREVIEW_SHAPE,
       photo: { original: photo.base64, status: "pending" } as PhotoData,
@@ -1148,6 +1278,8 @@ export function MapPage() {
       id: pointIdRef.current++,
       position: [point.lat, point.lng] as [number, number],
       name: point.name,
+      markerColor: DEFAULT_POINT_MARKER_COLOR,
+      markerSize: DEFAULT_POINT_MARKER_SIZE,
     }));
 
     if (incomingPoints.length === 0) {
@@ -1601,9 +1733,9 @@ export function MapPage() {
         />
         {routePoints.map((point, index) => (
           <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}`}
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
             position={point.position}
-            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape)}
+            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
             draggable={true}
             eventHandlers={{
               dragend: (e) => {
@@ -1618,6 +1750,8 @@ export function MapPage() {
                 index={index}
                 onPhotoChange={handlePhotoChange}
                 onNoteChange={handlePointNoteChange}
+                onMarkerColorChange={handlePointMarkerColorChange}
+                onMarkerSizeChange={handlePointMarkerSizeChange}
                 onPreviewSizeChange={handlePointPreviewSizeChange}
                 onPreviewShapeChange={handlePointPreviewShapeChange}
               />
@@ -1645,9 +1779,9 @@ export function MapPage() {
               />
               {overlay.points.map((point, idx) => (
                 <Marker
-                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}`}
+                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
                   position={point.position}
-                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize, point.previewShape)}
+                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
                 >
                   <Popup>
                     <div className="point-popup">
