@@ -245,6 +245,22 @@ body {
     gap: 8px;
 }
 
+.leaflet-tooltip.route-segment-tooltip {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(18, 18, 28, 0.94);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    pointer-events: none;
+}
+
+.leaflet-tooltip-top.route-segment-tooltip::before {
+    border-top-color: rgba(18, 18, 28, 0.94);
+}
+
 .upload-photo-btn,
 .remove-photo-btn {
     padding: 8px 12px;

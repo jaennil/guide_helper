@@ -7,6 +7,7 @@ import {
   Popup,
   useMapEvents,
   Polyline,
+  Tooltip,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -38,6 +39,7 @@ import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } fro
 import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
+import { formatDistance, totalDistance } from "../utils/geo";
 
 type RouteMode = "auto" | "manual";
 
@@ -140,6 +142,17 @@ function buildSegmentsForAppendedPoints(
   return segments;
 }
 
+function buildSegmentTooltipText(
+  segment: RouteSegment,
+  coords: [number, number][],
+) {
+  const distanceKm = totalDistance(
+    coords.map(([lat, lng]) => ({ lat, lng })),
+  );
+
+  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)}`;
+}
+
 function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
   const map = useMapEvents({});
   mapRef.current = map;
@@ -227,13 +240,21 @@ export const RoutingControl = React.memo(function RoutingControl({
       const to: [number, number] = [toPoint.lat, toPoint.lng];
 
       fetchRoute(engineId, from, to).then((coords) => {
+        const tooltipText = buildSegmentTooltipText(segment, coords);
         // Remove old polyline for this segment if engine changed
         const latLngs = coords.map((c) => L.latLng(c[0], c[1]));
         const polyline = L.polyline(latLngs, {
           color,
           opacity: 0.7,
           weight: 4,
-        }).addTo(map);
+        })
+          .bindTooltip(tooltipText, {
+            sticky: true,
+            direction: "top",
+            offset: [0, -4],
+            className: "route-segment-tooltip",
+          })
+          .addTo(map);
         polylinesRef.current.set(key, polyline);
       });
     });
@@ -274,30 +295,42 @@ export function ManualRoutes({
   routeSegments: RouteSegment[];
   color?: string;
 }) {
-  const routes: [number, number][][] = [];
+  const routes: Array<{ segment: RouteSegment; coords: [number, number][] }> = [];
   routeSegments.forEach((segment) => {
     if (segment.mode === "manual") {
       const fromPoint = waypoints[segment.fromIndex];
       const toPoint = waypoints[segment.toIndex];
       if (fromPoint && toPoint) {
-        routes.push([
-          [fromPoint.lat, fromPoint.lng],
-          [toPoint.lat, toPoint.lng],
-        ]);
+        routes.push({
+          segment,
+          coords: [
+            [fromPoint.lat, fromPoint.lng],
+            [toPoint.lat, toPoint.lng],
+          ],
+        });
       }
     }
   });
 
   return (
     <>
-      {routes.map((route, index) => (
+      {routes.map(({ segment, coords }) => (
         <Polyline
-          key={index}
-          positions={route}
+          key={`${segment.fromIndex}-${segment.toIndex}`}
+          positions={coords}
           color={color}
           weight={4}
           opacity={0.7}
-        />
+        >
+          <Tooltip
+            sticky
+            direction="top"
+            offset={[0, -4]}
+            className="route-segment-tooltip"
+          >
+            {buildSegmentTooltipText(segment, coords)}
+          </Tooltip>
+        </Polyline>
       ))}
     </>
   );
