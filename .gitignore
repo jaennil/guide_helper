@@ -41,3 +41,6 @@ claude-code-api/claude-config/
 # Local logs
 main.log
 texput.log
+
+# Office lock files
+**/.~lock.*
