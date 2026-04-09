@@ -99,6 +99,8 @@ export const ru = {
   "stats.loading": "Загрузка...",
   "map.pointNoteLabel": "Заметка к точке",
   "map.pointNotePlaceholder": "Напишите историю, описание места или комментарий к этой точке...",
+  "map.photoPreviewSize": "Размер превью на карте",
+  "map.photoPreviewSizeValue": "{{size}} px",
   "map.saveChanges": "Сохранить изменения",
   "search.placeholder": "Поиск мест...",
   "search.noResults": "Ничего не найдено",

@@ -122,6 +122,7 @@ export function SharedMapPage() {
         position: [p.lat, p.lng] as [number, number],
         name: p.name,
         note: p.note,
+        previewSize: p.preview_size,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -282,9 +283,9 @@ export function SharedMapPage() {
         />
         {routePoints.map((point, index) => (
           <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}`}
             position={point.position}
-            icon={createMarkerIcon(point.photo)}
+            icon={createMarkerIcon(point.photo, point.previewSize)}
           >
             <Popup>
               <div className="point-popup">

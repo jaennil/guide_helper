@@ -55,6 +55,8 @@ pub struct RoutePoint {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview_size: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub segment_mode: Option<String>,
     #[serde(deserialize_with = "deserialize_photo_compat", default)]
     pub photo: Option<PhotoData>,
@@ -167,6 +169,7 @@ mod tests {
                 lng: 37.6173,
                 name: Some("Moscow".to_string()),
                 note: Some("Capital city point".to_string()),
+                preview_size: None,
                 segment_mode: None,
                 photo: None,
             },
@@ -175,6 +178,7 @@ mod tests {
                 lng: 30.3351,
                 name: Some("Saint Petersburg".to_string()),
                 note: None,
+                preview_size: None,
                 segment_mode: Some("auto".to_string()),
                 photo: Some(PhotoData {
                     original: "data:image/png;base64,test".to_string(),
@@ -207,6 +211,7 @@ mod tests {
             lng: 37.6173,
             name: None,
             note: None,
+            preview_size: None,
             segment_mode: None,
             photo: None,
         }];
@@ -221,6 +226,7 @@ mod tests {
                 lng: 37.6173,
                 name: None,
                 note: None,
+                preview_size: None,
                 segment_mode: None,
                 photo: None,
             },
@@ -229,6 +235,7 @@ mod tests {
                 lng: 30.3351,
                 name: None,
                 note: None,
+                preview_size: None,
                 segment_mode: Some("auto".to_string()),
                 photo: None,
             },
@@ -253,6 +260,7 @@ mod tests {
             lng: 37.6173,
             name: Some("Moscow".to_string()),
             note: Some("Historic center".to_string()),
+            preview_size: Some(52),
             segment_mode: Some("auto".to_string()),
             photo: Some(PhotoData {
                 original: "data:image/png;base64,test".to_string(),
@@ -273,6 +281,7 @@ mod tests {
         let point: RoutePoint = serde_json::from_str(json).unwrap();
 
         assert!(point.note.is_none());
+        assert!(point.preview_size.is_none());
         let photo = point.photo.unwrap();
         assert_eq!(photo.original, "data:image/png;base64,abc");
         assert_eq!(photo.status, PhotoStatus::Pending);
@@ -284,6 +293,7 @@ mod tests {
         let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"photo":null}"#;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
         assert!(point.note.is_none());
+        assert!(point.preview_size.is_none());
         assert!(point.photo.is_none());
     }
 

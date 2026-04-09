@@ -239,6 +239,27 @@ body {
     margin-bottom: 8px;
 }
 
+.point-photo-size-control {
+    margin-bottom: 10px;
+}
+
+.point-photo-size-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.point-photo-size-value {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.point-photo-size-range {
+    width: 100%;
+}
+
 .point-popup-actions {
     display: flex;
     flex-direction: column;
@@ -307,9 +328,9 @@ body {
 }
 
 .photo-marker-container {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: var(--marker-size, 44px);
+    height: var(--marker-size, 44px);
+    border-radius: 10px;
     overflow: hidden;
     border: 3px solid white;
     box-shadow: 0 2px 8px var(--color-shadow);

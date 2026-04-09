@@ -113,6 +113,7 @@ fn parse_feature_collection(
                         lat: coords[1],
                         name: point_name,
                         note: point_note,
+                        preview_size: None,
                         segment_mode: None,
                         photo: None,
                     };
@@ -201,6 +202,7 @@ fn parse_linestring_geometry(geometry: &Geometry) -> Result<Vec<RoutePoint>, Imp
                             lat: coord[1],
                             name: None,
                             note: None,
+                            preview_size: None,
                             segment_mode: None,
                             photo: None,
                         })

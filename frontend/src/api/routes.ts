@@ -14,6 +14,7 @@ export interface RoutePoint {
   lng: number;
   name?: string;
   note?: string;
+  preview_size?: number;
   segment_mode?: 'auto' | 'manual'; // mode for segment TO this point
   photo?: PhotoData;
 }

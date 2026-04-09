@@ -62,6 +62,7 @@ export interface RoutePoint {
   position: [number, number];
   name?: string;
   note?: string;
+  previewSize?: number;
   photo?: PhotoData;
 }
 
@@ -85,6 +86,10 @@ const ROUTE_COLORS = [
 ];
 
 const CHAT_POINT_MATCH_EPSILON = 0.00001;
+const DEFAULT_PHOTO_PREVIEW_SIZE = 44;
+const MIN_PHOTO_PREVIEW_SIZE = 28;
+const MAX_PHOTO_PREVIEW_SIZE = 84;
+const PHOTO_PREVIEW_STEP = 4;
 
 function routePointsMatch(
   left: Pick<RoutePoint, "position" | "name">,
@@ -147,6 +152,16 @@ function buildSegmentsForAppendedPoints(
   }
 
   return segments;
+}
+
+function clampPhotoPreviewSize(size?: number) {
+  if (typeof size !== "number" || Number.isNaN(size)) {
+    return DEFAULT_PHOTO_PREVIEW_SIZE;
+  }
+  return Math.max(
+    MIN_PHOTO_PREVIEW_SIZE,
+    Math.min(MAX_PHOTO_PREVIEW_SIZE, Math.round(size / PHOTO_PREVIEW_STEP) * PHOTO_PREVIEW_STEP),
+  );
 }
 
 function buildSegmentTooltipText(
@@ -358,15 +373,22 @@ export function getPhotoSrc(photo?: PhotoData): string | undefined {
   return photo.thumbnail_url || photo.original;
 }
 
-export function createMarkerIcon(photo?: PhotoData): L.Icon | L.DivIcon {
+function createPhotoMarkerHtml(src: string, previewSize?: number, borderColor?: string) {
+  const size = clampPhotoPreviewSize(previewSize);
+  const borderStyle = borderColor ? `border-color:${borderColor};` : "";
+  return `<div class="photo-marker-container" style="--marker-size:${size}px;${borderStyle}"><img src="${src}" alt="Marker" /></div>`;
+}
+
+export function createMarkerIcon(photo?: PhotoData, previewSize?: number): L.Icon | L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
+    const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "custom-photo-marker",
-      html: `<div class="photo-marker-container"><img src="${src}" alt="Marker" /></div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 40],
-      popupAnchor: [0, -40],
+      html: createPhotoMarkerHtml(src, size),
+      iconSize: [size, size],
+      iconAnchor: [Math.round(size / 2), size],
+      popupAnchor: [0, -size],
     });
   } else {
     return L.icon({
@@ -384,15 +406,16 @@ export function createMarkerIcon(photo?: PhotoData): L.Icon | L.DivIcon {
   }
 }
 
-function createColoredMarkerIcon(color: string, photo?: PhotoData): L.DivIcon {
+function createColoredMarkerIcon(color: string, photo?: PhotoData, previewSize?: number): L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
+    const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "overlay-marker",
-      html: `<div class="photo-marker-container" style="border-color:${color}"><img src="${src}" alt="Marker" /></div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 40],
-      popupAnchor: [0, -40],
+      html: createPhotoMarkerHtml(src, size, color),
+      iconSize: [size, size],
+      iconAnchor: [Math.round(size / 2), size],
+      popupAnchor: [0, -size],
     });
   }
   return L.divIcon({
@@ -409,11 +432,13 @@ const PointPopup = React.memo(function PointPopup({
   index,
   onPhotoChange,
   onNoteChange,
+  onPreviewSizeChange,
 }: {
   point: RoutePoint;
   index: number;
   onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
   onNoteChange: (pointId: number, note: string) => void;
+  onPreviewSizeChange: (pointId: number, previewSize: number) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
@@ -448,7 +473,12 @@ const PointPopup = React.memo(function PointPopup({
     onNoteChange(point.id, e.target.value);
   };
 
+  const handlePreviewSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onPreviewSizeChange(point.id, Number(e.target.value));
+  };
+
   const photoSrc = getPhotoSrc(point.photo);
+  const previewSize = clampPhotoPreviewSize(point.previewSize);
 
   return (
     <div className="point-popup">
@@ -476,6 +506,29 @@ const PointPopup = React.memo(function PointPopup({
       {photoSrc && (
         <div className="point-popup-photo">
           <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
+          <div className="point-photo-size-control">
+            <div className="point-photo-size-header">
+              <label
+                className="point-popup-note-label"
+                htmlFor={`point-preview-size-${point.id}`}
+              >
+                {t("map.photoPreviewSize")}
+              </label>
+              <span className="point-photo-size-value">
+                {t("map.photoPreviewSizeValue", { size: previewSize })}
+              </span>
+            </div>
+            <input
+              id={`point-preview-size-${point.id}`}
+              className="point-photo-size-range"
+              type="range"
+              min={MIN_PHOTO_PREVIEW_SIZE}
+              max={MAX_PHOTO_PREVIEW_SIZE}
+              step={PHOTO_PREVIEW_STEP}
+              value={previewSize}
+              onChange={handlePreviewSizeChange}
+            />
+          </div>
           <button
             type="button"
             onClick={handleRemovePhoto}
@@ -609,6 +662,7 @@ export function MapPage() {
         position: [p.lat, p.lng] as [number, number],
         name: p.name,
         note: p.note,
+        previewSize: p.preview_size,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -646,6 +700,7 @@ export function MapPage() {
           position: [p.lat, p.lng] as [number, number],
           name: p.name,
           note: p.note,
+          previewSize: p.preview_size,
           photo: p.photo,
         }));
         const segments: RouteSegment[] = [];
@@ -734,6 +789,7 @@ export function MapPage() {
           lng: p.position[1],
           name: normalizedName ? normalizedName : undefined,
           note: normalizedNote ? normalizedNote : undefined,
+          preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
           photo: p.photo,
         };
@@ -805,13 +861,30 @@ export function MapPage() {
 
   const handlePhotoChange = React.useCallback((pointId: number, photo: PhotoData | undefined) => {
     setRoutePoints((prev) =>
-      prev.map((point) => (point.id === pointId ? { ...point, photo } : point))
+      prev.map((point) =>
+        point.id === pointId
+          ? {
+              ...point,
+              photo,
+              previewSize: photo ? clampPhotoPreviewSize(point.previewSize) : point.previewSize,
+            }
+          : point
+      )
     );
   }, []);
 
   const handlePointNoteChange = React.useCallback((pointId: number, note: string) => {
     setRoutePoints((prev) =>
       prev.map((point) => (point.id === pointId ? { ...point, note } : point))
+    );
+  }, []);
+
+  const handlePointPreviewSizeChange = React.useCallback((pointId: number, previewSize: number) => {
+    const normalizedSize = clampPhotoPreviewSize(previewSize);
+    setRoutePoints((prev) =>
+      prev.map((point) =>
+        point.id === pointId ? { ...point, previewSize: normalizedSize } : point
+      )
     );
   }, []);
 
@@ -911,6 +984,7 @@ export function MapPage() {
     const newPoints: RoutePoint[] = parsed.map((photo) => ({
       id: pointIdRef.current++,
       position: [photo.lat, photo.lng] as [number, number],
+      previewSize: DEFAULT_PHOTO_PREVIEW_SIZE,
       photo: { original: photo.base64, status: "pending" } as PhotoData,
     }));
 
@@ -1420,9 +1494,9 @@ export function MapPage() {
         />
         {routePoints.map((point, index) => (
           <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}`}
             position={point.position}
-            icon={createMarkerIcon(point.photo)}
+            icon={createMarkerIcon(point.photo, point.previewSize)}
             draggable={true}
             eventHandlers={{
               dragend: (e) => {
@@ -1437,6 +1511,7 @@ export function MapPage() {
                 index={index}
                 onPhotoChange={handlePhotoChange}
                 onNoteChange={handlePointNoteChange}
+                onPreviewSizeChange={handlePointPreviewSizeChange}
               />
             </Popup>
           </Marker>
@@ -1462,9 +1537,9 @@ export function MapPage() {
               />
               {overlay.points.map((point, idx) => (
                 <Marker
-                  key={`overlay-${overlay.id}-${idx}`}
+                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}`}
                   position={point.position}
-                  icon={createColoredMarkerIcon(overlay.color, point.photo)}
+                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize)}
                 >
                   <Popup>
                     <div className="point-popup">

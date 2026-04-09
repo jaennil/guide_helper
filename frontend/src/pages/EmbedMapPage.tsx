@@ -34,6 +34,7 @@ export function EmbedMapPage() {
         position: [p.lat, p.lng] as [number, number],
         name: p.name,
         note: p.note,
+        previewSize: p.preview_size,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -97,7 +98,7 @@ export function EmbedMapPage() {
           <Marker
             key={point.id}
             position={point.position}
-            icon={createMarkerIcon(point.photo)}
+            icon={createMarkerIcon(point.photo, point.previewSize)}
           >
             <Popup>
               <div>

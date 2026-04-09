@@ -99,6 +99,8 @@ export const en = {
   "stats.loading": "Loading...",
   "map.pointNoteLabel": "Point note",
   "map.pointNotePlaceholder": "Write a short story, place description, or comment for this point...",
+  "map.photoPreviewSize": "Map preview size",
+  "map.photoPreviewSizeValue": "{{size}} px",
   "map.saveChanges": "Save changes",
   "search.placeholder": "Search places...",
   "search.noResults": "No results found",

@@ -452,6 +452,7 @@ mod tests {
             lng: 37.6173,
             name: None,
             note: None,
+            preview_size: None,
             segment_mode: None,
             photo: None,
         }];
