@@ -54,6 +54,7 @@ mod tests {
                     lat: 55.0,
                     lng: 37.0,
                     name: None,
+                    note: None,
                     segment_mode: None,
                     photo: Some(PhotoData {
                         original: "data:image/png;base64,abc".to_string(),
@@ -65,6 +66,7 @@ mod tests {
                     lat: 56.0,
                     lng: 38.0,
                     name: None,
+                    note: None,
                     segment_mode: None,
                     photo: None,
                 },
@@ -72,6 +74,7 @@ mod tests {
                     lat: 57.0,
                     lng: 39.0,
                     name: None,
+                    note: None,
                     segment_mode: None,
                     photo: Some(PhotoData {
                         original: "data:image/jpeg;base64,xyz".to_string(),
@@ -105,6 +108,7 @@ mod tests {
                 lat: 55.0,
                 lng: 37.0,
                 name: None,
+                note: None,
                 segment_mode: None,
                 photo: None,
             }],
@@ -131,6 +135,7 @@ mod tests {
                 lat: 55.0,
                 lng: 37.0,
                 name: None,
+                note: None,
                 segment_mode: None,
                 photo: Some(PhotoData {
                     original: "/photos/user/route/photo_0.jpg".to_string(),

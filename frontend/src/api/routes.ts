@@ -13,6 +13,7 @@ export interface RoutePoint {
   lat: number;
   lng: number;
   name?: string;
+  note?: string;
   segment_mode?: 'auto' | 'manual'; // mode for segment TO this point
   photo?: PhotoData;
 }

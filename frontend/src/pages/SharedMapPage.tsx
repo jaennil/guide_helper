@@ -120,6 +120,8 @@ export function SharedMapPage() {
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
+        name: p.name,
+        note: p.note,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -210,13 +212,13 @@ export function SharedMapPage() {
           {routePoints.length >= 2 && (
             <>
               <button
-                onClick={() => exportAsGpx(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                onClick={() => exportAsGpx(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
                 className="btn-secondary"
               >
                 {t("export.gpx")}
               </button>
               <button
-                onClick={() => exportAsKml(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                onClick={() => exportAsKml(routeName, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
                 className="btn-secondary"
               >
                 {t("export.kml")}
@@ -281,10 +283,14 @@ export function SharedMapPage() {
                 <div className="point-popup-header">
                   <strong>{t("map.point", { index: index + 1 })}</strong>
                 </div>
+                {point.name && <div className="point-popup-name">{point.name}</div>}
                 <div className="point-popup-coords">
                   {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
                   {point.position[1].toFixed(6)}
                 </div>
+                {point.note?.trim() && (
+                  <div className="point-popup-note-text">{point.note}</div>
+                )}
                 {getPhotoSrc(point.photo) && (
                   <div className="point-popup-photo">
                     <img src={point.photo?.original || getPhotoSrc(point.photo)} alt={t("map.point", { index: index + 1 })} />

@@ -52,6 +52,7 @@ export interface RoutePoint {
   id: number;
   position: [number, number];
   name?: string;
+  note?: string;
   photo?: PhotoData;
 }
 
@@ -357,10 +358,12 @@ const PointPopup = React.memo(function PointPopup({
   point,
   index,
   onPhotoChange,
+  onNoteChange,
 }: {
   point: RoutePoint;
   index: number;
   onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
+  onNoteChange: (pointId: number, note: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
@@ -391,6 +394,10 @@ const PointPopup = React.memo(function PointPopup({
     }
   };
 
+  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onNoteChange(point.id, e.target.value);
+  };
+
   const photoSrc = getPhotoSrc(point.photo);
 
   return (
@@ -402,6 +409,19 @@ const PointPopup = React.memo(function PointPopup({
       <div className="point-popup-coords">
         {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
         {point.position[1].toFixed(6)}
+      </div>
+      <div className="point-popup-note">
+        <label className="point-popup-note-label" htmlFor={`point-note-${point.id}`}>
+          {t("map.pointNoteLabel")}
+        </label>
+        <textarea
+          id={`point-note-${point.id}`}
+          className="point-note-textarea"
+          rows={4}
+          value={point.note ?? ""}
+          onChange={handleNoteChange}
+          placeholder={t("map.pointNotePlaceholder")}
+        />
       </div>
       {photoSrc && (
         <div className="point-popup-photo">
@@ -534,6 +554,8 @@ export function MapPage() {
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
+        name: p.name,
+        note: p.note,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -569,6 +591,8 @@ export function MapPage() {
         const points: RoutePoint[] = route.points.map((p, i) => ({
           id: i,
           position: [p.lat, p.lng] as [number, number],
+          name: p.name,
+          note: p.note,
           photo: p.photo,
         }));
         const segments: RouteSegment[] = [];
@@ -648,10 +672,13 @@ export function MapPage() {
       const pointsToSave = routePoints.map((p, index) => {
         // Find segment that ends at this point
         const segment = routeSegments.find(s => s.toIndex === index);
+        const normalizedName = p.name?.trim();
+        const normalizedNote = p.note?.trim();
         return {
           lat: p.position[0],
           lng: p.position[1],
-          name: undefined,
+          name: normalizedName ? normalizedName : undefined,
+          note: normalizedNote ? normalizedNote : undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
           photo: p.photo,
         };
@@ -715,6 +742,12 @@ export function MapPage() {
   const handlePhotoChange = React.useCallback((pointId: number, photo: PhotoData | undefined) => {
     setRoutePoints((prev) =>
       prev.map((point) => (point.id === pointId ? { ...point, photo } : point))
+    );
+  }, []);
+
+  const handlePointNoteChange = React.useCallback((pointId: number, note: string) => {
+    setRoutePoints((prev) =>
+      prev.map((point) => (point.id === pointId ? { ...point, note } : point))
     );
   }, []);
 
@@ -1032,8 +1065,8 @@ export function MapPage() {
                 <button onClick={() => photoImportRef.current?.click()}>{t("map.importPhotos")}</button>
                 {loadedRouteInfo && routePoints.length >= 2 && (
                   <>
-                    <button onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}>{t("export.gpx")}</button>
-                    <button onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}>{t("export.kml")}</button>
+                    <button onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}>{t("export.gpx")}</button>
+                    <button onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}>{t("export.kml")}</button>
                     <button onClick={handleGenerateAiDescription} disabled={aiGenerating}>{aiGenerating ? t("ai.generating") : t("ai.generateButton")}</button>
                   </>
                 )}
@@ -1096,13 +1129,13 @@ export function MapPage() {
           {loadedRouteInfo && routePoints.length >= 2 && (
             <>
               <button
-                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
                 className="btn-secondary"
               >
                 {t("export.gpx")}
               </button>
               <button
-                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1] })))}
+                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
                 className="btn-secondary"
               >
                 {t("export.kml")}
@@ -1321,6 +1354,7 @@ export function MapPage() {
                 point={point}
                 index={index}
                 onPhotoChange={handlePhotoChange}
+                onNoteChange={handlePointNoteChange}
               />
             </Popup>
           </Marker>
@@ -1353,10 +1387,14 @@ export function MapPage() {
                       <div className="point-popup-header">
                         <strong>{overlay.name} — {t("map.point", { index: idx + 1 })}</strong>
                       </div>
+                      {point.name && <div className="point-popup-name">{point.name}</div>}
                       <div className="point-popup-coords">
                         {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
                         {point.position[1].toFixed(6)}
                       </div>
+                      {point.note?.trim() && (
+                        <div className="point-popup-note-text">{point.note}</div>
+                      )}
                       {getPhotoSrc(point.photo) && (
                         <div className="point-popup-photo">
                           <img src={point.photo?.original || getPhotoSrc(point.photo)} alt={`${overlay.name} point ${idx + 1}`} />

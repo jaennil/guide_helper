@@ -97,6 +97,8 @@ export const ru = {
   "stats.difficulty.hard": "Сложный",
   "stats.elevationProfile": "Профиль высот",
   "stats.loading": "Загрузка...",
+  "map.pointNoteLabel": "Заметка к точке",
+  "map.pointNotePlaceholder": "Напишите историю, описание места или комментарий к этой точке...",
   "search.placeholder": "Поиск мест...",
   "search.noResults": "Ничего не найдено",
   "comments.title": "Комментарии",

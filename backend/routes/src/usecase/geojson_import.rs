@@ -106,11 +106,13 @@ fn parse_feature_collection(
                         .and_then(|p| p.get("name"))
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
+                    let point_note = extract_note_from_properties(&feature.properties);
 
                     let point = RoutePoint {
                         lng: coords[0],
                         lat: coords[1],
                         name: point_name,
+                        note: point_note,
                         segment_mode: None,
                         photo: None,
                     };
@@ -169,6 +171,21 @@ fn extract_name_from_properties(
         })
 }
 
+fn extract_note_from_properties(
+    properties: &Option<serde_json::Map<String, serde_json::Value>>,
+) -> Option<String> {
+    ["note", "description", "comment"]
+        .into_iter()
+        .find_map(|key| {
+            properties
+                .as_ref()
+                .and_then(|p| p.get(key))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
+}
+
 fn parse_linestring_geometry(geometry: &Geometry) -> Result<Vec<RoutePoint>, ImportError> {
     match &geometry.value {
         Value::LineString(coords) => {
@@ -183,6 +200,7 @@ fn parse_linestring_geometry(geometry: &Geometry) -> Result<Vec<RoutePoint>, Imp
                             lng: coord[0],
                             lat: coord[1],
                             name: None,
+                            note: None,
                             segment_mode: None,
                             photo: None,
                         })
@@ -258,6 +276,30 @@ mod tests {
         assert_eq!(points[0].lng, 37.6173);
         assert_eq!(points[0].lat, 55.7558);
         assert_eq!(points[1].name, Some("Saint Petersburg".to_string()));
+    }
+
+    #[test]
+    fn test_parse_feature_collection_point_note() {
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "name": "My Route",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "name": "Museum",
+                        "description": "Founded in 1898"
+                    },
+                    "geometry": {"type": "Point", "coordinates": [37.6173, 55.7558]}
+                }
+            ]
+        }"#;
+
+        let (_, points) = parse_geojson(geojson).unwrap();
+
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].name, Some("Museum".to_string()));
+        assert_eq!(points[0].note, Some("Founded in 1898".to_string()));
     }
 
     #[test]

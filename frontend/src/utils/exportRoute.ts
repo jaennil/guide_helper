@@ -2,6 +2,7 @@ interface ExportPoint {
   lat: number;
   lng: number;
   name?: string;
+  note?: string;
 }
 
 function escapeXml(str: string): string {
@@ -17,7 +18,10 @@ export function generateGpx(routeName: string, points: ExportPoint[]): string {
   const wpts = points
     .map((p, i) => {
       const name = p.name || `Point ${i + 1}`;
-      return `  <wpt lat="${p.lat}" lon="${p.lng}">\n    <name>${escapeXml(name)}</name>\n  </wpt>`;
+      const desc = p.note?.trim()
+        ? `\n    <desc>${escapeXml(p.note)}</desc>`
+        : '';
+      return `  <wpt lat="${p.lat}" lon="${p.lng}">\n    <name>${escapeXml(name)}</name>${desc}\n  </wpt>`;
     })
     .join('\n');
 
@@ -45,8 +49,12 @@ export function generateKml(routeName: string, points: ExportPoint[]): string {
   const placemarks = points
     .map((p, i) => {
       const name = p.name || `Point ${i + 1}`;
+      const description = p.note?.trim()
+        ? `\n      <description>${escapeXml(p.note)}</description>`
+        : '';
       return `    <Placemark>
       <name>${escapeXml(name)}</name>
+${description}
       <Point>
         <coordinates>${p.lng},${p.lat},0</coordinates>
       </Point>

@@ -97,6 +97,8 @@ export const en = {
   "stats.difficulty.hard": "Hard",
   "stats.elevationProfile": "Elevation profile",
   "stats.loading": "Loading...",
+  "map.pointNoteLabel": "Point note",
+  "map.pointNotePlaceholder": "Write a short story, place description, or comment for this point...",
   "search.placeholder": "Search places...",
   "search.noResults": "No results found",
   "comments.title": "Comments",

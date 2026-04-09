@@ -174,10 +174,57 @@ body {
     font-size: 16px;
 }
 
+.point-popup-name {
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
 .point-popup-coords {
     font-size: 12px;
     color: var(--text-light);
     margin-bottom: 12px;
+}
+
+.point-popup-note {
+    margin-bottom: 12px;
+}
+
+.point-popup-note-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.point-note-textarea {
+    width: 100%;
+    min-height: 84px;
+    resize: vertical;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.point-note-textarea::placeholder {
+    color: var(--text-dim);
+}
+
+.point-popup-note-text {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
 }
 
 .point-popup-photo {

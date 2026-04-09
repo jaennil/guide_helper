@@ -32,6 +32,8 @@ export function EmbedMapPage() {
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
+        name: p.name,
+        note: p.note,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -101,7 +103,16 @@ export function EmbedMapPage() {
               <div>
                 <strong>Point {index + 1}</strong>
                 <br />
+                {point.name && (
+                  <>
+                    {point.name}
+                    <br />
+                  </>
+                )}
                 {point.position[0].toFixed(6)}, {point.position[1].toFixed(6)}
+                {point.note?.trim() && (
+                  <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{point.note}</div>
+                )}
                 {getPhotoSrc(point.photo) && (
                   <div style={{ marginTop: 4 }}>
                     <img src={point.photo?.original || getPhotoSrc(point.photo)} alt="" style={{ maxWidth: 120 }} />
