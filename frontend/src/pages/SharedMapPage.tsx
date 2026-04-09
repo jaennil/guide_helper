@@ -270,8 +270,16 @@ export function SharedMapPage() {
           url={currentProvider.url}
           attribution={currentProvider.attribution}
         />
-        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
-        <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
+        <RoutingControl
+          waypoints={waypoints}
+          routeSegments={routeSegments}
+          categoryNames={routeCategoryNames}
+        />
+        <ManualRoutes
+          waypoints={waypoints}
+          routeSegments={routeSegments}
+          categoryNames={routeCategoryNames}
+        />
         {routePoints.map((point, index) => (
           <Marker
             key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}

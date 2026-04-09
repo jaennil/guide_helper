@@ -39,7 +39,14 @@ import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } fro
 import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
-import { formatDistance, totalDistance } from "../utils/geo";
+import {
+  estimateRouteTime,
+  formatDistance,
+  formatDuration,
+  inferRouteActivity,
+  inferRouteSurface,
+  totalDistance,
+} from "../utils/geo";
 
 type RouteMode = "auto" | "manual";
 
@@ -145,12 +152,17 @@ function buildSegmentsForAppendedPoints(
 function buildSegmentTooltipText(
   segment: RouteSegment,
   coords: [number, number][],
+  categoryNames: string[] = [],
 ) {
   const distanceKm = totalDistance(
     coords.map(([lat, lng]) => ({ lat, lng })),
   );
+  const segmentModes = [segment.mode];
+  const activity = inferRouteActivity(categoryNames, segmentModes);
+  const surface = inferRouteSurface(segmentModes);
+  const estimatedMinutes = estimateRouteTime(distanceKm, 0, activity, surface);
 
-  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)}`;
+  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)} • ${formatDuration(estimatedMinutes)}`;
 }
 
 function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
@@ -207,14 +219,17 @@ export const RoutingControl = React.memo(function RoutingControl({
   routeSegments,
   color = "#3388ff",
   engineId = DEFAULT_ENGINE,
+  categoryNames = [],
 }: {
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
   color?: string;
   engineId?: RoutingEngineId;
+  categoryNames?: string[];
 }) {
   const map = useMapEvents({});
   const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
+  const categoryKey = categoryNames.join("|").toLowerCase();
 
   useEffect(() => {
     if (waypoints.length < 2) {
@@ -227,7 +242,7 @@ export const RoutingControl = React.memo(function RoutingControl({
 
     routeSegments.forEach((segment) => {
       if (segment.mode !== "auto") return;
-      const key = `${segment.fromIndex}-${segment.toIndex}-${engineId}`;
+      const key = `${segment.fromIndex}-${segment.toIndex}-${engineId}-${categoryKey}`;
       activeKeys.add(key);
 
       const fromPoint = waypoints[segment.fromIndex];
@@ -240,7 +255,7 @@ export const RoutingControl = React.memo(function RoutingControl({
       const to: [number, number] = [toPoint.lat, toPoint.lng];
 
       fetchRoute(engineId, from, to).then((coords) => {
-        const tooltipText = buildSegmentTooltipText(segment, coords);
+        const tooltipText = buildSegmentTooltipText(segment, coords, categoryNames);
         // Remove old polyline for this segment if engine changed
         const latLngs = coords.map((c) => L.latLng(c[0], c[1]));
         const polyline = L.polyline(latLngs, {
@@ -266,13 +281,13 @@ export const RoutingControl = React.memo(function RoutingControl({
         polylinesRef.current.delete(key);
       }
     });
-  }, [waypoints, routeSegments, map, engineId, color]);
+  }, [waypoints, routeSegments, map, engineId, color, categoryKey, categoryNames]);
 
   // Clear all when engine changes
   useEffect(() => {
     polylinesRef.current.forEach((pl) => map.removeLayer(pl));
     polylinesRef.current.clear();
-  }, [engineId, map]);
+  }, [engineId, map, categoryKey]);
 
   useEffect(() => {
     return () => {
@@ -290,10 +305,12 @@ export function ManualRoutes({
   waypoints,
   routeSegments,
   color = "#3388ff",
+  categoryNames = [],
 }: {
   waypoints: L.LatLng[];
   routeSegments: RouteSegment[];
   color?: string;
+  categoryNames?: string[];
 }) {
   const routes: Array<{ segment: RouteSegment; coords: [number, number][] }> = [];
   routeSegments.forEach((segment) => {
@@ -328,7 +345,7 @@ export function ManualRoutes({
             offset={[0, -4]}
             className="route-segment-tooltip"
           >
-            {buildSegmentTooltipText(segment, coords)}
+            {buildSegmentTooltipText(segment, coords, categoryNames)}
           </Tooltip>
         </Polyline>
       ))}
@@ -1390,8 +1407,17 @@ export function MapPage() {
         {historicalMode && (
           <HistoricalMapOverlay year={historicalYear} opacity={historicalOpacity} />
         )}
-        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} engineId={routingEngine} />
-        <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
+        <RoutingControl
+          waypoints={waypoints}
+          routeSegments={routeSegments}
+          engineId={routingEngine}
+          categoryNames={selectedCategoryNames}
+        />
+        <ManualRoutes
+          waypoints={waypoints}
+          routeSegments={routeSegments}
+          categoryNames={selectedCategoryNames}
+        />
         {routePoints.map((point, index) => (
           <Marker
             key={`${point.id}-${point.photo ? "photo" : "no-photo"}`}
@@ -1426,11 +1452,13 @@ export function MapPage() {
                 routeSegments={overlay.segments}
                 color={overlay.color}
                 engineId={routingEngine}
+                categoryNames={[]}
               />
               <ManualRoutes
                 waypoints={overlayWaypoints}
                 routeSegments={overlay.segments}
                 color={overlay.color}
+                categoryNames={[]}
               />
               {overlay.points.map((point, idx) => (
                 <Marker
