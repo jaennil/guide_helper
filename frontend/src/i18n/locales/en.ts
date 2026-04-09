@@ -90,7 +90,7 @@ export const en = {
   "shared.notFound": "Shared route not found",
   "stats.distance": "Distance",
   "stats.elevation": "Elevation gain",
-  "stats.walkingTime": "Walking time",
+  "stats.walkingTime": "Estimated time",
   "stats.difficulty": "Difficulty",
   "stats.difficulty.easy": "Easy",
   "stats.difficulty.moderate": "Moderate",

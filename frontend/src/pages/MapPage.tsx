@@ -957,6 +957,9 @@ export function MapPage() {
   };
 
   const currentProvider = TILE_PROVIDERS.find((p) => p.id === tileProvider) || TILE_PROVIDERS[0];
+  const selectedCategoryNames = selectedCategoryIds
+    .map((categoryId) => availableCategories.find((category) => category.id === categoryId)?.name)
+    .filter((name): name is string => Boolean(name));
 
   const waypoints = routePoints.map((point) =>
     L.latLng(point.position[0], point.position[1])
@@ -1377,6 +1380,9 @@ export function MapPage() {
       {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+          segments={routeSegments}
+          categoryNames={selectedCategoryNames}
+          engineId={routingEngine}
         />
       )}
       {!playbackActive && routePoints.length >= 2 && (

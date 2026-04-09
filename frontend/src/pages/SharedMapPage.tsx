@@ -148,6 +148,9 @@ export function SharedMapPage() {
   };
 
   const currentProvider = TILE_PROVIDERS.find((p) => p.id === tileProvider) || TILE_PROVIDERS[0];
+  const routeCategoryNames = routeCategoryIds
+    .map((categoryId) => availableCategories.find((category) => category.id === categoryId)?.name)
+    .filter((name): name is string => Boolean(name));
 
   const waypoints = routePoints.map((point) =>
     L.latLng(point.position[0], point.position[1])
@@ -302,6 +305,8 @@ export function SharedMapPage() {
       {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+          segments={routeSegments}
+          categoryNames={routeCategoryNames}
         />
       )}
       {!playbackActive && routePoints.length >= 2 && (

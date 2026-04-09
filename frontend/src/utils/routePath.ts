@@ -1,5 +1,14 @@
-import type { RouteSegment, RoutePoint } from '../pages/MapPage';
 import { fetchRoute, type RoutingEngineId, DEFAULT_ENGINE } from './routingEngines';
+
+export interface PathPoint {
+  position: [number, number];
+}
+
+export interface PathSegment {
+  fromIndex: number;
+  toIndex: number;
+  mode: 'auto' | 'manual';
+}
 
 export interface PathResult {
   /** Full detailed path as [lat, lng] tuples */
@@ -67,8 +76,9 @@ function findClosestIndex(path: [number, number][], target: [number, number]): n
  * Returns the full path and a mapping of original point indices to path positions.
  */
 export async function fetchDetailedPath(
-  points: RoutePoint[],
-  segments: RouteSegment[]
+  points: PathPoint[],
+  segments: PathSegment[],
+  engineId: RoutingEngineId = currentEngine
 ): Promise<PathResult> {
   if (points.length === 0) {
     return { fullPath: [], pointIndices: [] };
@@ -93,7 +103,7 @@ export async function fetchDetailedPath(
     let segmentPath: [number, number][];
 
     if (segment.mode === 'auto') {
-      segmentPath = await fetchRoute(currentEngine, from.position, to.position);
+      segmentPath = await fetchRoute(engineId, from.position, to.position);
     } else {
       segmentPath = interpolateLine(from.position, to.position, 20);
     }

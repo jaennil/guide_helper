@@ -90,7 +90,7 @@ export const ru = {
   "shared.notFound": "Общий маршрут не найден",
   "stats.distance": "Расстояние",
   "stats.elevation": "Набор высоты",
-  "stats.walkingTime": "Время пешком",
+  "stats.walkingTime": "Оценка времени",
   "stats.difficulty": "Сложность",
   "stats.difficulty.easy": "Лёгкий",
   "stats.difficulty.moderate": "Средний",
