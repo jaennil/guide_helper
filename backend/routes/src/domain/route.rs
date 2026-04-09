@@ -78,6 +78,7 @@ pub struct Route {
     pub start_location: Option<String>,
     pub end_location: Option<String>,
     pub seasons: Vec<String>,
+    pub line_color: Option<String>,
     pub description: Option<String>,
 }
 
@@ -113,6 +114,7 @@ impl Route {
         points: Vec<RoutePoint>,
         category_ids: Vec<Uuid>,
         seasons: Vec<String>,
+        line_color: Option<String>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -127,6 +129,7 @@ impl Route {
             start_location: None,
             end_location: None,
             seasons,
+            line_color,
             description: None,
         }
     }
@@ -137,6 +140,7 @@ impl Route {
         points: Option<Vec<RoutePoint>>,
         category_ids: Option<Vec<Uuid>>,
         seasons: Option<Vec<String>>,
+        line_color: Option<String>,
         description: Option<String>,
     ) {
         if let Some(n) = name {
@@ -150,6 +154,9 @@ impl Route {
         }
         if let Some(s) = seasons {
             self.seasons = s;
+        }
+        if line_color.is_some() {
+            self.line_color = line_color;
         }
         if description.is_some() {
             self.description = description;
@@ -198,6 +205,7 @@ mod tests {
             points.clone(),
             vec![],
             vec![],
+            Some("#3388ff".to_string()),
         );
 
         assert_eq!(route.user_id, user_id);
@@ -205,6 +213,7 @@ mod tests {
         assert_eq!(route.points.len(), 2);
         assert_eq!(route.created_at, route.updated_at);
         assert!(route.category_ids.is_empty());
+        assert_eq!(route.line_color.as_deref(), Some("#3388ff"));
     }
 
     #[test]
@@ -220,7 +229,14 @@ mod tests {
             segment_mode: None,
             photo: None,
         }];
-        let mut route = Route::new(user_id, "Original".to_string(), points, vec![], vec![]);
+        let mut route = Route::new(
+            user_id,
+            "Original".to_string(),
+            points,
+            vec![],
+            vec![],
+            Some("#3388ff".to_string()),
+        );
         let original_updated_at = route.updated_at;
 
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -252,11 +268,13 @@ mod tests {
             Some(new_points),
             None,
             None,
+            Some("#ef4444".to_string()),
             None,
         );
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);
+        assert_eq!(route.line_color.as_deref(), Some("#ef4444"));
         assert!(route.updated_at > original_updated_at);
     }
 

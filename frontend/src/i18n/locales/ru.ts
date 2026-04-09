@@ -104,6 +104,7 @@ export const ru = {
   "map.photoPreviewShapeCircle": "Круг",
   "map.photoPreviewSize": "Размер превью на карте",
   "map.photoPreviewSizeValue": "{{size}} px",
+  "map.routeLineColor": "Цвет линии маршрута",
   "map.saveChanges": "Сохранить изменения",
   "search.placeholder": "Поиск мест...",
   "search.noResults": "Ничего не найдено",

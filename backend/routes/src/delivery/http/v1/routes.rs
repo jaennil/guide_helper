@@ -36,6 +36,8 @@ pub struct RouteResponse {
     pub end_location: Option<String>,
     pub seasons: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
@@ -49,6 +51,8 @@ pub struct CreateRouteRequest {
     pub category_ids: Vec<Uuid>,
     #[serde(default)]
     pub seasons: Vec<String>,
+    #[serde(default)]
+    pub line_color: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -58,6 +62,7 @@ pub struct UpdateRouteRequest {
     pub points: Option<Vec<RoutePoint>>,
     pub category_ids: Option<Vec<Uuid>>,
     pub seasons: Option<Vec<String>>,
+    pub line_color: Option<String>,
 }
 
 fn route_to_response(r: DomainRoute) -> RouteResponse {
@@ -73,6 +78,7 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         start_location: r.start_location,
         end_location: r.end_location,
         seasons: r.seasons,
+        line_color: r.line_color,
         description: r.description,
     }
 }
@@ -129,6 +135,7 @@ pub async fn create_route(
             payload.points,
             payload.category_ids,
             payload.seasons,
+            payload.line_color,
         )
         .await?;
 
@@ -160,6 +167,7 @@ pub async fn update_route(
             payload.points,
             payload.category_ids,
             payload.seasons,
+            payload.line_color,
         )
         .await?;
 
@@ -246,7 +254,7 @@ pub async fn import_route_from_geojson(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, name, points, vec![], vec![])
+        .create_route(user.user_id, name, points, vec![], vec![], None)
         .await?;
 
     tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
@@ -490,6 +498,7 @@ mod tests {
             }],
             category_ids: vec![],
             seasons: vec![],
+            line_color: None,
         };
 
         assert!(request.validate().is_ok());
@@ -511,6 +520,7 @@ mod tests {
             }],
             category_ids: vec![],
             seasons: vec![],
+            line_color: None,
         };
 
         assert!(request.validate().is_err());
@@ -523,6 +533,7 @@ mod tests {
             points: vec![],
             category_ids: vec![],
             seasons: vec![],
+            line_color: None,
         };
 
         assert!(request.validate().is_err());
@@ -551,11 +562,13 @@ mod tests {
             start_location: None,
             end_location: None,
             seasons: vec![],
+            line_color: Some("#3388ff".to_string()),
             description: None,
         };
 
         let json = serde_json::to_string(&response).unwrap();
         assert!(!json.contains("share_token"));
+        assert!(json.contains("\"line_color\":\"#3388ff\""));
 
         let response_with_token = RouteResponse {
             share_token: Some(Uuid::new_v4().to_string()),

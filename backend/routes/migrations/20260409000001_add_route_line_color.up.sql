@@ -1,0 +1,2 @@
+ALTER TABLE routes
+ADD COLUMN IF NOT EXISTS line_color TEXT;

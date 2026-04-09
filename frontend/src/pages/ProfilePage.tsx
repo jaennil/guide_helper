@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import { getLocalizedCategoryName } from '../utils/categories';
+import { normalizeRouteLineColor } from '../utils/routeColors';
 import L from 'leaflet';
 import { MapPin, ArrowLeftRight, ArrowRight, MessageCircle, Heart, Star } from 'lucide-react';
 
@@ -82,7 +83,7 @@ function RouteMapPreview({ points, color }: { points: RoutePoint[]; color: strin
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [points, color]);
 
   if (points.length < 1) return null;
 
@@ -620,7 +621,10 @@ export default function ProfilePage() {
                             </div>
                             <div className="route-card-date">{t('profile.created')} {formatDate(route.created_at)}</div>
                           </div>
-                          <RouteMapPreview points={route.points} color={accentColor} />
+                          <RouteMapPreview
+                            points={route.points}
+                            color={route.line_color ? normalizeRouteLineColor(route.line_color) : accentColor}
+                          />
                           {selectedRouteIds.has(route.id) && <div className="route-selected-badge">✓</div>}
                         </div>
                         <div className="route-card-footer">

@@ -15,6 +15,7 @@ import {
   type RoutePoint,
   type RouteSegment,
 } from "./MapPage";
+import { DEFAULT_ROUTE_LINE_COLOR, normalizeRouteLineColor } from "../utils/routeColors";
 
 type RouteMode = "auto" | "manual";
 
@@ -23,6 +24,7 @@ export function EmbedMapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
+  const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,6 +32,7 @@ export function EmbedMapPage() {
     if (!token) return;
     routesApi.getSharedRoute(token).then((route) => {
       setRouteName(route.name);
+      setRouteLineColor(normalizeRouteLineColor(route.line_color));
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
@@ -94,8 +97,8 @@ export function EmbedMapPage() {
         attributionControl={false}
       >
         <TileLayer url="https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU" />
-        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} />
-        <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} />
+        <RoutingControl waypoints={waypoints} routeSegments={routeSegments} color={routeLineColor} />
+        <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} color={routeLineColor} />
         {routePoints.map((point, index) => (
           <Marker
             key={point.id}

@@ -83,10 +83,18 @@ where
         points: Vec<RoutePoint>,
         category_ids: Vec<Uuid>,
         seasons: Vec<String>,
+        line_color: Option<String>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "creating new route");
 
-        let route = Route::new(user_id, name, points.clone(), category_ids, seasons);
+        let route = Route::new(
+            user_id,
+            name,
+            points.clone(),
+            category_ids,
+            seasons,
+            line_color,
+        );
         self.route_repository.create(&route).await?;
 
         self.spawn_geocoding(route.id, points);
@@ -138,6 +146,7 @@ where
         points: Option<Vec<RoutePoint>>,
         category_ids: Option<Vec<Uuid>>,
         seasons: Option<Vec<String>>,
+        line_color: Option<String>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "updating route");
 
@@ -154,7 +163,7 @@ where
         }
 
         let points_changed = points.is_some();
-        route.update(name, points, category_ids, seasons, None);
+        route.update(name, points, category_ids, seasons, line_color, None);
         self.route_repository.update(&route).await?;
 
         if points_changed {
@@ -409,7 +418,7 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
-        route.update(None, None, None, None, Some(description));
+        route.update(None, None, None, None, None, Some(description));
         self.route_repository.update(&route).await?;
 
         tracing::info!(%route_id, "route description saved");
@@ -435,6 +444,7 @@ mod tests {
             start_location: None,
             end_location: None,
             seasons: vec![],
+            line_color: None,
             description: None,
         }
     }
@@ -459,13 +469,21 @@ mod tests {
         }];
 
         let result = usecase
-            .create_route(user_id, "Test Route".to_string(), points, vec![], vec![])
+            .create_route(
+                user_id,
+                "Test Route".to_string(),
+                points,
+                vec![],
+                vec![],
+                Some("#3388ff".to_string()),
+            )
             .await;
 
         assert!(result.is_ok());
         let route = result.unwrap();
         assert_eq!(route.user_id, user_id);
         assert_eq!(route.name, "Test Route");
+        assert_eq!(route.line_color.as_deref(), Some("#3388ff"));
     }
 
     #[tokio::test]

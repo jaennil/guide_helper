@@ -659,6 +659,48 @@ body {
     border-color: var(--color-success);
 }
 
+.route-color-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.route-color-input {
+    width: 52px;
+    height: 40px;
+    padding: 0.2rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-page);
+    cursor: pointer;
+}
+
+.route-color-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.route-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.route-color-swatch:hover {
+    transform: translateY(-1px) scale(1.04);
+}
+
+.route-color-swatch.active {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 20%, transparent);
+}
+
 /* Route tag badges (shared across pages) */
 .route-tags {
     display: flex;

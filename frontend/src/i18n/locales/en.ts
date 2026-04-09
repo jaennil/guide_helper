@@ -104,6 +104,7 @@ export const en = {
   "map.photoPreviewShapeCircle": "Circle",
   "map.photoPreviewSize": "Map preview size",
   "map.photoPreviewSizeValue": "{{size}} px",
+  "map.routeLineColor": "Route line color",
   "map.saveChanges": "Save changes",
   "search.placeholder": "Search places...",
   "search.noResults": "No results found",

@@ -34,6 +34,7 @@ import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix
 import { useAuth } from "../context/AuthContext";
 import { QRCodeModal } from "../components/QRCodeModal";
 import { getLocalizedCategoryName } from "../utils/categories";
+import { DEFAULT_ROUTE_LINE_COLOR, normalizeRouteLineColor } from "../utils/routeColors";
 
 type RouteMode = "auto" | "manual";
 
@@ -52,6 +53,7 @@ export function SharedMapPage() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
+  const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
   const [routeCategoryIds, setRouteCategoryIds] = useState<string[]>([]);
   const [routeSeasons, setRouteSeasons] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
@@ -113,6 +115,7 @@ export function SharedMapPage() {
     try {
       const route = await routesApi.getSharedRoute(shareToken);
       setRouteName(route.name);
+      setRouteLineColor(normalizeRouteLineColor(route.line_color));
       setRouteCategoryIds(route.category_ids);
       setRouteSeasons(route.seasons ?? []);
       setRouteInfo({ id: route.id, user_id: route.user_id });
@@ -276,11 +279,13 @@ export function SharedMapPage() {
         <RoutingControl
           waypoints={waypoints}
           routeSegments={routeSegments}
+          color={routeLineColor}
           categoryNames={routeCategoryNames}
         />
         <ManualRoutes
           waypoints={waypoints}
           routeSegments={routeSegments}
+          color={routeLineColor}
           categoryNames={routeCategoryNames}
         />
         {routePoints.map((point, index) => (

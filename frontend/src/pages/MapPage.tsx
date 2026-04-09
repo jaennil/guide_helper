@@ -47,6 +47,11 @@ import {
   inferRouteSurface,
   totalDistance,
 } from "../utils/geo";
+import {
+  DEFAULT_ROUTE_LINE_COLOR,
+  ROUTE_LINE_COLOR_PRESETS,
+  normalizeRouteLineColor,
+} from "../utils/routeColors";
 
 type RouteMode = "auto" | "manual";
 export type PhotoPreviewShape = "square" | "circle";
@@ -239,7 +244,7 @@ function MapClickHandler({
 export const RoutingControl = React.memo(function RoutingControl({
   waypoints,
   routeSegments,
-  color = "#3388ff",
+  color = DEFAULT_ROUTE_LINE_COLOR,
   engineId = DEFAULT_ENGINE,
   categoryNames = [],
 }: {
@@ -326,7 +331,7 @@ export const RoutingControl = React.memo(function RoutingControl({
 export function ManualRoutes({
   waypoints,
   routeSegments,
-  color = "#3388ff",
+  color = DEFAULT_ROUTE_LINE_COLOR,
   categoryNames = [],
 }: {
   waypoints: L.LatLng[];
@@ -618,6 +623,7 @@ export function MapPage() {
   const [routeName, setRouteName] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
+  const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
@@ -705,6 +711,7 @@ export function MapPage() {
       setRouteName(route.name);
       setSelectedCategoryIds(route.category_ids);
       setSelectedSeasons(route.seasons);
+      setRouteLineColor(normalizeRouteLineColor(route.line_color));
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
@@ -765,7 +772,9 @@ export function MapPage() {
         loaded.push({
           id: route.id,
           name: route.name,
-          color: ROUTE_COLORS[idx % ROUTE_COLORS.length],
+          color: route.line_color
+            ? normalizeRouteLineColor(route.line_color)
+            : ROUTE_COLORS[idx % ROUTE_COLORS.length],
           points,
           segments,
         });
@@ -812,7 +821,7 @@ export function MapPage() {
   };
 
   const handleSaveRoute = async () => {
-    const targetRouteName = loadedRouteInfo ? loadedRouteInfo.name : routeName;
+    const targetRouteName = routeName;
 
     if (!targetRouteName.trim()) {
       setSaveError(t("map.pleaseEnterRouteName"));
@@ -846,25 +855,30 @@ export function MapPage() {
         };
       });
 
+      const normalizedLineColor = normalizeRouteLineColor(routeLineColor);
+      let savedRoute;
+
       if (loadedRouteInfo) {
-        await routesApi.updateRoute(loadedRouteInfo.id, {
+        savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
           name: targetRouteName.trim(),
           points: pointsToSave,
           category_ids: selectedCategoryIds,
           seasons: selectedSeasons,
+          line_color: normalizedLineColor,
         });
       } else {
-        await routesApi.createRoute({
+        savedRoute = await routesApi.createRoute({
           name: targetRouteName.trim(),
           points: pointsToSave,
           category_ids: selectedCategoryIds,
           seasons: selectedSeasons,
+          line_color: normalizedLineColor,
         });
-        setShowSaveModal(false);
-        setRouteName("");
-        setSelectedCategoryIds([]);
-        setSelectedSeasons([]);
       }
+      setRouteName(savedRoute.name);
+      setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
+      setLoadedRouteInfo({ id: savedRoute.id, user_id: savedRoute.user_id, name: savedRoute.name });
+      setShowSaveModal(false);
       toast.success(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
@@ -886,6 +900,10 @@ export function MapPage() {
     setRouteSegments([]);
     setOverlayRoutes([]);
     setLoadedRouteInfo(null);
+    setRouteName("");
+    setSelectedCategoryIds([]);
+    setSelectedSeasons([]);
+    setRouteLineColor(DEFAULT_ROUTE_LINE_COLOR);
     pointIdRef.current = 0;
   };
 
@@ -1241,7 +1259,7 @@ export function MapPage() {
           {/* Save Route — prominent */}
           {canSaveCurrentRoute && (
             <button
-              onClick={() => loadedRouteInfo ? handleSaveRoute() : setShowSaveModal(true)}
+              onClick={() => setShowSaveModal(true)}
               className="btn btn-primary btn-sm btn-pill"
             >
               {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
@@ -1329,7 +1347,7 @@ export function MapPage() {
           </button>
           {canSaveCurrentRoute && (
             <button
-              onClick={() => loadedRouteInfo ? handleSaveRoute() : setShowSaveModal(true)}
+              onClick={() => setShowSaveModal(true)}
               className="save-btn"
             >
               {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
@@ -1510,6 +1528,31 @@ export function MapPage() {
                   ))}
                 </div>
               </div>
+              <div className="tag-selector">
+                <label>{t("map.routeLineColor")}</label>
+                <div className="route-color-controls">
+                  <input
+                    type="color"
+                    value={routeLineColor}
+                    onChange={(e) => setRouteLineColor(normalizeRouteLineColor(e.target.value))}
+                    className="route-color-input"
+                    aria-label={t("map.routeLineColor")}
+                  />
+                  <div className="route-color-swatches">
+                    {ROUTE_LINE_COLOR_PRESETS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`route-color-swatch${normalizeRouteLineColor(routeLineColor) === color ? " active" : ""}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setRouteLineColor(color)}
+                        aria-label={`${t("map.routeLineColor")} ${color}`}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
               {saveError && <div className="modal-error">{saveError}</div>}
               <div className="modal-actions">
                 <button
@@ -1546,12 +1589,14 @@ export function MapPage() {
         <RoutingControl
           waypoints={waypoints}
           routeSegments={routeSegments}
+          color={routeLineColor}
           engineId={routingEngine}
           categoryNames={selectedCategoryNames}
         />
         <ManualRoutes
           waypoints={waypoints}
           routeSegments={routeSegments}
+          color={routeLineColor}
           categoryNames={selectedCategoryNames}
         />
         {routePoints.map((point, index) => (

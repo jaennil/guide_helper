@@ -42,8 +42,8 @@ impl RouteRepository for PostgresRouteRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, seasons, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, seasons, line_color, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#
         )
         .bind(route.id)
@@ -53,6 +53,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(route.created_at)
         .bind(route.updated_at)
         .bind(&route.seasons)
+        .bind(&route.line_color)
         .bind(&route.description)
         .execute(&mut *tx)
         .await
@@ -88,7 +89,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
             FROM routes r
             WHERE r.id = $1
             "#
@@ -109,7 +110,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
             FROM routes r
             WHERE r.user_id = $1
             ORDER BY r.created_at DESC
@@ -137,7 +138,7 @@ impl RouteRepository for PostgresRouteRepository {
         let result = sqlx::query(
             r#"
             UPDATE routes
-            SET name = $2, points = $3, updated_at = $4, seasons = $5, description = $6
+            SET name = $2, points = $3, updated_at = $4, seasons = $5, line_color = $6, description = $7
             WHERE id = $1
             "#,
         )
@@ -146,6 +147,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(serde_json::to_value(&route.points).unwrap())
         .bind(route.updated_at)
         .bind(&route.seasons)
+        .bind(&route.line_color)
         .bind(&route.description)
         .execute(&mut *tx)
         .await
@@ -216,7 +218,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
             FROM routes r
             WHERE r.share_token = $1
             "#

@@ -96,6 +96,7 @@ mod tests {
             start_location: None,
             end_location: None,
             seasons: vec![],
+            line_color: None,
             description: None,
         };
 
@@ -127,6 +128,7 @@ mod tests {
             start_location: None,
             end_location: None,
             seasons: vec![],
+            line_color: None,
             description: None,
         };
 
@@ -160,6 +162,7 @@ mod tests {
             start_location: None,
             end_location: None,
             seasons: vec![],
+            line_color: None,
             description: None,
         };
 
