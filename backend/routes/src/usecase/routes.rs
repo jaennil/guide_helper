@@ -453,6 +453,7 @@ mod tests {
             name: None,
             note: None,
             preview_size: None,
+            preview_shape: None,
             segment_mode: None,
             photo: None,
         }];

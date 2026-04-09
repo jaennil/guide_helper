@@ -243,6 +243,39 @@ body {
     margin-bottom: 10px;
 }
 
+.point-photo-shape-toggle {
+    margin-bottom: 10px;
+}
+
+.point-photo-shape-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.point-photo-shape-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.point-photo-shape-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-dark);
+    color: var(--text-primary);
+}
+
+.point-photo-shape-btn.active {
+    background: rgba(var(--color-brand-rgb), 0.18);
+    border-color: rgba(var(--color-brand-rgb), 0.5);
+    color: var(--text-primary);
+}
+
 .point-photo-size-header {
     display: flex;
     align-items: center;
@@ -330,7 +363,7 @@ body {
 .photo-marker-container {
     width: var(--marker-size, 44px);
     height: var(--marker-size, 44px);
-    border-radius: 10px;
+    border-radius: var(--marker-radius, 10px);
     overflow: hidden;
     border: 3px solid white;
     box-shadow: 0 2px 8px var(--color-shadow);

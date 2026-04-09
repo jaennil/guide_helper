@@ -20,6 +20,7 @@ import {
   ManualRoutes,
   createMarkerIcon,
   getPhotoSrc,
+  type PhotoPreviewShape,
   type RoutePoint,
   type RouteSegment,
 } from "./MapPage";
@@ -123,6 +124,7 @@ export function SharedMapPage() {
         name: p.name,
         note: p.note,
         previewSize: p.preview_size,
+        previewShape: p.preview_shape as PhotoPreviewShape | undefined,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -283,9 +285,9 @@ export function SharedMapPage() {
         />
         {routePoints.map((point, index) => (
           <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}`}
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}`}
             position={point.position}
-            icon={createMarkerIcon(point.photo, point.previewSize)}
+            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape)}
           >
             <Popup>
               <div className="point-popup">

@@ -49,6 +49,7 @@ import {
 } from "../utils/geo";
 
 type RouteMode = "auto" | "manual";
+export type PhotoPreviewShape = "square" | "circle";
 
 const TILE_PROVIDERS = [
   { id: "yandex", name: "Yandex", url: "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU&projection=web_mercator", attribution: "&copy; Yandex" },
@@ -63,6 +64,7 @@ export interface RoutePoint {
   name?: string;
   note?: string;
   previewSize?: number;
+  previewShape?: PhotoPreviewShape;
   photo?: PhotoData;
 }
 
@@ -90,6 +92,7 @@ const DEFAULT_PHOTO_PREVIEW_SIZE = 44;
 const MIN_PHOTO_PREVIEW_SIZE = 28;
 const MAX_PHOTO_PREVIEW_SIZE = 84;
 const PHOTO_PREVIEW_STEP = 4;
+const DEFAULT_PHOTO_PREVIEW_SHAPE: PhotoPreviewShape = "square";
 
 function routePointsMatch(
   left: Pick<RoutePoint, "position" | "name">,
@@ -162,6 +165,10 @@ function clampPhotoPreviewSize(size?: number) {
     MIN_PHOTO_PREVIEW_SIZE,
     Math.min(MAX_PHOTO_PREVIEW_SIZE, Math.round(size / PHOTO_PREVIEW_STEP) * PHOTO_PREVIEW_STEP),
   );
+}
+
+function normalizePhotoPreviewShape(shape?: string): PhotoPreviewShape {
+  return shape === "circle" ? "circle" : DEFAULT_PHOTO_PREVIEW_SHAPE;
 }
 
 function buildSegmentTooltipText(
@@ -373,19 +380,29 @@ export function getPhotoSrc(photo?: PhotoData): string | undefined {
   return photo.thumbnail_url || photo.original;
 }
 
-function createPhotoMarkerHtml(src: string, previewSize?: number, borderColor?: string) {
+function createPhotoMarkerHtml(
+  src: string,
+  previewSize?: number,
+  previewShape?: PhotoPreviewShape,
+  borderColor?: string,
+) {
   const size = clampPhotoPreviewSize(previewSize);
+  const shape = normalizePhotoPreviewShape(previewShape);
   const borderStyle = borderColor ? `border-color:${borderColor};` : "";
-  return `<div class="photo-marker-container" style="--marker-size:${size}px;${borderStyle}"><img src="${src}" alt="Marker" /></div>`;
+  return `<div class="photo-marker-container" style="--marker-size:${size}px;--marker-radius:${shape === "circle" ? "50%" : "10px"};${borderStyle}"><img src="${src}" alt="Marker" /></div>`;
 }
 
-export function createMarkerIcon(photo?: PhotoData, previewSize?: number): L.Icon | L.DivIcon {
+export function createMarkerIcon(
+  photo?: PhotoData,
+  previewSize?: number,
+  previewShape?: PhotoPreviewShape,
+): L.Icon | L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
     const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "custom-photo-marker",
-      html: createPhotoMarkerHtml(src, size),
+      html: createPhotoMarkerHtml(src, size, previewShape),
       iconSize: [size, size],
       iconAnchor: [Math.round(size / 2), size],
       popupAnchor: [0, -size],
@@ -406,13 +423,18 @@ export function createMarkerIcon(photo?: PhotoData, previewSize?: number): L.Ico
   }
 }
 
-function createColoredMarkerIcon(color: string, photo?: PhotoData, previewSize?: number): L.DivIcon {
+function createColoredMarkerIcon(
+  color: string,
+  photo?: PhotoData,
+  previewSize?: number,
+  previewShape?: PhotoPreviewShape,
+): L.DivIcon {
   const src = getPhotoSrc(photo);
   if (src) {
     const size = clampPhotoPreviewSize(previewSize);
     return L.divIcon({
       className: "overlay-marker",
-      html: createPhotoMarkerHtml(src, size, color),
+      html: createPhotoMarkerHtml(src, size, previewShape, color),
       iconSize: [size, size],
       iconAnchor: [Math.round(size / 2), size],
       popupAnchor: [0, -size],
@@ -433,12 +455,14 @@ const PointPopup = React.memo(function PointPopup({
   onPhotoChange,
   onNoteChange,
   onPreviewSizeChange,
+  onPreviewShapeChange,
 }: {
   point: RoutePoint;
   index: number;
   onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
   onNoteChange: (pointId: number, note: string) => void;
   onPreviewSizeChange: (pointId: number, previewSize: number) => void;
+  onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
@@ -477,8 +501,13 @@ const PointPopup = React.memo(function PointPopup({
     onPreviewSizeChange(point.id, Number(e.target.value));
   };
 
+  const handlePreviewShapeChange = (previewShape: PhotoPreviewShape) => {
+    onPreviewShapeChange(point.id, previewShape);
+  };
+
   const photoSrc = getPhotoSrc(point.photo);
   const previewSize = clampPhotoPreviewSize(point.previewSize);
+  const previewShape = normalizePhotoPreviewShape(point.previewShape);
 
   return (
     <div className="point-popup">
@@ -507,6 +536,25 @@ const PointPopup = React.memo(function PointPopup({
         <div className="point-popup-photo">
           <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
           <div className="point-photo-size-control">
+            <div className="point-photo-shape-toggle">
+              <span className="point-popup-note-label">{t("map.photoPreviewShape")}</span>
+              <div className="point-photo-shape-buttons">
+                <button
+                  type="button"
+                  className={`point-photo-shape-btn${previewShape === "square" ? " active" : ""}`}
+                  onClick={() => handlePreviewShapeChange("square")}
+                >
+                  {t("map.photoPreviewShapeSquare")}
+                </button>
+                <button
+                  type="button"
+                  className={`point-photo-shape-btn${previewShape === "circle" ? " active" : ""}`}
+                  onClick={() => handlePreviewShapeChange("circle")}
+                >
+                  {t("map.photoPreviewShapeCircle")}
+                </button>
+              </div>
+            </div>
             <div className="point-photo-size-header">
               <label
                 className="point-popup-note-label"
@@ -663,6 +711,7 @@ export function MapPage() {
         name: p.name,
         note: p.note,
         previewSize: p.preview_size,
+        previewShape: p.preview_shape as PhotoPreviewShape | undefined,
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
@@ -701,6 +750,7 @@ export function MapPage() {
           name: p.name,
           note: p.note,
           previewSize: p.preview_size,
+          previewShape: p.preview_shape as PhotoPreviewShape | undefined,
           photo: p.photo,
         }));
         const segments: RouteSegment[] = [];
@@ -790,6 +840,7 @@ export function MapPage() {
           name: normalizedName ? normalizedName : undefined,
           note: normalizedNote ? normalizedNote : undefined,
           preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
+          preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
           photo: p.photo,
         };
@@ -867,6 +918,7 @@ export function MapPage() {
               ...point,
               photo,
               previewSize: photo ? clampPhotoPreviewSize(point.previewSize) : point.previewSize,
+              previewShape: photo ? normalizePhotoPreviewShape(point.previewShape) : point.previewShape,
             }
           : point
       )
@@ -884,6 +936,15 @@ export function MapPage() {
     setRoutePoints((prev) =>
       prev.map((point) =>
         point.id === pointId ? { ...point, previewSize: normalizedSize } : point
+      )
+    );
+  }, []);
+
+  const handlePointPreviewShapeChange = React.useCallback((pointId: number, previewShape: PhotoPreviewShape) => {
+    const normalizedShape = normalizePhotoPreviewShape(previewShape);
+    setRoutePoints((prev) =>
+      prev.map((point) =>
+        point.id === pointId ? { ...point, previewShape: normalizedShape } : point
       )
     );
   }, []);
@@ -985,6 +1046,7 @@ export function MapPage() {
       id: pointIdRef.current++,
       position: [photo.lat, photo.lng] as [number, number],
       previewSize: DEFAULT_PHOTO_PREVIEW_SIZE,
+      previewShape: DEFAULT_PHOTO_PREVIEW_SHAPE,
       photo: { original: photo.base64, status: "pending" } as PhotoData,
     }));
 
@@ -1494,9 +1556,9 @@ export function MapPage() {
         />
         {routePoints.map((point, index) => (
           <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}`}
+            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}`}
             position={point.position}
-            icon={createMarkerIcon(point.photo, point.previewSize)}
+            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape)}
             draggable={true}
             eventHandlers={{
               dragend: (e) => {
@@ -1512,6 +1574,7 @@ export function MapPage() {
                 onPhotoChange={handlePhotoChange}
                 onNoteChange={handlePointNoteChange}
                 onPreviewSizeChange={handlePointPreviewSizeChange}
+                onPreviewShapeChange={handlePointPreviewShapeChange}
               />
             </Popup>
           </Marker>
@@ -1537,9 +1600,9 @@ export function MapPage() {
               />
               {overlay.points.map((point, idx) => (
                 <Marker
-                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}`}
+                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}`}
                   position={point.position}
-                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize)}
+                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize, point.previewShape)}
                 >
                   <Popup>
                     <div className="point-popup">

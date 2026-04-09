@@ -56,6 +56,7 @@ mod tests {
                     name: None,
                     note: None,
                     preview_size: None,
+                    preview_shape: None,
                     segment_mode: None,
                     photo: Some(PhotoData {
                         original: "data:image/png;base64,abc".to_string(),
@@ -69,6 +70,7 @@ mod tests {
                     name: None,
                     note: None,
                     preview_size: None,
+                    preview_shape: None,
                     segment_mode: None,
                     photo: None,
                 },
@@ -78,6 +80,7 @@ mod tests {
                     name: None,
                     note: None,
                     preview_size: None,
+                    preview_shape: None,
                     segment_mode: None,
                     photo: Some(PhotoData {
                         original: "data:image/jpeg;base64,xyz".to_string(),
@@ -113,6 +116,7 @@ mod tests {
                 name: None,
                 note: None,
                 preview_size: None,
+                preview_shape: None,
                 segment_mode: None,
                 photo: None,
             }],
@@ -141,6 +145,7 @@ mod tests {
                 name: None,
                 note: None,
                 preview_size: None,
+                preview_shape: None,
                 segment_mode: None,
                 photo: Some(PhotoData {
                     original: "/photos/user/route/photo_0.jpg".to_string(),
