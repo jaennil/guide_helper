@@ -467,6 +467,7 @@ mod tests {
             preview_size: None,
             preview_shape: None,
             segment_mode: None,
+            segment_duration_minutes: None,
             photo: None,
         }];
 

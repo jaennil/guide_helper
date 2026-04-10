@@ -118,6 +118,7 @@ fn parse_feature_collection(
                         preview_size: None,
                         preview_shape: None,
                         segment_mode: None,
+                        segment_duration_minutes: None,
                         photo: None,
                     };
 
@@ -210,6 +211,7 @@ fn parse_linestring_geometry(geometry: &Geometry) -> Result<Vec<RoutePoint>, Imp
                             preview_size: None,
                             preview_shape: None,
                             segment_mode: None,
+                            segment_duration_minutes: None,
                             photo: None,
                         })
                     } else {

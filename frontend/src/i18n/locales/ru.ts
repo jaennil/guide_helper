@@ -102,6 +102,8 @@ export const ru = {
   "map.pointMarkerColor": "Цвет метки",
   "map.pointMarkerSize": "Размер метки",
   "map.pointMarkerSizeValue": "{{size}} px",
+  "map.segmentDurationPlaceholder": "мин",
+  "map.segmentDurationUnit": "мин",
   "map.photoPreviewShape": "Форма превью",
   "map.photoPreviewShapeSquare": "Квадрат",
   "map.photoPreviewShapeCircle": "Круг",

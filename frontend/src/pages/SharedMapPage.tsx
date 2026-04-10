@@ -18,6 +18,7 @@ import { categoriesApi, type Category } from "../api/categories";
 import {
   RoutingControl,
   ManualRoutes,
+  SegmentDurationMarkers,
   createMarkerIcon,
   getPhotoSrc,
   type PhotoPreviewShape,
@@ -141,6 +142,7 @@ export function SharedMapPage() {
           fromIndex: i,
           toIndex: i + 1,
           mode: (destPoint.segment_mode as RouteMode) || "manual",
+          durationMinutes: destPoint.segment_duration_minutes,
         });
       }
       setRouteSegments(segments);
@@ -289,6 +291,10 @@ export function SharedMapPage() {
           routeSegments={routeSegments}
           color={routeLineColor}
           categoryNames={routeCategoryNames}
+        />
+        <SegmentDurationMarkers
+          waypoints={waypoints}
+          routeSegments={routeSegments}
         />
         {routePoints.map((point, index) => (
           <Marker

@@ -102,6 +102,8 @@ export const en = {
   "map.pointMarkerColor": "Marker color",
   "map.pointMarkerSize": "Marker size",
   "map.pointMarkerSizeValue": "{{size}} px",
+  "map.segmentDurationPlaceholder": "min",
+  "map.segmentDurationUnit": "min",
   "map.photoPreviewShape": "Preview shape",
   "map.photoPreviewShapeSquare": "Square",
   "map.photoPreviewShapeCircle": "Circle",

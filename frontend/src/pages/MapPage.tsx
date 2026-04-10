@@ -79,6 +79,7 @@ export interface RouteSegment {
   fromIndex: number;
   toIndex: number;
   mode: RouteMode;
+  durationMinutes?: number;
 }
 
 interface OverlayRoute {
@@ -155,6 +156,7 @@ function buildSegmentsForAppendedPoints(
       fromIndex: existingCount - 1,
       toIndex: existingCount,
       mode: routeMode,
+      durationMinutes: undefined,
     });
   }
 
@@ -163,6 +165,7 @@ function buildSegmentsForAppendedPoints(
       fromIndex: existingCount + index - 1,
       toIndex: existingCount + index,
       mode: routeMode,
+      durationMinutes: undefined,
     });
   }
 
@@ -213,9 +216,24 @@ function buildSegmentTooltipText(
   const activity = inferRouteActivity(categoryNames, segmentModes);
   const surface = inferRouteSurface(segmentModes);
   const estimatedMinutes = estimateRouteTime(distanceKm, 0, activity, surface);
+  const displayMinutes = segment.durationMinutes ?? estimatedMinutes;
 
-  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)} • ${formatDuration(estimatedMinutes)}`;
+  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)} • ${formatDuration(displayMinutes)}`;
 }
+
+function getSegmentMidpoint(fromPoint: L.LatLng, toPoint: L.LatLng): [number, number] {
+  return [
+    (fromPoint.lat + toPoint.lat) / 2,
+    (fromPoint.lng + toPoint.lng) / 2,
+  ];
+}
+
+const SEGMENT_DURATION_ANCHOR_ICON = L.divIcon({
+  className: "segment-duration-anchor",
+  html: "",
+  iconSize: [1, 1],
+  iconAnchor: [0, 0],
+});
 
 function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
   const map = useMapEvents({});
@@ -400,6 +418,127 @@ export function ManualRoutes({
             {buildSegmentTooltipText(segment, coords, categoryNames)}
           </Tooltip>
         </Polyline>
+      ))}
+    </>
+  );
+}
+
+function SegmentDurationBubble({
+  segment,
+  editable,
+  onDurationChange,
+}: {
+  segment: RouteSegment;
+  editable: boolean;
+  onDurationChange?: (segment: RouteSegment, durationMinutes: number | undefined) => void;
+}) {
+  const { t } = useLanguage();
+
+  const stopMapEvent = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+  };
+
+  if (!editable && !segment.durationMinutes) {
+    return null;
+  }
+
+  return (
+    <div
+      className={`segment-duration-bubble${editable ? " editable" : ""}`}
+      onClick={stopMapEvent}
+      onDoubleClick={stopMapEvent}
+      onMouseDown={stopMapEvent}
+      onPointerDown={stopMapEvent}
+      onWheel={stopMapEvent}
+    >
+      {editable ? (
+        <>
+          <input
+            type="number"
+            min={1}
+            max={10080}
+            step={1}
+            value={segment.durationMinutes ?? ""}
+            placeholder={t("map.segmentDurationPlaceholder")}
+            className="segment-duration-input"
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              if (!raw) {
+                onDurationChange?.(segment, undefined);
+                return;
+              }
+              const nextValue = Number(raw);
+              if (Number.isNaN(nextValue)) {
+                return;
+              }
+              onDurationChange?.(
+                segment,
+                Math.max(1, Math.min(10080, Math.round(nextValue))),
+              );
+            }}
+          />
+          <span className="segment-duration-unit">
+            {t("map.segmentDurationUnit")}
+          </span>
+        </>
+      ) : (
+        <span className="segment-duration-label">
+          {formatDuration(segment.durationMinutes ?? 0)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function SegmentDurationMarkers({
+  waypoints,
+  routeSegments,
+  editable = false,
+  onDurationChange,
+}: {
+  waypoints: L.LatLng[];
+  routeSegments: RouteSegment[];
+  editable?: boolean;
+  onDurationChange?: (segment: RouteSegment, durationMinutes: number | undefined) => void;
+}) {
+  const visibleSegments = routeSegments
+    .map((segment) => {
+      const fromPoint = waypoints[segment.fromIndex];
+      const toPoint = waypoints[segment.toIndex];
+      if (!fromPoint || !toPoint) {
+        return null;
+      }
+      return {
+        segment,
+        position: getSegmentMidpoint(fromPoint, toPoint) as [number, number],
+      };
+    })
+    .filter((item): item is { segment: RouteSegment; position: [number, number] } => Boolean(item))
+    .filter((item) => editable || item.segment.durationMinutes);
+
+  return (
+    <>
+      {visibleSegments.map(({ segment, position }) => (
+        <Marker
+          key={`segment-duration-${segment.fromIndex}-${segment.toIndex}`}
+          position={position}
+          icon={SEGMENT_DURATION_ANCHOR_ICON}
+          keyboard={false}
+        >
+          <Tooltip
+            permanent
+            interactive={editable}
+            direction="top"
+            offset={[0, -8]}
+            className={`segment-duration-tooltip${editable ? " editable" : ""}`}
+          >
+            <SegmentDurationBubble
+              segment={segment}
+              editable={editable}
+              onDurationChange={onDurationChange}
+            />
+          </Tooltip>
+        </Marker>
       ))}
     </>
   );
@@ -837,6 +976,7 @@ export function MapPage() {
           fromIndex: i,
           toIndex: i + 1,
           mode: (destPoint.segment_mode as RouteMode) || "manual",
+          durationMinutes: destPoint.segment_duration_minutes,
         });
       }
       setRouteSegments(segments);
@@ -873,6 +1013,7 @@ export function MapPage() {
             fromIndex: i,
             toIndex: i + 1,
             mode: (destPoint.segment_mode as RouteMode) || "manual",
+            durationMinutes: destPoint.segment_duration_minutes,
           });
         }
         loaded.push({
@@ -959,6 +1100,7 @@ export function MapPage() {
           preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
           preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
           segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
+          segment_duration_minutes: segment?.durationMinutes,
           photo: p.photo,
         };
       });
@@ -1030,6 +1172,7 @@ export function MapPage() {
           fromIndex: prev.length - 1,
           toIndex: newPoints.length - 1,
           mode: routeMode,
+          durationMinutes: undefined,
         };
         setRouteSegments((prevSegments) => [...prevSegments, newSegment]);
       }
@@ -1091,6 +1234,16 @@ export function MapPage() {
     setRoutePoints((prev) =>
       prev.map((point) =>
         point.id === pointId ? { ...point, previewShape: normalizedShape } : point
+      )
+    );
+  }, []);
+
+  const handleSegmentDurationChange = React.useCallback((targetSegment: RouteSegment, durationMinutes: number | undefined) => {
+    setRouteSegments((prev) =>
+      prev.map((segment) =>
+        segment.fromIndex === targetSegment.fromIndex && segment.toIndex === targetSegment.toIndex
+          ? { ...segment, durationMinutes }
+          : segment
       )
     );
   }, []);
@@ -1207,6 +1360,7 @@ export function MapPage() {
           fromIndex: prev.length - 1,
           toIndex: prev.length,
           mode: routeMode,
+          durationMinutes: undefined,
         });
       }
 
@@ -1216,6 +1370,7 @@ export function MapPage() {
           fromIndex: prev.length + i - 1,
           toIndex: prev.length + i,
           mode: routeMode,
+          durationMinutes: undefined,
         });
       }
 
@@ -1731,6 +1886,12 @@ export function MapPage() {
           color={routeLineColor}
           categoryNames={selectedCategoryNames}
         />
+        <SegmentDurationMarkers
+          waypoints={waypoints}
+          routeSegments={routeSegments}
+          editable
+          onDurationChange={handleSegmentDurationChange}
+        />
         {routePoints.map((point, index) => (
           <Marker
             key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
@@ -1776,6 +1937,10 @@ export function MapPage() {
                 routeSegments={overlay.segments}
                 color={overlay.color}
                 categoryNames={[]}
+              />
+              <SegmentDurationMarkers
+                waypoints={overlayWaypoints}
+                routeSegments={overlay.segments}
               />
               {overlay.points.map((point, idx) => (
                 <Marker

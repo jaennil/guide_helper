@@ -368,6 +368,78 @@ body {
     border-top-color: rgba(18, 18, 28, 0.94);
 }
 
+.segment-duration-anchor,
+.leaflet-div-icon.segment-duration-anchor,
+.leaflet-marker-icon.segment-duration-anchor,
+.leaflet-pane .segment-duration-anchor {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 1px !important;
+    height: 1px !important;
+}
+
+.leaflet-tooltip.segment-duration-tooltip {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.leaflet-tooltip-top.segment-duration-tooltip::before {
+    display: none;
+}
+
+.leaflet-tooltip.segment-duration-tooltip.editable {
+    pointer-events: auto;
+}
+
+.segment-duration-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(18, 18, 28, 0.94);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.segment-duration-bubble.editable {
+    background: rgba(18, 18, 28, 0.98);
+}
+
+.segment-duration-input {
+    width: 52px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+}
+
+.segment-duration-input::placeholder {
+    color: rgba(255, 255, 255, 0.48);
+}
+
+.segment-duration-input::-webkit-outer-spin-button,
+.segment-duration-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.segment-duration-unit,
+.segment-duration-label {
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .upload-photo-btn,
 .remove-photo-btn {
     padding: 8px 12px;

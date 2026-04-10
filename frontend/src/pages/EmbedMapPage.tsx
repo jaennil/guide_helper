@@ -9,6 +9,7 @@ import { routesApi } from "../api/routes";
 import {
   RoutingControl,
   ManualRoutes,
+  SegmentDurationMarkers,
   createMarkerIcon,
   getPhotoSrc,
   type PhotoPreviewShape,
@@ -53,6 +54,7 @@ export function EmbedMapPage() {
           fromIndex: i,
           toIndex: i + 1,
           mode: (destPoint.segment_mode as RouteMode) || "manual",
+          durationMinutes: destPoint.segment_duration_minutes,
         });
       }
       setRouteSegments(segments);
@@ -101,6 +103,7 @@ export function EmbedMapPage() {
         <TileLayer url="https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU" />
         <RoutingControl waypoints={waypoints} routeSegments={routeSegments} color={routeLineColor} />
         <ManualRoutes waypoints={waypoints} routeSegments={routeSegments} color={routeLineColor} />
+        <SegmentDurationMarkers waypoints={waypoints} routeSegments={routeSegments} />
         {routePoints.map((point, index) => (
           <Marker
             key={point.id}

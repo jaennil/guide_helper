@@ -64,6 +64,8 @@ pub struct RoutePoint {
     pub preview_shape: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub segment_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_duration_minutes: Option<u32>,
     #[serde(deserialize_with = "deserialize_photo_compat", default)]
     pub photo: Option<PhotoData>,
 }
@@ -187,6 +189,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
+                segment_duration_minutes: None,
                 photo: None,
             },
             RoutePoint {
@@ -199,6 +202,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: Some("auto".to_string()),
+                segment_duration_minutes: Some(18),
                 photo: Some(PhotoData {
                     original: "data:image/png;base64,test".to_string(),
                     thumbnail_url: None,
@@ -237,6 +241,7 @@ mod tests {
             preview_size: None,
             preview_shape: None,
             segment_mode: None,
+            segment_duration_minutes: None,
             photo: None,
         }];
         let mut route = Route::new(
@@ -262,6 +267,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
+                segment_duration_minutes: None,
                 photo: None,
             },
             RoutePoint {
@@ -274,6 +280,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: Some("auto".to_string()),
+                segment_duration_minutes: Some(24),
                 photo: None,
             },
         ];
@@ -304,6 +311,7 @@ mod tests {
             preview_size: Some(52),
             preview_shape: Some("circle".to_string()),
             segment_mode: Some("auto".to_string()),
+            segment_duration_minutes: Some(17),
             photo: Some(PhotoData {
                 original: "data:image/png;base64,test".to_string(),
                 thumbnail_url: None,
@@ -319,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_backward_compat_plain_string_photo() {
-        let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"photo":"data:image/png;base64,abc"}"#;
+        let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"segment_duration_minutes":null,"photo":"data:image/png;base64,abc"}"#;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
 
         assert!(point.note.is_none());
@@ -327,6 +335,7 @@ mod tests {
         assert!(point.marker_size.is_none());
         assert!(point.preview_size.is_none());
         assert!(point.preview_shape.is_none());
+        assert!(point.segment_duration_minutes.is_none());
         let photo = point.photo.unwrap();
         assert_eq!(photo.original, "data:image/png;base64,abc");
         assert_eq!(photo.status, PhotoStatus::Pending);
@@ -335,24 +344,26 @@ mod tests {
 
     #[test]
     fn test_backward_compat_null_photo() {
-        let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"photo":null}"#;
+        let json = r#"{"lat":55.0,"lng":37.0,"name":null,"segment_mode":null,"segment_duration_minutes":null,"photo":null}"#;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
         assert!(point.note.is_none());
         assert!(point.marker_color.is_none());
         assert!(point.marker_size.is_none());
         assert!(point.preview_size.is_none());
         assert!(point.preview_shape.is_none());
+        assert!(point.segment_duration_minutes.is_none());
         assert!(point.photo.is_none());
     }
 
     #[test]
     fn test_photo_data_struct_deserialization() {
-        let json = r##"{"lat":55.0,"lng":37.0,"name":null,"note":"Observation deck","marker_color":"#14b8a6","marker_size":28,"segment_mode":null,"photo":{"original":"data:image/png;base64,abc","thumbnail_url":"/photos/thumb.jpg","status":"done"}}"##;
+        let json = r##"{"lat":55.0,"lng":37.0,"name":null,"note":"Observation deck","marker_color":"#14b8a6","marker_size":28,"segment_mode":null,"segment_duration_minutes":12,"photo":{"original":"data:image/png;base64,abc","thumbnail_url":"/photos/thumb.jpg","status":"done"}}"##;
         let point: RoutePoint = serde_json::from_str(json).unwrap();
 
         assert_eq!(point.note, Some("Observation deck".to_string()));
         assert_eq!(point.marker_color, Some("#14b8a6".to_string()));
         assert_eq!(point.marker_size, Some(28));
+        assert_eq!(point.segment_duration_minutes, Some(12));
         let photo = point.photo.unwrap();
         assert_eq!(photo.original, "data:image/png;base64,abc");
         assert_eq!(photo.thumbnail_url, Some("/photos/thumb.jpg".to_string()));

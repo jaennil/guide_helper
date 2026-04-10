@@ -60,6 +60,7 @@ mod tests {
                     preview_size: None,
                     preview_shape: None,
                     segment_mode: None,
+                    segment_duration_minutes: None,
                     photo: Some(PhotoData {
                         original: "data:image/png;base64,abc".to_string(),
                         thumbnail_url: None,
@@ -76,6 +77,7 @@ mod tests {
                     preview_size: None,
                     preview_shape: None,
                     segment_mode: None,
+                    segment_duration_minutes: None,
                     photo: None,
                 },
                 RoutePoint {
@@ -88,6 +90,7 @@ mod tests {
                     preview_size: None,
                     preview_shape: None,
                     segment_mode: None,
+                    segment_duration_minutes: None,
                     photo: Some(PhotoData {
                         original: "data:image/jpeg;base64,xyz".to_string(),
                         thumbnail_url: None,
@@ -127,6 +130,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
+                segment_duration_minutes: None,
                 photo: None,
             }],
             created_at: chrono::Utc::now(),
@@ -159,6 +163,7 @@ mod tests {
                 preview_size: None,
                 preview_shape: None,
                 segment_mode: None,
+                segment_duration_minutes: None,
                 photo: Some(PhotoData {
                     original: "/photos/user/route/photo_0.jpg".to_string(),
                     thumbnail_url: Some("/photos/user/route/thumb_0.jpg".to_string()),
