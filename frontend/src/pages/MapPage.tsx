@@ -204,6 +204,30 @@ function normalizePhotoPreviewShape(shape?: string): PhotoPreviewShape {
   return shape === "circle" ? "circle" : DEFAULT_PHOTO_PREVIEW_SHAPE;
 }
 
+function toDatetimeLocalValue(iso?: string) {
+  if (!iso) {
+    return "";
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function fromDatetimeLocalValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+  return date.toISOString();
+}
+
 function buildSegmentTooltipText(
   segment: RouteSegment,
   coords: [number, number][],
@@ -865,6 +889,7 @@ export function MapPage() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
   const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
+  const [routeStartedAt, setRouteStartedAt] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
@@ -885,6 +910,16 @@ export function MapPage() {
   const photoImportRef = useRef<HTMLInputElement>(null);
 
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (!routeStartedAt) {
+      return;
+    }
+    const date = new Date(routeStartedAt);
+    if (!Number.isNaN(date.getTime())) {
+      setHistoricalYear(date.getFullYear());
+    }
+  }, [routeStartedAt]);
 
   useEffect(() => {
     categoriesApi.getCategories().then(cats => {
@@ -953,6 +988,7 @@ export function MapPage() {
       setSelectedCategoryIds(route.category_ids);
       setSelectedSeasons(route.seasons);
       setRouteLineColor(normalizeRouteLineColor(route.line_color));
+      setRouteStartedAt(toDatetimeLocalValue(route.started_at));
       const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
         id: index,
         position: [p.lat, p.lng] as [number, number],
@@ -1106,6 +1142,7 @@ export function MapPage() {
       });
 
       const normalizedLineColor = normalizeRouteLineColor(routeLineColor);
+      const normalizedStartedAt = fromDatetimeLocalValue(routeStartedAt);
       let savedRoute;
 
       if (loadedRouteInfo) {
@@ -1115,6 +1152,7 @@ export function MapPage() {
           category_ids: selectedCategoryIds,
           seasons: selectedSeasons,
           line_color: normalizedLineColor,
+          started_at: normalizedStartedAt ?? null,
         });
       } else {
         savedRoute = await routesApi.createRoute({
@@ -1123,10 +1161,12 @@ export function MapPage() {
           category_ids: selectedCategoryIds,
           seasons: selectedSeasons,
           line_color: normalizedLineColor,
+          started_at: normalizedStartedAt,
         });
       }
       setRouteName(savedRoute.name);
       setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
+      setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
       setLoadedRouteInfo({ id: savedRoute.id, user_id: savedRoute.user_id, name: savedRoute.name });
       setShowSaveModal(false);
       toast.success(t("map.routeSaved"));
@@ -1154,6 +1194,7 @@ export function MapPage() {
     setSelectedCategoryIds([]);
     setSelectedSeasons([]);
     setRouteLineColor(DEFAULT_ROUTE_LINE_COLOR);
+    setRouteStartedAt("");
     pointIdRef.current = 0;
   };
 
@@ -1840,6 +1881,16 @@ export function MapPage() {
                   </div>
                 </div>
               </div>
+              <div className="tag-selector">
+                <label>{t("map.routeStartedAt")}</label>
+                <input
+                  type="datetime-local"
+                  value={routeStartedAt}
+                  onChange={(e) => setRouteStartedAt(e.target.value)}
+                  aria-label={t("map.routeStartedAt")}
+                />
+                <div className="modal-field-hint">{t("map.routeStartedAtHint")}</div>
+              </div>
               {saveError && <div className="modal-error">{saveError}</div>}
               <div className="modal-actions">
                 <button
@@ -1992,6 +2043,7 @@ export function MapPage() {
       {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+          startedAt={routeStartedAt ? fromDatetimeLocalValue(routeStartedAt) : undefined}
         />
       )}
       {loadedRouteInfo && (

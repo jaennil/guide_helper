@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::domain::route::{ExploreRouteRow, PhotoStatus, Route, RoutePoint};
@@ -84,6 +85,7 @@ where
         category_ids: Vec<Uuid>,
         seasons: Vec<String>,
         line_color: Option<String>,
+        started_at: Option<DateTime<Utc>>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "creating new route");
 
@@ -94,6 +96,7 @@ where
             category_ids,
             seasons,
             line_color,
+            started_at,
         );
         self.route_repository.create(&route).await?;
 
@@ -147,6 +150,7 @@ where
         category_ids: Option<Vec<Uuid>>,
         seasons: Option<Vec<String>>,
         line_color: Option<String>,
+        started_at: Option<Option<DateTime<Utc>>>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "updating route");
 
@@ -163,7 +167,15 @@ where
         }
 
         let points_changed = points.is_some();
-        route.update(name, points, category_ids, seasons, line_color, None);
+        route.update(
+            name,
+            points,
+            category_ids,
+            seasons,
+            line_color,
+            started_at,
+            None,
+        );
         self.route_repository.update(&route).await?;
 
         if points_changed {
@@ -418,7 +430,7 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
-        route.update(None, None, None, None, None, Some(description));
+        route.update(None, None, None, None, None, None, Some(description));
         self.route_repository.update(&route).await?;
 
         tracing::info!(%route_id, "route description saved");
@@ -439,6 +451,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            started_at: None,
             share_token: None,
             category_ids: vec![],
             start_location: None,
@@ -479,6 +492,7 @@ mod tests {
                 vec![],
                 vec![],
                 Some("#3388ff".to_string()),
+                None,
             )
             .await;
 

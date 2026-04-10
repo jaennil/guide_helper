@@ -79,6 +79,7 @@ pub struct Route {
     pub points: Vec<RoutePoint>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
     pub share_token: Option<Uuid>,
     pub category_ids: Vec<Uuid>,
     pub start_location: Option<String>,
@@ -121,6 +122,7 @@ impl Route {
         category_ids: Vec<Uuid>,
         seasons: Vec<String>,
         line_color: Option<String>,
+        started_at: Option<DateTime<Utc>>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -130,6 +132,7 @@ impl Route {
             points,
             created_at: now,
             updated_at: now,
+            started_at,
             share_token: None,
             category_ids,
             start_location: None,
@@ -147,6 +150,7 @@ impl Route {
         category_ids: Option<Vec<Uuid>>,
         seasons: Option<Vec<String>>,
         line_color: Option<String>,
+        started_at: Option<Option<DateTime<Utc>>>,
         description: Option<String>,
     ) {
         if let Some(n) = name {
@@ -163,6 +167,9 @@ impl Route {
         }
         if line_color.is_some() {
             self.line_color = line_color;
+        }
+        if let Some(started_at) = started_at {
+            self.started_at = started_at;
         }
         if description.is_some() {
             self.description = description;
@@ -218,6 +225,7 @@ mod tests {
             vec![],
             vec![],
             Some("#3388ff".to_string()),
+            None,
         );
 
         assert_eq!(route.user_id, user_id);
@@ -251,6 +259,7 @@ mod tests {
             vec![],
             vec![],
             Some("#3388ff".to_string()),
+            None,
         );
         let original_updated_at = route.updated_at;
 
@@ -290,12 +299,14 @@ mod tests {
             None,
             None,
             Some("#ef4444".to_string()),
+            Some(Some(Utc::now())),
             None,
         );
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);
         assert_eq!(route.line_color.as_deref(), Some("#ef4444"));
+        assert!(route.started_at.is_some());
         assert!(route.updated_at > original_updated_at);
     }
 

@@ -55,6 +55,7 @@ export function SharedMapPage() {
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeName, setRouteName] = useState("");
   const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
+  const [routeStartedAt, setRouteStartedAt] = useState<string | undefined>(undefined);
   const [routeCategoryIds, setRouteCategoryIds] = useState<string[]>([]);
   const [routeSeasons, setRouteSeasons] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ id: string; user_id: string } | null>(null);
@@ -117,6 +118,7 @@ export function SharedMapPage() {
       const route = await routesApi.getSharedRoute(shareToken);
       setRouteName(route.name);
       setRouteLineColor(normalizeRouteLineColor(route.line_color));
+      setRouteStartedAt(route.started_at);
       setRouteCategoryIds(route.category_ids);
       setRouteSeasons(route.seasons ?? []);
       setRouteInfo({ id: route.id, user_id: route.user_id });
@@ -203,6 +205,18 @@ export function SharedMapPage() {
               {routeSeasons.map((s) => (
                 <span key={s} className={`route-tag season-tag season-${s}`}>{t(`seasons.${s}` as any)}</span>
               ))}
+            </div>
+          )}
+          {routeStartedAt && (
+            <div className="shared-route-meta">
+              {t("map.routeStartedAt")}:{" "}
+              {new Date(routeStartedAt).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
           )}
         </div>
@@ -342,6 +356,7 @@ export function SharedMapPage() {
       {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
           points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+          startedAt={routeStartedAt}
         />
       )}
       {routeInfo && (

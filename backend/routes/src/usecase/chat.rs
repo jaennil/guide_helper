@@ -2666,6 +2666,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            started_at: None,
             share_token: Some(Uuid::new_v4()),
             category_ids: vec![],
             start_location: None,

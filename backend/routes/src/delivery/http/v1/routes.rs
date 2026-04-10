@@ -28,6 +28,8 @@ pub struct RouteResponse {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub share_token: Option<String>,
     pub category_ids: Vec<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -53,6 +55,8 @@ pub struct CreateRouteRequest {
     pub seasons: Vec<String>,
     #[serde(default)]
     pub line_color: Option<String>,
+    #[serde(default)]
+    pub started_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -62,6 +66,8 @@ pub struct UpdateRouteRequest {
     pub points: Option<Vec<RoutePoint>>,
     pub category_ids: Option<Vec<Uuid>>,
     pub seasons: Option<Vec<String>>,
+    #[serde(default)]
+    pub started_at: Option<Option<DateTime<Utc>>>,
     pub line_color: Option<String>,
 }
 
@@ -73,6 +79,7 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         points: r.points,
         created_at: r.created_at,
         updated_at: r.updated_at,
+        started_at: r.started_at,
         share_token: r.share_token.map(|t| t.to_string()),
         category_ids: r.category_ids,
         start_location: r.start_location,
@@ -136,6 +143,7 @@ pub async fn create_route(
             payload.category_ids,
             payload.seasons,
             payload.line_color,
+            payload.started_at,
         )
         .await?;
 
@@ -168,6 +176,7 @@ pub async fn update_route(
             payload.category_ids,
             payload.seasons,
             payload.line_color,
+            payload.started_at,
         )
         .await?;
 
@@ -254,7 +263,7 @@ pub async fn import_route_from_geojson(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, name, points, vec![], vec![], None)
+        .create_route(user.user_id, name, points, vec![], vec![], None, None)
         .await?;
 
     tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
@@ -502,6 +511,7 @@ mod tests {
             category_ids: vec![],
             seasons: vec![],
             line_color: None,
+            started_at: None,
         };
 
         assert!(request.validate().is_ok());
@@ -527,6 +537,7 @@ mod tests {
             category_ids: vec![],
             seasons: vec![],
             line_color: None,
+            started_at: None,
         };
 
         assert!(request.validate().is_err());
@@ -540,6 +551,7 @@ mod tests {
             category_ids: vec![],
             seasons: vec![],
             line_color: None,
+            started_at: None,
         };
 
         assert!(request.validate().is_err());
@@ -566,6 +578,7 @@ mod tests {
             }],
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            started_at: Some(Utc::now()),
             share_token: None,
             category_ids: vec![],
             start_location: None,
@@ -578,6 +591,7 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(!json.contains("share_token"));
         assert!(json.contains("\"line_color\":\"#3388ff\""));
+        assert!(json.contains("\"started_at\""));
 
         let response_with_token = RouteResponse {
             share_token: Some(Uuid::new_v4().to_string()),

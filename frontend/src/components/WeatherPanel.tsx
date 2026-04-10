@@ -10,9 +10,10 @@ import {
 
 interface WeatherPanelProps {
   points: GeoPoint[];
+  startedAt?: string;
 }
 
-export function WeatherPanel({ points }: WeatherPanelProps) {
+export function WeatherPanel({ points, startedAt }: WeatherPanelProps) {
   const { t } = useLanguage();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export function WeatherPanel({ points }: WeatherPanelProps) {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const data = await fetchWeather(points);
+        const data = await fetchWeather(points, startedAt);
         setWeather(data);
       } catch (err) {
         console.error("[weather] failed to fetch weather:", err);
@@ -47,13 +48,31 @@ export function WeatherPanel({ points }: WeatherPanelProps) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [points]);
+  }, [points, startedAt]);
 
   if (points.length < 2) return null;
 
   return (
     <div className="weather-panel">
       <div className="weather-title">{t("weather.title")}</div>
+      {weather && (
+        <>
+          <div className="weather-subtitle">
+            {t(`weather.mode.${weather.mode}` as any)}
+          </div>
+          <div className="weather-reference">
+            {startedAt
+              ? new Date(startedAt).toLocaleString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : t("weather.now")}
+          </div>
+        </>
+      )}
 
       {loading && <div className="weather-loading">{t("weather.loading")}</div>}
 
@@ -82,7 +101,7 @@ export function WeatherPanel({ points }: WeatherPanelProps) {
           </div>
           <div className="weather-forecast">
             <div className="weather-forecast-title">
-              {t("weather.forecast")}
+              {t(weather.mode === "historical" ? "weather.daySummary" : "weather.forecast")}
             </div>
             {weather.daily.map((day) => (
               <div key={day.date} className="weather-forecast-day">

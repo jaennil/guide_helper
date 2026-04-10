@@ -96,6 +96,7 @@ mod tests {
             points: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            started_at: None,
             share_token: None,
             category_ids: vec![],
             start_location: None,

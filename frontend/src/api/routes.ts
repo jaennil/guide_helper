@@ -30,6 +30,7 @@ export interface Route {
   points: RoutePoint[];
   created_at: string;
   updated_at: string;
+  started_at?: string;
   share_token?: string;
   category_ids: string[];
   start_location?: string;
@@ -114,6 +115,7 @@ export interface CreateRouteRequest {
   category_ids: string[];
   seasons: string[];
   line_color?: string;
+  started_at?: string;
 }
 
 export interface UpdateRouteRequest {
@@ -122,6 +124,7 @@ export interface UpdateRouteRequest {
   category_ids?: string[];
   seasons?: string[];
   line_color?: string;
+  started_at?: string | null;
 }
 
 const getAuthHeader = () => {
