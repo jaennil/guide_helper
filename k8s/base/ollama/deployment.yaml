@@ -25,6 +25,9 @@ spec:
           OLLAMA_PID=$!
           sleep 5
           ollama pull $(OLLAMA_MODEL)
+          if [ "$(OLLAMA_VISION_MODEL)" != "$(OLLAMA_MODEL)" ]; then
+            ollama pull $(OLLAMA_VISION_MODEL)
+          fi
           kill $OLLAMA_PID 2>/dev/null || true
         env:
         - name: OLLAMA_MODEL
@@ -32,6 +35,11 @@ spec:
             configMapKeyRef:
               name: ollama-config
               key: OLLAMA_MODEL
+        - name: OLLAMA_VISION_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: ollama-config
+              key: OLLAMA_VISION_MODEL
         volumeMounts:
         - name: ollama-data
           mountPath: /root/.ollama

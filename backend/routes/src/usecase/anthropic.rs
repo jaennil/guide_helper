@@ -57,6 +57,35 @@ struct AnthropicTool {
     input_schema: serde_json::Value,
 }
 
+#[derive(Debug, Serialize)]
+struct AnthropicVisionRequest {
+    model: String,
+    max_tokens: u32,
+    messages: Vec<AnthropicVisionMessage>,
+}
+
+#[derive(Debug, Serialize)]
+struct AnthropicVisionMessage {
+    role: String,
+    content: Vec<AnthropicVisionBlock>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "type")]
+enum AnthropicVisionBlock {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image")]
+    Image { source: AnthropicImageSource },
+}
+
+#[derive(Debug, Serialize)]
+struct AnthropicImageSource {
+    #[serde(rename = "type")]
+    source_type: String,
+    url: String,
+}
+
 // ── Response types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -170,6 +199,94 @@ impl AnthropicClient {
         }
 
         (system, out)
+    }
+
+    pub async fn describe_route_from_images(
+        &self,
+        route_name: &str,
+        photo_urls: &[String],
+    ) -> Result<String> {
+        if photo_urls.is_empty() {
+            return Err(anyhow!("No photos provided for route description"));
+        }
+
+        let mut content = vec![AnthropicVisionBlock::Text {
+            text: format!(
+                "Ты — помощник туристического гида. По фотографиям маршрута «{}» напиши краткое описание маршрута на русском языке в 3-5 предложениях: что можно увидеть, какая атмосфера, кому подойдёт маршрут.",
+                route_name
+            ),
+        }];
+
+        for url in photo_urls {
+            content.push(AnthropicVisionBlock::Image {
+                source: AnthropicImageSource {
+                    source_type: "url".to_string(),
+                    url: url.clone(),
+                },
+            });
+        }
+
+        let request = AnthropicVisionRequest {
+            model: self.model.clone(),
+            max_tokens: 700,
+            messages: vec![AnthropicVisionMessage {
+                role: "user".to_string(),
+                content,
+            }],
+        };
+
+        tracing::debug!(
+            model = %self.model,
+            photo_count = photo_urls.len(),
+            "sending vision request to Anthropic"
+        );
+
+        let response = self
+            .http_client
+            .post(ANTHROPIC_API_URL)
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Anthropic vision request failed");
+                anyhow!("Anthropic vision request failed: {}", e)
+            })?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| anyhow!("Failed to read Anthropic vision response: {}", e))?;
+
+        if !status.is_success() {
+            tracing::error!(%status, %body, "Anthropic vision returned error");
+            return Err(anyhow!("Anthropic vision error ({}): {}", status, body));
+        }
+
+        let parsed: AnthropicResponse = serde_json::from_str(&body).map_err(|e| {
+            tracing::error!(error = %e, %body, "failed to parse Anthropic vision response");
+            anyhow!("Failed to parse Anthropic vision response: {}", e)
+        })?;
+
+        let description = parsed
+            .content
+            .into_iter()
+            .filter_map(|block| match block {
+                AnthropicBlock::Text { text } => Some(text),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
+
+        if description.is_empty() {
+            return Err(anyhow!("Empty response from Anthropic vision"));
+        }
+
+        Ok(description)
     }
 }
 

@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::domain::route::{ExploreRouteRow, PhotoStatus, Route, RoutePoint};
+use crate::usecase::anthropic::AnthropicClient;
 use crate::usecase::contracts::RouteRepository;
 use crate::usecase::error::UsecaseError;
 use crate::usecase::nominatim::NominatimClient;
@@ -18,6 +19,7 @@ where
     route_repository: Arc<R>,
     nominatim: Option<Arc<NominatimClient>>,
     ollama_client: Option<Arc<OpenAIClient>>,
+    anthropic_client: Option<Arc<AnthropicClient>>,
     ollama_vision_model: String,
 }
 
@@ -30,6 +32,7 @@ where
             route_repository: Arc::new(route_repository),
             nominatim: None,
             ollama_client: None,
+            anthropic_client: None,
             ollama_vision_model: "llama3.2-vision".to_string(),
         }
     }
@@ -42,6 +45,11 @@ where
     pub fn with_ollama(mut self, client: OpenAIClient, model: String) -> Self {
         self.ollama_client = Some(Arc::new(client));
         self.ollama_vision_model = model;
+        self
+    }
+
+    pub fn with_anthropic(mut self, client: AnthropicClient) -> Self {
+        self.anthropic_client = Some(Arc::new(client));
         self
     }
 
@@ -365,47 +373,68 @@ where
             ));
         }
 
-        tracing::info!(
-            photo_count = photo_urls.len(),
-            "sending photos to Ollama for description"
-        );
+        let description = if let Some(client) = self.anthropic_client.as_ref() {
+            tracing::info!(
+                provider = "claude",
+                photo_count = photo_urls.len(),
+                "sending photos to Anthropic for description"
+            );
+            client
+                .describe_route_from_images(&route.name, &photo_urls)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Anthropic vision call failed");
+                    UsecaseError::Internal(format!("AI generation failed: {}", e))
+                })?
+        } else {
+            let client = self.ollama_client.as_ref().ok_or_else(|| {
+                tracing::warn!("AI description generation is not configured");
+                UsecaseError::Internal("AI description generation is not configured".to_string())
+            })?;
 
-        let mut content: Vec<VisionContentPart> = vec![VisionContentPart {
-            part_type: "text".to_string(),
-            text: Some(format!(
-                "Ты — помощник туристического гида. По фотографиям с маршрута «{}» напиши краткое описание маршрута на русском языке (3-5 предложений): что можно увидеть, какая атмосфера, для кого подходит.",
-                route.name
-            )),
-            image_url: None,
-        }];
+            tracing::info!(
+                provider = "ollama",
+                photo_count = photo_urls.len(),
+                "sending photos to Ollama for description"
+            );
 
-        for url in &photo_urls {
-            content.push(VisionContentPart {
-                part_type: "image_url".to_string(),
-                text: None,
-                image_url: Some(VisionImageUrl { url: url.clone() }),
-            });
-        }
+            let mut content: Vec<VisionContentPart> = vec![VisionContentPart {
+                part_type: "text".to_string(),
+                text: Some(format!(
+                    "Ты — помощник туристического гида. По фотографиям с маршрута «{}» напиши краткое описание маршрута на русском языке (3-5 предложений): что можно увидеть, какая атмосфера, для кого подходит.",
+                    route.name
+                )),
+                image_url: None,
+            }];
 
-        let request = VisionChatRequest {
-            model: self.ollama_vision_model.clone(),
-            messages: vec![VisionMessage {
-                role: "user".to_string(),
-                content,
-            }],
+            for url in &photo_urls {
+                content.push(VisionContentPart {
+                    part_type: "image_url".to_string(),
+                    text: None,
+                    image_url: Some(VisionImageUrl { url: url.clone() }),
+                });
+            }
+
+            let request = VisionChatRequest {
+                model: self.ollama_vision_model.clone(),
+                messages: vec![VisionMessage {
+                    role: "user".to_string(),
+                    content,
+                }],
+            };
+
+            let response = client.vision_chat(request).await.map_err(|e| {
+                tracing::error!(error = %e, "Ollama vision call failed");
+                UsecaseError::Internal(format!("AI generation failed: {}", e))
+            })?;
+
+            response
+                .choices
+                .into_iter()
+                .next()
+                .and_then(|c| c.message.content)
+                .ok_or_else(|| UsecaseError::Internal("Empty response from Ollama".to_string()))?
         };
-
-        let response = client.vision_chat(request).await.map_err(|e| {
-            tracing::error!(error = %e, "Ollama vision call failed");
-            UsecaseError::Internal(format!("AI generation failed: {}", e))
-        })?;
-
-        let description = response
-            .choices
-            .into_iter()
-            .next()
-            .and_then(|c| c.message.content)
-            .ok_or_else(|| UsecaseError::Internal("Empty response from Ollama".to_string()))?;
 
         tracing::info!(
             desc_len = description.len(),

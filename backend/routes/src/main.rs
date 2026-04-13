@@ -212,9 +212,19 @@ async fn main() -> anyhow::Result<()> {
             None,
         )
     });
+    let anthropic_vision_client =
+        non_empty(config.anthropic_api_key.clone()).map(|key| {
+            tracing::info!(model = %config.anthropic_model, "Anthropic vision client configured");
+            AnthropicClient::new(config.anthropic_model.clone(), key)
+        });
 
     let routes_usecase = {
         let uc = RoutesUseCase::new(route_repository).with_nominatim(nominatim_client);
+        let uc = if let Some(client) = anthropic_vision_client {
+            uc.with_anthropic(client)
+        } else {
+            uc
+        };
         if let Some(client) = ollama_client {
             uc.with_ollama(client, config.ollama_vision_model.clone())
         } else {
