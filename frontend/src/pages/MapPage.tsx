@@ -2330,13 +2330,13 @@ export function MapPage() {
           <div className="historical-track-shell">
             <div className="historical-track">
               <div className="historical-track-fill" />
-              {historicalMilestones.map((milestone) => {
+              {historicalMilestones.map((milestone, index) => {
                 const offset = ((milestone.year - MIN_HISTORICAL_YEAR) / (currentHistoricalYear - MIN_HISTORICAL_YEAR)) * 100;
                 return (
                   <button
                     key={`${milestone.year}-${milestone.label}`}
                     type="button"
-                    className={`historical-milestone${historicalYear === milestone.year ? " active" : ""}`}
+                    className={`historical-milestone${historicalYear === milestone.year ? " active" : ""}${index === 0 ? " edge-start" : ""}${index === historicalMilestones.length - 1 ? " edge-end" : ""}`}
                     style={{ left: `${offset}%` }}
                     onClick={() => handleHistoricalYearChange(milestone.year)}
                   >
