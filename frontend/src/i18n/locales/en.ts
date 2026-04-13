@@ -181,6 +181,8 @@ export const en = {
   "historical.toggle": "Historical",
   "historical.timelineTitle": "Historical timeline",
   "historical.opacity": "Opacity",
+  "historical.compare": "Compare",
+  "historical.comparePosition": "Divider",
   "historical.now": "Now",
   "historical.routeYear": "Route: {{year}}",
   "weather.title": "Weather",

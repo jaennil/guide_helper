@@ -181,6 +181,8 @@ export const ru = {
   "historical.toggle": "Историческая",
   "historical.timelineTitle": "Исторический таймлайн",
   "historical.opacity": "Прозрачность",
+  "historical.compare": "Сравнение",
+  "historical.comparePosition": "Разделитель",
   "historical.now": "Сейчас",
   "historical.routeYear": "Маршрут: {{year}}",
   "weather.title": "Погода",

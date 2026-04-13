@@ -11,9 +11,10 @@ const OHM_STYLE_URL = 'https://www.openhistoricalmap.org/map-styles/main/main.js
 interface HistoricalMapOverlayProps {
   year: number;
   opacity: number;
+  comparePosition?: number | null;
 }
 
-export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProps) {
+export function HistoricalMapOverlay({ year, opacity, comparePosition = null }: HistoricalMapOverlayProps) {
   const map = useMap();
   const layerRef = useRef<L.MaplibreGL | null>(null);
   const glMapRef = useRef<maplibregl.Map | null>(null);
@@ -38,6 +39,7 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
       container.style.zIndex = '500';
       container.style.opacity = String(opacity);
       container.style.pointerEvents = 'none';
+      container.style.transition = 'opacity 160ms ease, clip-path 160ms ease';
       console.log('[historical] GL container configured, z-index=500');
     }
 
@@ -97,6 +99,21 @@ export function HistoricalMapOverlay({ year, opacity }: HistoricalMapOverlayProp
       if (c) c.style.opacity = String(opacity);
     }
   }, [opacity]);
+
+  useEffect(() => {
+    if (!layerRef.current) {
+      return;
+    }
+    const container = layerRef.current.getContainer();
+    if (!container) {
+      return;
+    }
+    const clipPath = comparePosition == null
+      ? 'inset(0 0 0 0)'
+      : `inset(0 ${100 - comparePosition}% 0 0)`;
+    container.style.clipPath = clipPath;
+    (container.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = clipPath;
+  }, [comparePosition]);
 
   return null;
 }

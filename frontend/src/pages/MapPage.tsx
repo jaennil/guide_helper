@@ -1199,6 +1199,8 @@ export function MapPage() {
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
   const [historicalPlaying, setHistoricalPlaying] = useState(false);
   const [historicalSpeedStep, setHistoricalSpeedStep] = useState<(typeof HISTORICAL_SPEED_STEPS)[number]>(5);
+  const [historicalCompareMode, setHistoricalCompareMode] = useState(false);
+  const [historicalComparePosition, setHistoricalComparePosition] = useState(52);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -1229,6 +1231,7 @@ export function MapPage() {
   useEffect(() => {
     if (!historicalMode) {
       setHistoricalPlaying(false);
+      setHistoricalCompareMode(false);
     }
   }, [historicalMode]);
 
@@ -1296,6 +1299,10 @@ export function MapPage() {
     const currentIndex = HISTORICAL_SPEED_STEPS.indexOf(historicalSpeedStep);
     const nextIndex = (currentIndex + 1) % HISTORICAL_SPEED_STEPS.length;
     setHistoricalSpeedStep(HISTORICAL_SPEED_STEPS[nextIndex]);
+  };
+
+  const handleHistoricalCompareToggle = () => {
+    setHistoricalCompareMode((previousMode) => !previousMode);
   };
 
   const handleHistoricalModeToggle = () => {
@@ -2238,6 +2245,15 @@ export function MapPage() {
                 <FastForward size={15} />
                 <span>{selectedHistoricalSpeedLabel}</span>
               </button>
+              <button
+                type="button"
+                className={`historical-action-btn${historicalCompareMode ? " active" : ""}`}
+                onClick={handleHistoricalCompareToggle}
+                title={t("historical.compare")}
+              >
+                <Minus size={15} />
+                <span>{t("historical.compare")}</span>
+              </button>
             </div>
           </div>
 
@@ -2291,6 +2307,21 @@ export function MapPage() {
                   <span>{t("historical.routeYear", { year: routeHistoricalYear })}</span>
                 </button>
               )}
+              {historicalCompareMode && (
+                <div className="historical-compare-row">
+                  <span>{t("historical.comparePosition")}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={historicalComparePosition}
+                    onChange={(e) => setHistoricalComparePosition(Number(e.target.value))}
+                    className="historical-compare-slider"
+                  />
+                  <span className="historical-compare-value">{historicalComparePosition}%</span>
+                </div>
+              )}
               <div className="historical-opacity-row">
                 <span>{t("historical.opacity")}</span>
                 <span className="historical-opacity-value">{Math.round(historicalOpacity * 100)}%</span>
@@ -2305,6 +2336,20 @@ export function MapPage() {
                 />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {historicalMode && historicalCompareMode && (
+        <div
+          className="historical-split-indicator"
+          style={{ "--historical-split": `${historicalComparePosition}%` } as React.CSSProperties}
+        >
+          <div className="historical-split-line" />
+          <div className="historical-split-handle">
+            <span />
+            <span />
+            <span />
           </div>
         </div>
       )}
@@ -2376,7 +2421,11 @@ export function MapPage() {
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
         {historicalMode && (
-          <HistoricalMapOverlay year={historicalYear} opacity={historicalOpacity} />
+          <HistoricalMapOverlay
+            year={historicalYear}
+            opacity={historicalOpacity}
+            comparePosition={historicalCompareMode ? historicalComparePosition : null}
+          />
         )}
         <RoutingControl
           waypoints={waypoints}

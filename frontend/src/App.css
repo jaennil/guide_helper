@@ -1083,6 +1083,32 @@ body {
     color: #dbeafe;
 }
 
+.historical-compare-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: min(340px, 100%);
+    padding: 0 12px;
+    min-height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+}
+
+.historical-compare-slider {
+    flex: 1;
+    cursor: ew-resize;
+    accent-color: #93c5fd;
+}
+
+.historical-compare-value {
+    min-width: 42px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
 .historical-opacity-row {
     display: flex;
     align-items: center;
@@ -1103,6 +1129,49 @@ body {
     flex: 1;
     cursor: pointer;
     accent-color: #cbd5e1;
+}
+
+.historical-split-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--historical-split, 50%);
+    z-index: 920;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.historical-split-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3), 0 0 24px rgba(255, 255, 255, 0.3);
+}
+
+.historical-split-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.historical-split-handle span {
+    width: 3px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
 }
 
 .active-toggle {
@@ -1127,8 +1196,10 @@ body {
     }
 
     .historical-actions,
+    .historical-compare-row,
     .historical-opacity-row {
         width: 100%;
+        min-width: 0;
     }
 
     .historical-action-btn,
