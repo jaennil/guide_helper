@@ -36,7 +36,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
-import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
+import { Wrench, Sparkles, Compass, Route, Minus, Play, Pause, FastForward, CalendarDays } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 import {
@@ -107,6 +107,8 @@ const MIN_PHOTO_PREVIEW_SIZE = 28;
 const MAX_PHOTO_PREVIEW_SIZE = 84;
 const PHOTO_PREVIEW_STEP = 4;
 const DEFAULT_PHOTO_PREVIEW_SHAPE: PhotoPreviewShape = "square";
+const MIN_HISTORICAL_YEAR = 1700;
+const HISTORICAL_SPEED_STEPS = [1, 5, 20] as const;
 
 function routePointsMatch(
   left: Pick<RoutePoint, "position" | "name">,
@@ -244,6 +246,10 @@ function buildSegmentTooltipText(
   const displayMinutes = segment.durationMinutes ?? estimatedMinutes;
 
   return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)} • ${formatDuration(displayMinutes)}`;
+}
+
+function clampHistoricalYear(year: number, maxYear: number) {
+  return Math.min(maxYear, Math.max(MIN_HISTORICAL_YEAR, Math.round(year)));
 }
 
 function getSegmentMidpoint(fromPoint: L.LatLng, toPoint: L.LatLng): [number, number] {
@@ -1191,6 +1197,8 @@ export function MapPage() {
   const [historicalMode, setHistoricalMode] = useState(false);
   const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear());
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
+  const [historicalPlaying, setHistoricalPlaying] = useState(false);
+  const [historicalSpeedStep, setHistoricalSpeedStep] = useState<(typeof HISTORICAL_SPEED_STEPS)[number]>(5);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -1204,6 +1212,7 @@ export function MapPage() {
   const [chatPreviewPoints, setChatPreviewPoints] = useState<RoutePoint[]>([]);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
+  const currentHistoricalYear = new Date().getFullYear();
 
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
@@ -1213,9 +1222,35 @@ export function MapPage() {
     }
     const date = new Date(routeStartedAt);
     if (!Number.isNaN(date.getTime())) {
-      setHistoricalYear(date.getFullYear());
+      setHistoricalYear(clampHistoricalYear(date.getFullYear(), currentHistoricalYear));
     }
-  }, [routeStartedAt]);
+  }, [currentHistoricalYear, routeStartedAt]);
+
+  useEffect(() => {
+    if (!historicalMode) {
+      setHistoricalPlaying(false);
+    }
+  }, [historicalMode]);
+
+  useEffect(() => {
+    if (!historicalMode || !historicalPlaying) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setHistoricalYear((previousYear) =>
+        clampHistoricalYear(previousYear + historicalSpeedStep, currentHistoricalYear),
+      );
+    }, 640);
+
+    return () => window.clearInterval(intervalId);
+  }, [currentHistoricalYear, historicalMode, historicalPlaying, historicalSpeedStep]);
+
+  useEffect(() => {
+    if (historicalPlaying && historicalYear >= currentHistoricalYear) {
+      setHistoricalPlaying(false);
+    }
+  }, [currentHistoricalYear, historicalPlaying, historicalYear]);
 
   useEffect(() => {
     categoriesApi.getCategories().then(cats => {
@@ -1253,11 +1288,51 @@ export function MapPage() {
     );
   };
 
+  const handleHistoricalYearChange = (value: number) => {
+    setHistoricalYear(clampHistoricalYear(value, currentHistoricalYear));
+  };
+
+  const handleHistoricalSpeedCycle = () => {
+    const currentIndex = HISTORICAL_SPEED_STEPS.indexOf(historicalSpeedStep);
+    const nextIndex = (currentIndex + 1) % HISTORICAL_SPEED_STEPS.length;
+    setHistoricalSpeedStep(HISTORICAL_SPEED_STEPS[nextIndex]);
+  };
+
+  const handleHistoricalModeToggle = () => {
+    setHistoricalMode((previousMode) => {
+      const nextMode = !previousMode;
+      if (nextMode && routeHistoricalYear) {
+        setHistoricalYear(routeHistoricalYear);
+      }
+      if (!nextMode) {
+        setHistoricalPlaying(false);
+      }
+      return nextMode;
+    });
+  };
+
   const { logout, user } = useAuth();
   const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const normalizedRouteStartedAt = routeStartedAt ? fromDatetimeLocalValue(routeStartedAt) : undefined;
+  const routeHistoricalYear = normalizedRouteStartedAt
+    ? clampHistoricalYear(new Date(normalizedRouteStartedAt).getFullYear(), currentHistoricalYear)
+    : null;
+  const historicalMilestones = [
+    { year: MIN_HISTORICAL_YEAR, label: String(MIN_HISTORICAL_YEAR) },
+    { year: 1812, label: "1812" },
+    { year: 1917, label: "1917" },
+    { year: 1945, label: "1945" },
+    { year: 1991, label: "1991" },
+    { year: currentHistoricalYear, label: t("historical.now") },
+  ];
+  const historicalProgress = Math.max(
+    0,
+    Math.min(100, ((historicalYear - MIN_HISTORICAL_YEAR) / (currentHistoricalYear - MIN_HISTORICAL_YEAR)) * 100),
+  );
+  const selectedHistoricalSpeedLabel = `x${historicalSpeedStep}`;
 
   // Load route if route ID is in URL
   useEffect(() => {
@@ -1996,7 +2071,7 @@ export function MapPage() {
                 {routePoints.length >= 2 && (
                   <button onClick={() => setPlaybackActive(true)}>{t("playback.button")}</button>
                 )}
-                <button onClick={() => setHistoricalMode(!historicalMode)}>
+                <button onClick={handleHistoricalModeToggle}>
                   {historicalMode ? "✓ " : ""}{t("historical.toggle")}
                 </button>
                 {(routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) && (
@@ -2089,7 +2164,7 @@ export function MapPage() {
             </button>
           )}
           <button
-            onClick={() => setHistoricalMode(!historicalMode)}
+            onClick={handleHistoricalModeToggle}
             className={`btn-secondary explore-nav-btn${historicalMode ? " active-toggle" : ""}`}
           >
             {t("historical.toggle")}
@@ -2130,34 +2205,106 @@ export function MapPage() {
       )}
 
       {historicalMode && (
-        <div className="historical-controls">
-          <div className="historical-year-display">{historicalYear}</div>
-          <input
-            type="range"
-            min={1700}
-            max={new Date().getFullYear()}
-            step={1}
-            value={historicalYear}
-            onChange={(e) => setHistoricalYear(Number(e.target.value))}
-            className="historical-slider"
-          />
-          <div className="historical-year-labels">
-            <span>1700</span>
-            <span>1800</span>
-            <span>1900</span>
-            <span>2000</span>
+        <div
+          className={`historical-controls${historicalPlaying ? " playing" : ""}`}
+          style={{ "--historical-progress": `${historicalProgress}%` } as React.CSSProperties}
+        >
+          <div className="historical-controls-top">
+            <div className="historical-heading">
+              <span className="historical-overline">{t("historical.timelineTitle")}</span>
+              <div className="historical-year-display">{historicalYear}</div>
+            </div>
+            <div className="historical-actions">
+              <button
+                type="button"
+                className={`historical-action-btn${historicalPlaying ? " active" : ""}`}
+                onClick={() => {
+                  if (historicalYear >= currentHistoricalYear) {
+                    handleHistoricalYearChange(routeHistoricalYear ?? MIN_HISTORICAL_YEAR);
+                  }
+                  setHistoricalPlaying((previous) => !previous);
+                }}
+                title={historicalPlaying ? t("playback.pause") : t("playback.play")}
+              >
+                {historicalPlaying ? <Pause size={15} /> : <Play size={15} />}
+                <span>{historicalPlaying ? t("playback.pause") : t("playback.play")}</span>
+              </button>
+              <button
+                type="button"
+                className="historical-action-btn"
+                onClick={handleHistoricalSpeedCycle}
+                title={t("playback.speed")}
+              >
+                <FastForward size={15} />
+                <span>{selectedHistoricalSpeedLabel}</span>
+              </button>
+            </div>
           </div>
-          <div className="historical-opacity-row">
-            <span>{t("historical.opacity")}</span>
+
+          <div className="historical-track-shell">
+            <div className="historical-track">
+              <div className="historical-track-fill" />
+              {historicalMilestones.map((milestone) => {
+                const offset = ((milestone.year - MIN_HISTORICAL_YEAR) / (currentHistoricalYear - MIN_HISTORICAL_YEAR)) * 100;
+                return (
+                  <button
+                    key={`${milestone.year}-${milestone.label}`}
+                    type="button"
+                    className={`historical-milestone${historicalYear === milestone.year ? " active" : ""}`}
+                    style={{ left: `${offset}%` }}
+                    onClick={() => handleHistoricalYearChange(milestone.year)}
+                  >
+                    <span className="historical-milestone-dot" />
+                    <span className="historical-milestone-label">{milestone.label}</span>
+                  </button>
+                );
+              })}
+            </div>
             <input
               type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={Math.round(historicalOpacity * 100)}
-              onChange={(e) => setHistoricalOpacity(Number(e.target.value) / 100)}
-              className="historical-opacity-slider"
+              min={MIN_HISTORICAL_YEAR}
+              max={currentHistoricalYear}
+              step={1}
+              value={historicalYear}
+              onChange={(e) => handleHistoricalYearChange(Number(e.target.value))}
+              className="historical-slider"
             />
+          </div>
+
+          <div className="historical-footer">
+            <div className="historical-year-labels">
+              <span>{MIN_HISTORICAL_YEAR}</span>
+              <span>1812</span>
+              <span>1917</span>
+              <span>1945</span>
+              <span>1991</span>
+              <span>{currentHistoricalYear}</span>
+            </div>
+            <div className="historical-footer-row">
+              {routeHistoricalYear && (
+                <button
+                  type="button"
+                  className={`historical-route-year-btn${historicalYear === routeHistoricalYear ? " active" : ""}`}
+                  onClick={() => handleHistoricalYearChange(routeHistoricalYear)}
+                >
+                  <CalendarDays size={14} />
+                  <span>{t("historical.routeYear", { year: routeHistoricalYear })}</span>
+                </button>
+              )}
+              <div className="historical-opacity-row">
+                <span>{t("historical.opacity")}</span>
+                <span className="historical-opacity-value">{Math.round(historicalOpacity * 100)}%</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(historicalOpacity * 100)}
+                  onChange={(e) => setHistoricalOpacity(Number(e.target.value) / 100)}
+                  className="historical-opacity-slider"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}

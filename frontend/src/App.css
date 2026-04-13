@@ -873,42 +873,214 @@ body {
 /* Historical map controls */
 .historical-controls {
     position: absolute;
-    bottom: 30px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(0, 0, 0, 0.85);
+    width: min(760px, calc(100vw - 48px));
+    padding: 16px 18px;
+    border-radius: 24px;
+    background:
+        linear-gradient(135deg, rgba(11, 16, 32, 0.92), rgba(15, 23, 42, 0.88)),
+        rgba(12, 18, 32, 0.82);
     color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    font-family: Arial, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(18px);
     pointer-events: auto;
-    min-width: 320px;
+    overflow: hidden;
+}
+
+.historical-controls::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.historical-controls.playing::after {
+    opacity: 1;
+    animation: historical-sheen 2.4s linear infinite;
+}
+
+.historical-controls-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.historical-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.historical-overline {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .historical-year-display {
-    text-align: center;
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 6px;
+    font-size: clamp(34px, 4vw, 52px);
+    line-height: 1;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.05em;
+    text-shadow: 0 0 18px rgba(250, 204, 21, 0.25);
+}
+
+.historical-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.historical-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.historical-action-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.historical-action-btn.active {
+    background: rgba(250, 204, 21, 0.16);
+    border-color: rgba(250, 204, 21, 0.35);
+    color: #fde68a;
+}
+
+.historical-track-shell {
+    position: relative;
+    margin-top: 14px;
+}
+
+.historical-track {
+    position: relative;
+    height: 54px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.historical-track-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--historical-progress, 0%);
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.28), rgba(250, 204, 21, 0.3));
+    border-radius: inherit;
+}
+
+.historical-milestone {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.76);
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.historical-milestone:hover {
+    transform: translate(-50%, -52%);
+    color: #fff;
+}
+
+.historical-milestone.active {
+    color: #fde68a;
+}
+
+.historical-milestone-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+}
+
+.historical-milestone-label {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .historical-slider {
+    margin-top: 8px;
     width: 100%;
     cursor: pointer;
     accent-color: var(--color-rating);
-    height: 6px;
+    height: 8px;
 }
 
 .historical-year-labels {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #999;
-    margin-top: 2px;
-    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.46);
+    gap: 8px;
+}
+
+.historical-footer {
+    margin-top: 12px;
+}
+
+.historical-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.historical-route-year-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #bfdbfe;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.historical-route-year-btn:hover,
+.historical-route-year-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(96, 165, 250, 0.4);
+    color: #dbeafe;
 }
 
 .historical-opacity-row {
@@ -916,13 +1088,21 @@ body {
     align-items: center;
     gap: 10px;
     font-size: 12px;
-    color: #ccc;
+    color: rgba(255, 255, 255, 0.76);
+    margin-left: auto;
+    min-width: min(320px, 100%);
+}
+
+.historical-opacity-value {
+    min-width: 42px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 .historical-opacity-slider {
     flex: 1;
     cursor: pointer;
-    accent-color: #ccc;
+    accent-color: #cbd5e1;
 }
 
 .active-toggle {
@@ -933,11 +1113,49 @@ body {
 
 @media (max-width: 768px) {
     .historical-controls {
-        min-width: unset;
         width: calc(100% - 24px);
         left: 12px;
         transform: none;
         bottom: 12px;
+        padding: 14px;
+    }
+
+    .historical-controls-top,
+    .historical-footer-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .historical-actions,
+    .historical-opacity-row {
+        width: 100%;
+    }
+
+    .historical-action-btn,
+    .historical-route-year-btn {
+        justify-content: center;
+    }
+
+    .historical-track {
+        height: 64px;
+    }
+
+    .historical-year-labels {
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .historical-year-labels::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@keyframes historical-sheen {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(100%);
     }
 }
 
