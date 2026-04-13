@@ -352,6 +352,269 @@ body {
     gap: 8px;
 }
 
+.route-inspector {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    bottom: 16px;
+    width: 360px;
+    z-index: 950;
+    display: flex;
+    flex-direction: column;
+    background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.26);
+    backdrop-filter: blur(18px);
+    overflow: hidden;
+}
+
+.route-inspector-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.route-inspector-header-copy {
+    min-width: 0;
+}
+
+.route-inspector-eyebrow {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.route-inspector-header h3 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.route-inspector-header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.route-inspector-save-btn,
+.route-inspector-quick-action {
+    border: 1px solid rgba(var(--color-brand-rgb), 0.45);
+    border-radius: 10px;
+    background: rgba(var(--color-brand-rgb), 0.14);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.route-inspector-save-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.route-inspector-save-btn:hover,
+.route-inspector-quick-action:hover {
+    background: rgba(var(--color-brand-rgb), 0.22);
+    border-color: rgba(var(--color-brand-rgb), 0.6);
+}
+
+.route-inspector-save-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.route-inspector-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.route-inspector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-panel) 84%, transparent);
+}
+
+.route-inspector-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.route-inspector-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.route-inspector-input:focus {
+    outline: none;
+    border-color: rgba(var(--color-brand-rgb), 0.7);
+}
+
+.route-inspector-hint {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-dim);
+}
+
+.route-inspector-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 2px;
+}
+
+.route-inspector-section-header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.route-inspector-quick-action {
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.route-inspector-point-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.route-point-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.route-point-list-item {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.route-point-list-item:hover {
+    border-color: rgba(var(--color-brand-rgb), 0.5);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+}
+
+.route-point-list-item.active {
+    border-color: rgba(var(--color-brand-rgb), 0.75);
+    background: rgba(var(--color-brand-rgb), 0.12);
+}
+
+.route-point-list-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.route-point-list-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.route-point-list-index {
+    min-width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-hover) 70%, transparent);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.route-point-list-meta {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.route-point-list-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.route-point-list-badge {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(var(--color-brand-rgb), 0.14);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.route-inspector-empty {
+    padding: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.route-inspector-error {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--color-danger);
+    font-size: 13px;
+}
+
+.route-inspector .upload-photo-btn,
+.route-inspector .remove-photo-btn {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .route-inspector {
+        top: auto;
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        width: auto;
+        max-height: 48vh;
+    }
+}
+
 .leaflet-tooltip.route-segment-tooltip {
     padding: 6px 10px;
     border: 1px solid var(--border);

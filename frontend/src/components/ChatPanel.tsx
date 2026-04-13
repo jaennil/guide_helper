@@ -25,11 +25,13 @@ interface ChatMessageItemProps {
   onCopy: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onFocusPoints: (points: ChatPoint[]) => void;
+  onApplyPoints: (points: ChatPoint[]) => void;
   onShowRoutes: (routes: ChatRouteRef[]) => void;
   onNavigate: (path: string) => void;
   tCopied: string;
   tDeleteMessage: string;
   tShowOnMap: string;
+  tAddToRoute: string;
   tGoTo: string;
 }
 
@@ -39,11 +41,13 @@ const ChatMessageItem = memo(function ChatMessageItem({
   onCopy,
   onDelete,
   onFocusPoints,
+  onApplyPoints,
   onShowRoutes,
   onNavigate,
   tCopied,
   tDeleteMessage,
   tShowOnMap,
+  tAddToRoute,
   tGoTo,
 }: ChatMessageItemProps) {
   return (
@@ -75,14 +79,22 @@ const ChatMessageItem = memo(function ChatMessageItem({
         <div className="chat-message-actions">
           {msg.actions.map((action, idx) => {
             if (action.type === 'show_points' && action.points) {
+              const points = action.points;
               return (
-                <button
-                  key={idx}
-                  className="chat-action-btn"
-                  onClick={() => onFocusPoints(action.points!)}
-                >
-                  {tShowOnMap}
-                </button>
+                <div key={idx} className="chat-action-row">
+                  <button
+                    className="chat-action-btn"
+                    onClick={() => onFocusPoints(points)}
+                  >
+                    {tShowOnMap}
+                  </button>
+                  <button
+                    className="chat-action-btn chat-action-primary"
+                    onClick={() => onApplyPoints(points)}
+                  >
+                    {tAddToRoute}
+                  </button>
+                </div>
               );
             }
             if (action.type === 'show_routes' && action.routes) {
@@ -133,7 +145,8 @@ const ChatMessageItem = memo(function ChatMessageItem({
 interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onShowPoints: (points: ChatPoint[]) => void;
+  onPreviewPoints: (points: ChatPoint[]) => void;
+  onFocusPoints: (points: ChatPoint[]) => void;
   onApplyPoints: (points: ChatPoint[]) => void;
   onShowRoutes: (routeIds: string[]) => void;
   mapContext?: ChatMapContext;
@@ -142,7 +155,8 @@ interface ChatPanelProps {
 export function ChatPanel({
   isOpen,
   onClose,
-  onShowPoints,
+  onPreviewPoints,
+  onFocusPoints,
   onApplyPoints,
   onShowRoutes,
   mapContext,
@@ -201,8 +215,6 @@ export function ChatPanel({
     const text = input.trim();
     if (!text || loading) return;
 
-    let didAutoApplyPoints = false;
-
     setInput('');
     setError('');
 
@@ -214,21 +226,11 @@ export function ChatPanel({
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
-    const maybeAutoApplyActions = (actions: ChatAction[]) => {
-      if (didAutoApplyPoints) {
-        return;
-      }
-
-      let applied = false;
+    const previewShowPointActions = (actions: ChatAction[]) => {
       for (const action of actions) {
         if (action.type === 'show_points' && action.points && action.points.length > 0) {
-          onApplyPoints(action.points);
-          applied = true;
+          onPreviewPoints(action.points);
         }
-      }
-
-      if (applied) {
-        didAutoApplyPoints = true;
       }
     };
 
@@ -258,7 +260,7 @@ export function ChatPanel({
         },
         (actions) => {
           streamingActions = actions;
-          maybeAutoApplyActions(actions);
+          previewShowPointActions(actions);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === streamingMsgId ? { ...m, actions } : m,
@@ -300,7 +302,7 @@ export function ChatPanel({
           content: response.message,
           actions: response.actions,
         };
-        maybeAutoApplyActions(response.actions);
+        previewShowPointActions(response.actions);
         setMessages((prev) => [...prev, assistantMsg]);
       } catch (fallbackErr: any) {
         setError(resolveChatError(fallbackErr ?? err));
@@ -324,8 +326,8 @@ export function ChatPanel({
   };
 
   const handleFocusPoints = useCallback((points: ChatPoint[]) => {
-    onShowPoints(points);
-  }, [onShowPoints]);
+    onFocusPoints(points);
+  }, [onFocusPoints]);
 
   const handleShowRoutes = useCallback((routes: ChatRouteRef[]) => {
     const ids = routes.map((r) => r.id);
@@ -478,11 +480,13 @@ export function ChatPanel({
             onCopy={handleCopy}
             onDelete={handleDeleteMessage}
             onFocusPoints={handleFocusPoints}
+            onApplyPoints={onApplyPoints}
             onShowRoutes={handleShowRoutes}
             onNavigate={handleNavigate}
             tCopied={t('chat.copied')}
             tDeleteMessage={t('chat.deleteMessage')}
             tShowOnMap={t('chat.showOnMap')}
+            tAddToRoute={t('chat.addToRoute')}
             tGoTo={t('chat.goTo')}
           />
         ))}

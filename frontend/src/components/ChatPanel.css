@@ -90,6 +90,12 @@
   margin-top: 8px;
 }
 
+.chat-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .chat-action-btn {
   display: flex;
   align-items: center;
@@ -108,6 +114,11 @@
 .chat-action-btn:hover {
   background: var(--bg-hover);
   border-color: var(--accent-color, #3b82f6);
+}
+
+.chat-action-primary {
+  border-color: var(--accent-color, #3b82f6);
+  background: color-mix(in srgb, var(--accent-color, #3b82f6) 14%, var(--bg-primary));
 }
 
 .chat-action-navigate {

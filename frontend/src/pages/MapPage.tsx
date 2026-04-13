@@ -96,6 +96,7 @@ const ROUTE_COLORS = [
 ];
 
 const CHAT_POINT_MATCH_EPSILON = 0.00001;
+const CHAT_PREVIEW_ROUTE_COLOR = "#f59e0b";
 const DEFAULT_POINT_MARKER_COLOR = "#3388ff";
 const DEFAULT_POINT_MARKER_SIZE = 30;
 const MIN_POINT_MARKER_SIZE = 22;
@@ -655,12 +656,55 @@ function createColoredMarkerIcon(
 const PointPopup = React.memo(function PointPopup({
   point,
   index,
+  onEdit,
+}: {
+  point: RoutePoint;
+  index: number;
+  onEdit: (pointId: number) => void;
+}) {
+  const { t } = useLanguage();
+  const photoSrc = getPhotoSrc(point.photo);
+  const note = point.note?.trim();
+
+  return (
+    <div className="point-popup">
+      <div className="point-popup-header">
+        <strong>{t("map.point", { index: index + 1 })}</strong>
+      </div>
+      {point.name && <div className="point-popup-name">{point.name}</div>}
+      <div className="point-popup-coords">
+        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+        {point.position[1].toFixed(6)}
+      </div>
+      {note && <div className="point-popup-note-text">{note}</div>}
+      {photoSrc && (
+        <div className="point-popup-photo">
+          <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
+        </div>
+      )}
+      <div className="point-popup-actions">
+        <button
+          type="button"
+          className="upload-photo-btn"
+          onClick={() => onEdit(point.id)}
+        >
+          {t("map.editPoint")}
+        </button>
+      </div>
+    </div>
+  );
+});
+
+const PointDetailsEditor = React.memo(function PointDetailsEditor({
+  point,
+  index,
   onPhotoChange,
   onNoteChange,
   onMarkerColorChange,
   onMarkerSizeChange,
   onPreviewSizeChange,
   onPreviewShapeChange,
+  onFocusPoint,
 }: {
   point: RoutePoint;
   index: number;
@@ -670,6 +714,7 @@ const PointPopup = React.memo(function PointPopup({
   onMarkerSizeChange: (pointId: number, markerSize: number) => void;
   onPreviewSizeChange: (pointId: number, previewSize: number) => void;
   onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
+  onFocusPoint: (pointId: number) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
@@ -727,14 +772,24 @@ const PointPopup = React.memo(function PointPopup({
   const previewShape = normalizePhotoPreviewShape(point.previewShape);
 
   return (
-    <div className="point-popup">
-      <div className="point-popup-header">
-        <strong>{t("map.point", { index: index + 1 })}</strong>
-      </div>
-      {point.name && <div className="point-popup-name">{point.name}</div>}
-      <div className="point-popup-coords">
-        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-        {point.position[1].toFixed(6)}
+    <div className="point-editor">
+      <div className="route-inspector-section-header">
+        <div>
+          <div className="route-inspector-point-title">
+            {point.name?.trim() || t("map.point", { index: index + 1 })}
+          </div>
+          <div className="point-popup-coords">
+            {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+            {point.position[1].toFixed(6)}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="route-inspector-quick-action"
+          onClick={() => onFocusPoint(point.id)}
+        >
+          {t("chat.showOnMap")}
+        </button>
       </div>
       <div className="point-popup-note">
         <label className="point-popup-note-label" htmlFor={`point-note-${point.id}`}>
@@ -873,7 +928,247 @@ const PointPopup = React.memo(function PointPopup({
   );
 });
 
+const RouteInspector = React.memo(function RouteInspector({
+  routeName,
+  onRouteNameChange,
+  availableCategories,
+  selectedCategoryIds,
+  toggleCategory,
+  allSeasons,
+  selectedSeasons,
+  toggleSeason,
+  routeLineColor,
+  onRouteLineColorChange,
+  routeStartedAt,
+  onRouteStartedAtChange,
+  routePoints,
+  selectedPointId,
+  onSelectPoint,
+  selectedPoint,
+  selectedPointIndex,
+  onPhotoChange,
+  onNoteChange,
+  onMarkerColorChange,
+  onMarkerSizeChange,
+  onPreviewSizeChange,
+  onPreviewShapeChange,
+  onFocusPoint,
+  onSaveRoute,
+  saveLoading,
+  saveError,
+  canSaveCurrentRoute,
+  loadedRouteInfo,
+}: {
+  routeName: string;
+  onRouteNameChange: (value: string) => void;
+  availableCategories: Category[];
+  selectedCategoryIds: string[];
+  toggleCategory: (categoryId: string) => void;
+  allSeasons: readonly string[];
+  selectedSeasons: string[];
+  toggleSeason: (season: string) => void;
+  routeLineColor: string;
+  onRouteLineColorChange: (color: string) => void;
+  routeStartedAt: string;
+  onRouteStartedAtChange: (value: string) => void;
+  routePoints: RoutePoint[];
+  selectedPointId: number | null;
+  onSelectPoint: (pointId: number) => void;
+  selectedPoint: RoutePoint | null;
+  selectedPointIndex: number;
+  onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
+  onNoteChange: (pointId: number, note: string) => void;
+  onMarkerColorChange: (pointId: number, markerColor: string) => void;
+  onMarkerSizeChange: (pointId: number, markerSize: number) => void;
+  onPreviewSizeChange: (pointId: number, previewSize: number) => void;
+  onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
+  onFocusPoint: (pointId: number) => void;
+  onSaveRoute: () => void;
+  saveLoading: boolean;
+  saveError: string;
+  canSaveCurrentRoute: boolean;
+  loadedRouteInfo: { id: string; user_id: string; name: string } | null;
+}) {
+  const { t } = useLanguage();
+
+  return (
+    <aside className="route-inspector">
+      <div className="route-inspector-header">
+        <div className="route-inspector-header-copy">
+          <span className="route-inspector-eyebrow">{t("map.routeInspectorTitle")}</span>
+          <h3>{routeName.trim() || t("map.routeDraft")}</h3>
+          <p>{t("map.routeInspectorSubtitle", { count: routePoints.length })}</p>
+        </div>
+        {canSaveCurrentRoute && (
+          <button
+            type="button"
+            className="route-inspector-save-btn"
+            onClick={onSaveRoute}
+            disabled={saveLoading}
+          >
+            {saveLoading
+              ? t("map.saving")
+              : loadedRouteInfo
+                ? t("map.saveChanges")
+                : t("map.saveRoute")}
+          </button>
+        )}
+      </div>
+      <div className="route-inspector-body">
+        <section className="route-inspector-section">
+          <label className="route-inspector-label" htmlFor="route-name-input">
+            {t("map.routeNameLabel")}
+          </label>
+          <input
+            id="route-name-input"
+            type="text"
+            className="route-inspector-input"
+            placeholder={t("map.enterRouteName")}
+            value={routeName}
+            onChange={(e) => onRouteNameChange(e.target.value)}
+          />
+        </section>
+        <section className="route-inspector-section">
+          <div className="tag-selector">
+            <label>{t("map.selectCategories")}</label>
+            <div className="tag-selector-buttons">
+              {availableCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`tag-button${selectedCategoryIds.includes(cat.id) ? " active" : ""}`}
+                  onClick={() => toggleCategory(cat.id)}
+                >
+                  {t(`tags.${cat.name}` as any) || cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="route-inspector-section">
+          <div className="tag-selector">
+            <label>{t("seasons.label")}</label>
+            <div className="tag-selector-buttons">
+              {allSeasons.map((season) => (
+                <button
+                  key={season}
+                  type="button"
+                  className={`tag-button${selectedSeasons.includes(season) ? " active" : ""}`}
+                  onClick={() => toggleSeason(season)}
+                >
+                  {t(`seasons.${season}` as any)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="route-inspector-section">
+          <div className="tag-selector">
+            <label>{t("map.routeLineColor")}</label>
+            <div className="route-color-controls">
+              <input
+                type="color"
+                value={routeLineColor}
+                onChange={(e) => onRouteLineColorChange(normalizeRouteLineColor(e.target.value))}
+                className="route-color-input"
+                aria-label={t("map.routeLineColor")}
+              />
+              <div className="route-color-swatches">
+                {ROUTE_LINE_COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`route-color-swatch${normalizeRouteLineColor(routeLineColor) === color ? " active" : ""}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => onRouteLineColorChange(color)}
+                    aria-label={`${t("map.routeLineColor")} ${color}`}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="route-inspector-section">
+          <label className="route-inspector-label" htmlFor="route-started-at-input">
+            {t("map.routeStartedAt")}
+          </label>
+          <input
+            id="route-started-at-input"
+            type="datetime-local"
+            className="route-inspector-input"
+            value={routeStartedAt}
+            onChange={(e) => onRouteStartedAtChange(e.target.value)}
+            aria-label={t("map.routeStartedAt")}
+          />
+          <div className="route-inspector-hint">{t("map.routeStartedAtHint")}</div>
+        </section>
+        <section className="route-inspector-section">
+          <div className="route-inspector-section-header">
+            <h4>{t("map.pointsListTitle")}</h4>
+          </div>
+          <div className="route-point-list">
+            {routePoints.map((point, index) => {
+              const pointTitle = point.name?.trim() || t("map.point", { index: index + 1 });
+              const isSelected = point.id === selectedPointId;
+              const photoSrc = getPhotoSrc(point.photo);
+              const note = point.note?.trim();
+
+              return (
+                <button
+                  key={point.id}
+                  type="button"
+                  className={`route-point-list-item${isSelected ? " active" : ""}`}
+                  onClick={() => onSelectPoint(point.id)}
+                >
+                  <div className="route-point-list-top">
+                    <span className="route-point-list-title">{pointTitle}</span>
+                    <span className="route-point-list-index">{index + 1}</span>
+                  </div>
+                  <div className="route-point-list-meta">
+                    {point.position[0].toFixed(5)}, {point.position[1].toFixed(5)}
+                  </div>
+                  {(note || photoSrc) && (
+                    <div className="route-point-list-badges">
+                      {note && <span className="route-point-list-badge">{t("map.pointBadgeNote")}</span>}
+                      {photoSrc && <span className="route-point-list-badge">{t("map.pointBadgePhoto")}</span>}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+        <section className="route-inspector-section route-inspector-section-point">
+          <div className="route-inspector-section-header">
+            <h4>{t("map.pointInspectorTitle")}</h4>
+          </div>
+          {selectedPoint ? (
+            <PointDetailsEditor
+              point={selectedPoint}
+              index={selectedPointIndex}
+              onPhotoChange={onPhotoChange}
+              onNoteChange={onNoteChange}
+              onMarkerColorChange={onMarkerColorChange}
+              onMarkerSizeChange={onMarkerSizeChange}
+              onPreviewSizeChange={onPreviewSizeChange}
+              onPreviewShapeChange={onPreviewShapeChange}
+              onFocusPoint={onFocusPoint}
+            />
+          ) : (
+            <div className="route-inspector-empty">
+              {t("map.selectPointHint")}
+            </div>
+          )}
+        </section>
+        {saveError && <div className="route-inspector-error">{saveError}</div>}
+      </div>
+    </aside>
+  );
+});
+
 export function MapPage() {
+
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [routeMode, setRouteMode] = useState<RouteMode>("auto");
@@ -884,7 +1179,6 @@ export function MapPage() {
     setPathEngine(engineId);
   };
   const [tileProvider, setTileProvider] = useState(() => localStorage.getItem("tileProvider") || "yandex");
-  const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
@@ -906,6 +1200,8 @@ export function MapPage() {
   const [aiDescription, setAiDescription] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
+  const [selectedPointId, setSelectedPointId] = useState<number | null>(null);
+  const [chatPreviewPoints, setChatPreviewPoints] = useState<RoutePoint[]>([]);
   const pointIdRef = useRef(0);
   const photoImportRef = useRef<HTMLInputElement>(null);
 
@@ -926,6 +1222,22 @@ export function MapPage() {
       setAvailableCategories(cats);
     }).catch(err => console.error('Failed to load categories:', err));
   }, []);
+
+  useEffect(() => {
+    if (routePoints.length === 0) {
+      if (selectedPointId !== null) {
+        setSelectedPointId(null);
+      }
+      return;
+    }
+
+    if (
+      selectedPointId === null ||
+      !routePoints.some((point) => point.id === selectedPointId)
+    ) {
+      setSelectedPointId(routePoints[routePoints.length - 1].id);
+    }
+  }, [routePoints, selectedPointId]);
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategoryIds(prev =>
@@ -1001,6 +1313,9 @@ export function MapPage() {
         photo: p.photo,
       }));
       setRoutePoints(loadedPoints);
+      setSelectedPointId(loadedPoints[0]?.id ?? null);
+      setChatPreviewPoints([]);
+      setSaveError("");
       pointIdRef.current = loadedPoints.length;
 
       // Create segments for loaded points, restoring saved mode
@@ -1168,7 +1483,6 @@ export function MapPage() {
       setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
       setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
       setLoadedRouteInfo({ id: savedRoute.id, user_id: savedRoute.user_id, name: savedRoute.name });
-      setShowSaveModal(false);
       toast.success(t("map.routeSaved"));
     } catch (err: any) {
       setSaveError(err.response?.data || t("map.saveFailed"));
@@ -1178,7 +1492,7 @@ export function MapPage() {
   };
 
   const handleClearRoute = () => {
-    if (routePoints.length > 0 || overlayRoutes.length > 0) {
+    if (routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) {
       setShowConfirmClear(true);
       return;
     }
@@ -1195,6 +1509,9 @@ export function MapPage() {
     setSelectedSeasons([]);
     setRouteLineColor(DEFAULT_ROUTE_LINE_COLOR);
     setRouteStartedAt("");
+    setSaveError("");
+    setSelectedPointId(null);
+    setChatPreviewPoints([]);
     pointIdRef.current = 0;
   };
 
@@ -1205,6 +1522,8 @@ export function MapPage() {
       markerColor: DEFAULT_POINT_MARKER_COLOR,
       markerSize: DEFAULT_POINT_MARKER_SIZE,
     };
+    setSelectedPointId(newPoint.id);
+    setChatPreviewPoints([]);
     setRoutePoints((prev) => {
       const newPoints = [...prev, newPoint];
 
@@ -1392,6 +1711,9 @@ export function MapPage() {
       photo: { original: photo.base64, status: "pending" } as PhotoData,
     }));
 
+    setSelectedPointId(newPoints[newPoints.length - 1]?.id ?? null);
+    setChatPreviewPoints([]);
+
     setRoutePoints((prev) => {
       const newSegments: RouteSegment[] = [];
 
@@ -1469,6 +1791,23 @@ export function MapPage() {
     });
   };
 
+  const focusMapOnPoint = (pointId: number) => {
+    const targetPoint = routePoints.find((point) => point.id === pointId);
+    if (!targetPoint) {
+      return;
+    }
+    focusMapOnPoints([targetPoint]);
+  };
+
+  const buildChatPreviewPoints = (points: ChatPoint[]): RoutePoint[] =>
+    points.map((point, index) => ({
+      id: -1 - index,
+      position: [point.lat, point.lng] as [number, number],
+      name: point.name,
+      markerColor: CHAT_PREVIEW_ROUTE_COLOR,
+      markerSize: DEFAULT_POINT_MARKER_SIZE,
+    }));
+
   const appendChatPointsToRoute = (points: ChatPoint[]) => {
     const incomingPoints: RoutePoint[] = points.map((point) => ({
       id: pointIdRef.current++,
@@ -1479,56 +1818,74 @@ export function MapPage() {
     }));
 
     if (incomingPoints.length === 0) {
-      return [];
+      return { previewPoints: routePoints, appendedPoints: [] as RoutePoint[] };
     }
 
     const overlap = overlappingRouteTailLength(routePoints, incomingPoints);
     const previewPoints = [...routePoints, ...incomingPoints.slice(overlap)];
+    const appendedPoints = incomingPoints.slice(overlap);
 
     setRoutePoints((prev) => {
       const prevOverlap = overlappingRouteTailLength(prev, incomingPoints);
-      const appendedPoints = incomingPoints.slice(prevOverlap);
-      if (appendedPoints.length === 0) {
+      const pointsToAppend = incomingPoints.slice(prevOverlap);
+      if (pointsToAppend.length === 0) {
         return prev;
       }
 
       const newSegments = buildSegmentsForAppendedPoints(
         prev.length,
-        appendedPoints.length,
+        pointsToAppend.length,
         routeMode,
       );
       setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
 
-      return [...prev, ...appendedPoints];
+      return [...prev, ...pointsToAppend];
     });
 
-    return previewPoints;
+    return { previewPoints, appendedPoints };
   };
 
-  const handleChatApplyPoints = (points: ChatPoint[]) => {
-    appendChatPointsToRoute(points);
+  const handleChatPreviewPoints = (points: ChatPoint[]) => {
+    const previewPoints = buildChatPreviewPoints(points);
+
+    if (previewPoints.length === 0) {
+      setChatPreviewPoints([]);
+      return;
+    }
+
+    const allPointsAlreadyOnRoute = previewPoints.every((target) =>
+      routePoints.some((routePoint) => routePointsMatch(routePoint, target))
+    );
+
+    setChatPreviewPoints(allPointsAlreadyOnRoute ? [] : previewPoints);
   };
 
-  const handleChatShowPoints = (points: ChatPoint[]) => {
-    const focusTargets = points.map((point) => ({
-      id: -1,
-      position: [point.lat, point.lng] as [number, number],
-      name: point.name,
-    }));
+  const handleChatFocusPoints = (points: ChatPoint[]) => {
+    const focusTargets = buildChatPreviewPoints(points);
 
-    const allPointsAlreadyOnRoute =
-      focusTargets.length > 0 &&
-      focusTargets.every((target) =>
-        routePoints.some((routePoint) => routePointsMatch(routePoint, target))
-      );
+    if (focusTargets.length === 0) {
+      return;
+    }
+
+    const allPointsAlreadyOnRoute = focusTargets.every((target) =>
+      routePoints.some((routePoint) => routePointsMatch(routePoint, target))
+    );
 
     if (allPointsAlreadyOnRoute) {
       focusMapOnPoints(routePoints.length >= 2 ? routePoints : focusTargets);
       return;
     }
 
-    const previewPoints = appendChatPointsToRoute(points);
-    focusMapOnPoints(previewPoints.length > 0 ? previewPoints : focusTargets);
+    setChatPreviewPoints(focusTargets);
+    focusMapOnPoints(focusTargets);
+  };
+
+  const handleChatApplyPoints = (points: ChatPoint[]) => {
+    const { appendedPoints } = appendChatPointsToRoute(points);
+    setChatPreviewPoints([]);
+    if (appendedPoints.length > 0) {
+      setSelectedPointId(appendedPoints[appendedPoints.length - 1].id);
+    }
   };
 
   const handleChatShowRoutes = (routeIds: string[]) => {
@@ -1542,9 +1899,23 @@ export function MapPage() {
   const canSaveCurrentRoute =
     routePoints.length >= 2 &&
     (!loadedRouteInfo || loadedRouteInfo.user_id === user?.id);
+  const selectedPointIndex =
+    selectedPointId === null
+      ? -1
+      : routePoints.findIndex((point) => point.id === selectedPointId);
+  const selectedPoint =
+    selectedPointIndex >= 0 ? routePoints[selectedPointIndex] : null;
 
   const waypoints = routePoints.map((point) =>
     L.latLng(point.position[0], point.position[1])
+  );
+  const chatPreviewWaypoints = chatPreviewPoints.map((point) =>
+    L.latLng(point.position[0], point.position[1])
+  );
+  const chatPreviewSegments = buildSegmentsForAppendedPoints(
+    0,
+    chatPreviewPoints.length,
+    routeMode,
   );
 
   return (
@@ -1587,7 +1958,7 @@ export function MapPage() {
           {/* Save Route — prominent */}
           {canSaveCurrentRoute && (
             <button
-              onClick={() => setShowSaveModal(true)}
+              onClick={handleSaveRoute}
               className="btn btn-primary btn-sm btn-pill"
             >
               {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
@@ -1628,7 +1999,7 @@ export function MapPage() {
                 <button onClick={() => setHistoricalMode(!historicalMode)}>
                   {historicalMode ? "✓ " : ""}{t("historical.toggle")}
                 </button>
-                {(routePoints.length > 0 || overlayRoutes.length > 0) && (
+                {(routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) && (
                   <button onClick={handleClearRoute} className="dropdown-danger">{t("map.clear")}</button>
                 )}
               </div>
@@ -1675,7 +2046,7 @@ export function MapPage() {
           </button>
           {canSaveCurrentRoute && (
             <button
-              onClick={() => setShowSaveModal(true)}
+              onClick={handleSaveRoute}
               className="save-btn"
             >
               {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
@@ -1712,7 +2083,7 @@ export function MapPage() {
               {t("playback.button")}
             </button>
           )}
-          {(routePoints.length > 0 || overlayRoutes.length > 0) && (
+          {(routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) && (
             <button onClick={handleClearRoute} className="clear-btn">
               {t("map.clear")}
             </button>
@@ -1814,102 +2185,38 @@ export function MapPage() {
         </div>
       )}
 
-      {showSaveModal && (
-        <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{t("map.saveRouteTitle")}</h2>
-            <div className="modal-form">
-              <input
-                type="text"
-                placeholder={t("map.enterRouteName")}
-                value={routeName}
-                onChange={(e) => setRouteName(e.target.value)}
-                autoFocus
-              />
-              <div className="tag-selector">
-                <label>{t("map.selectCategories")}</label>
-                <div className="tag-selector-buttons">
-                  {availableCategories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      className={`tag-button${selectedCategoryIds.includes(cat.id) ? " active" : ""}`}
-                      onClick={() => toggleCategory(cat.id)}
-                    >
-                      {t(`tags.${cat.name}` as any) || cat.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="tag-selector">
-                <label>{t("seasons.label")}</label>
-                <div className="tag-selector-buttons">
-                  {ALL_SEASONS.map((season) => (
-                    <button
-                      key={season}
-                      type="button"
-                      className={`tag-button${selectedSeasons.includes(season) ? " active" : ""}`}
-                      onClick={() => toggleSeason(season)}
-                    >
-                      {t(`seasons.${season}` as any)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="tag-selector">
-                <label>{t("map.routeLineColor")}</label>
-                <div className="route-color-controls">
-                  <input
-                    type="color"
-                    value={routeLineColor}
-                    onChange={(e) => setRouteLineColor(normalizeRouteLineColor(e.target.value))}
-                    className="route-color-input"
-                    aria-label={t("map.routeLineColor")}
-                  />
-                  <div className="route-color-swatches">
-                    {ROUTE_LINE_COLOR_PRESETS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={`route-color-swatch${normalizeRouteLineColor(routeLineColor) === color ? " active" : ""}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setRouteLineColor(color)}
-                        aria-label={`${t("map.routeLineColor")} ${color}`}
-                        title={color}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="tag-selector">
-                <label>{t("map.routeStartedAt")}</label>
-                <input
-                  type="datetime-local"
-                  value={routeStartedAt}
-                  onChange={(e) => setRouteStartedAt(e.target.value)}
-                  aria-label={t("map.routeStartedAt")}
-                />
-                <div className="modal-field-hint">{t("map.routeStartedAtHint")}</div>
-              </div>
-              {saveError && <div className="modal-error">{saveError}</div>}
-              <div className="modal-actions">
-                <button
-                  onClick={() => setShowSaveModal(false)}
-                  className="modal-cancel"
-                >
-                  {t("map.cancel")}
-                </button>
-                <button
-                  onClick={handleSaveRoute}
-                  disabled={saveLoading}
-                  className="modal-save"
-                >
-                  {saveLoading ? t("map.saving") : t("map.save")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {routePoints.length > 0 && !chatOpen && (
+        <RouteInspector
+          routeName={routeName}
+          onRouteNameChange={setRouteName}
+          availableCategories={availableCategories}
+          selectedCategoryIds={selectedCategoryIds}
+          toggleCategory={toggleCategory}
+          allSeasons={ALL_SEASONS}
+          selectedSeasons={selectedSeasons}
+          toggleSeason={toggleSeason}
+          routeLineColor={routeLineColor}
+          onRouteLineColorChange={setRouteLineColor}
+          routeStartedAt={routeStartedAt}
+          onRouteStartedAtChange={setRouteStartedAt}
+          routePoints={routePoints}
+          selectedPointId={selectedPointId}
+          onSelectPoint={(pointId) => setSelectedPointId(pointId)}
+          selectedPoint={selectedPoint}
+          selectedPointIndex={selectedPointIndex}
+          onPhotoChange={handlePhotoChange}
+          onNoteChange={handlePointNoteChange}
+          onMarkerColorChange={handlePointMarkerColorChange}
+          onMarkerSizeChange={handlePointMarkerSizeChange}
+          onPreviewSizeChange={handlePointPreviewSizeChange}
+          onPreviewShapeChange={handlePointPreviewShapeChange}
+          onFocusPoint={focusMapOnPoint}
+          onSaveRoute={handleSaveRoute}
+          saveLoading={saveLoading}
+          saveError={saveError}
+          canSaveCurrentRoute={canSaveCurrentRoute}
+          loadedRouteInfo={loadedRouteInfo}
+        />
       )}
       <MapContainer
         center={[55.7518, 37.6178]}
@@ -1943,6 +2250,49 @@ export function MapPage() {
           editable
           onDurationChange={handleSegmentDurationChange}
         />
+        {chatPreviewPoints.length >= 2 && (
+          <>
+            <RoutingControl
+              waypoints={chatPreviewWaypoints}
+              routeSegments={chatPreviewSegments}
+              color={CHAT_PREVIEW_ROUTE_COLOR}
+              engineId={routingEngine}
+              categoryNames={[]}
+            />
+            <ManualRoutes
+              waypoints={chatPreviewWaypoints}
+              routeSegments={chatPreviewSegments}
+              color={CHAT_PREVIEW_ROUTE_COLOR}
+              categoryNames={[]}
+            />
+          </>
+        )}
+        {chatPreviewPoints.map((point, index) => (
+          <Marker
+            key={`chat-preview-${index}-${point.position[0]}-${point.position[1]}`}
+            position={point.position}
+            icon={createColoredMarkerIcon(
+              CHAT_PREVIEW_ROUTE_COLOR,
+              undefined,
+              undefined,
+              undefined,
+              CHAT_PREVIEW_ROUTE_COLOR,
+              DEFAULT_POINT_MARKER_SIZE,
+            )}
+          >
+            <Popup>
+              <div className="point-popup">
+                <div className="point-popup-header">
+                  <strong>{point.name?.trim() || t("map.point", { index: index + 1 })}</strong>
+                </div>
+                <div className="point-popup-coords">
+                  {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+                  {point.position[1].toFixed(6)}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
         {routePoints.map((point, index) => (
           <Marker
             key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
@@ -1950,6 +2300,9 @@ export function MapPage() {
             icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
             draggable={true}
             eventHandlers={{
+              click: () => {
+                setSelectedPointId(point.id);
+              },
               dragend: (e) => {
                 const { lat, lng } = e.target.getLatLng();
                 handlePointDrag(point.id, lat, lng);
@@ -1960,12 +2313,7 @@ export function MapPage() {
               <PointPopup
                 point={point}
                 index={index}
-                onPhotoChange={handlePhotoChange}
-                onNoteChange={handlePointNoteChange}
-                onMarkerColorChange={handlePointMarkerColorChange}
-                onMarkerSizeChange={handlePointMarkerSizeChange}
-                onPreviewSizeChange={handlePointPreviewSizeChange}
-                onPreviewShapeChange={handlePointPreviewShapeChange}
+                onEdit={(pointId) => setSelectedPointId(pointId)}
               />
             </Popup>
           </Marker>
@@ -2058,7 +2406,8 @@ export function MapPage() {
       <ChatPanel
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
-        onShowPoints={handleChatShowPoints}
+        onPreviewPoints={handleChatPreviewPoints}
+        onFocusPoints={handleChatFocusPoints}
         onApplyPoints={handleChatApplyPoints}
         onShowRoutes={handleChatShowRoutes}
         mapContext={{

@@ -159,7 +159,7 @@ export default function ExplorePage() {
             <option value="autumn">{t('seasons.autumn')}</option>
           </select>
           <button
-            className={`btn-secondary${season === getCurrentSeason() ? ' active' : ''}`}
+            className={`explore-season-toggle${season === getCurrentSeason() ? ' active' : ''}`}
             onClick={() => setSeason(s => s === getCurrentSeason() ? '' : getCurrentSeason())}
           >
             {t('seasons.current')}
