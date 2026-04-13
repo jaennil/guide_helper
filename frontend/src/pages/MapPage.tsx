@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, type ChangeEvent } from "react";
+import React, { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import toast from "react-hot-toast";
 import exifr from "exifr";
 import {
@@ -1390,6 +1390,10 @@ export function MapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const normalizedRouteStartedAt = routeStartedAt ? fromDatetimeLocalValue(routeStartedAt) : undefined;
+  const routeGeoPoints = useMemo(
+    () => routePoints.map((point) => ({ lat: point.position[0], lng: point.position[1] })),
+    [routePoints],
+  );
   const routeHistoricalYear = normalizedRouteStartedAt
     ? clampHistoricalYear(new Date(normalizedRouteStartedAt).getFullYear(), currentHistoricalYear)
     : null;
@@ -2665,7 +2669,7 @@ export function MapPage() {
       </MapContainer>
       {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
-          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
+          points={routeGeoPoints}
           segments={routeSegments}
           categoryNames={selectedCategoryNames}
           engineId={routingEngine}
@@ -2673,8 +2677,8 @@ export function MapPage() {
       )}
       {!playbackActive && routePoints.length >= 2 && (
         <WeatherPanel
-          points={routePoints.map((p) => ({ lat: p.position[0], lng: p.position[1] }))}
-          startedAt={routeStartedAt ? fromDatetimeLocalValue(routeStartedAt) : undefined}
+          points={routeGeoPoints}
+          startedAt={normalizedRouteStartedAt}
         />
       )}
       {loadedRouteInfo && (
