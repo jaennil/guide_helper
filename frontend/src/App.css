@@ -1150,6 +1150,10 @@ body {
     transform: translateX(-50%);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
     box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3), 0 0 24px rgba(255, 255, 255, 0.3);
+    padding: 0;
+    border: none;
+    cursor: ew-resize;
+    pointer-events: auto;
 }
 
 .historical-split-handle {
@@ -1165,6 +1169,9 @@ body {
     background: rgba(15, 23, 42, 0.78);
     border: 1px solid rgba(255, 255, 255, 0.16);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    padding: 12px 10px;
+    cursor: ew-resize;
+    pointer-events: auto;
 }
 
 .historical-split-handle span {
@@ -1172,6 +1179,11 @@ body {
     height: 22px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.82);
+}
+
+.historical-split-line:hover,
+.historical-split-handle:hover {
+    filter: brightness(1.08);
 }
 
 .active-toggle {

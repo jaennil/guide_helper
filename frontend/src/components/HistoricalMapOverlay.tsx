@@ -12,14 +12,27 @@ interface HistoricalMapOverlayProps {
   year: number;
   opacity: number;
   comparePosition?: number | null;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function HistoricalMapOverlay({ year, opacity, comparePosition = null }: HistoricalMapOverlayProps) {
+export function HistoricalMapOverlay({
+  year,
+  opacity,
+  comparePosition = null,
+  onBusyChange,
+}: HistoricalMapOverlayProps) {
   const map = useMap();
   const layerRef = useRef<L.MaplibreGL | null>(null);
   const glMapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const renderTokenRef = useRef(0);
+  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const latestYearRef = useRef(year);
+
+  useEffect(() => {
+    latestYearRef.current = year;
+  }, [year]);
 
   // Create the MapLibre GL layer
   useEffect(() => {
@@ -49,10 +62,22 @@ export function HistoricalMapOverlay({ year, opacity, comparePosition = null }: 
     glMap.on('load', () => {
       console.log('[historical] MapLibre loaded');
       readyRef.current = true;
-      filterByDate(glMap, String(year));
+      renderTokenRef.current += 1;
+      const renderToken = renderTokenRef.current;
+      const markReady = () => {
+        if (renderTokenRef.current !== renderToken) {
+          return;
+        }
+        onBusyChange?.(false);
+      };
+      onBusyChange?.(true);
+      glMap.once('idle', markReady);
+      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+      settleTimeoutRef.current = setTimeout(markReady, 1200);
+      filterByDate(glMap, String(latestYearRef.current));
       glMap.resize();
       glMap.triggerRepaint();
-      console.log('[historical] date filter applied:', year);
+      console.log('[historical] date filter applied:', latestYearRef.current);
     });
 
     glMap.on('error', (e: any) => {
@@ -71,13 +96,15 @@ export function HistoricalMapOverlay({ year, opacity, comparePosition = null }: 
       readyRef.current = false;
       clearInterval(resizeTimer);
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+      onBusyChange?.(false);
       if (layerRef.current) {
         map.removeLayer(layerRef.current);
         layerRef.current = null;
         glMapRef.current = null;
       }
     };
-  }, [map]);
+  }, [map, onBusyChange]);
 
   // Year filter
   useEffect(() => {
@@ -85,12 +112,25 @@ export function HistoricalMapOverlay({ year, opacity, comparePosition = null }: 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (glMapRef.current && readyRef.current) {
+        renderTokenRef.current += 1;
+        const renderToken = renderTokenRef.current;
+        const markReady = () => {
+          if (renderTokenRef.current !== renderToken) {
+            return;
+          }
+          onBusyChange?.(false);
+        };
         console.log('[historical] filtering by year', year);
+        onBusyChange?.(true);
+        glMapRef.current.once('idle', markReady);
+        if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+        settleTimeoutRef.current = setTimeout(markReady, 1200);
         filterByDate(glMapRef.current, String(year));
+        glMapRef.current.resize();
         glMapRef.current.triggerRepaint();
       }
     }, 200);
-  }, [year]);
+  }, [onBusyChange, year]);
 
   // Opacity
   useEffect(() => {

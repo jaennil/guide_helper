@@ -1201,6 +1201,8 @@ export function MapPage() {
   const [historicalSpeedStep, setHistoricalSpeedStep] = useState<(typeof HISTORICAL_SPEED_STEPS)[number]>(5);
   const [historicalCompareMode, setHistoricalCompareMode] = useState(false);
   const [historicalComparePosition, setHistoricalComparePosition] = useState(52);
+  const [historicalCompareDragging, setHistoricalCompareDragging] = useState(false);
+  const [historicalOverlayBusy, setHistoricalOverlayBusy] = useState(false);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -1232,28 +1234,68 @@ export function MapPage() {
     if (!historicalMode) {
       setHistoricalPlaying(false);
       setHistoricalCompareMode(false);
+      setHistoricalCompareDragging(false);
     }
   }, [historicalMode]);
 
   useEffect(() => {
-    if (!historicalMode || !historicalPlaying) {
+    if (!historicalMode || !historicalPlaying || historicalOverlayBusy) {
       return;
     }
 
-    const intervalId = window.setInterval(() => {
+    const delayMs = historicalSpeedStep === 1 ? 900 : historicalSpeedStep === 5 ? 700 : 550;
+    const timeoutId = window.setTimeout(() => {
       setHistoricalYear((previousYear) =>
         clampHistoricalYear(previousYear + historicalSpeedStep, currentHistoricalYear),
       );
-    }, 640);
+    }, delayMs);
 
-    return () => window.clearInterval(intervalId);
-  }, [currentHistoricalYear, historicalMode, historicalPlaying, historicalSpeedStep]);
+    return () => window.clearTimeout(timeoutId);
+  }, [currentHistoricalYear, historicalMode, historicalOverlayBusy, historicalPlaying, historicalSpeedStep]);
 
   useEffect(() => {
     if (historicalPlaying && historicalYear >= currentHistoricalYear) {
       setHistoricalPlaying(false);
     }
   }, [currentHistoricalYear, historicalPlaying, historicalYear]);
+
+  useEffect(() => {
+    if (!historicalCompareMode || !historicalCompareDragging) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      updateHistoricalComparePosition(event.clientX);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches[0]) {
+        updateHistoricalComparePosition(event.touches[0].clientX);
+      }
+    };
+
+    const stopDragging = () => {
+      setHistoricalCompareDragging(false);
+    };
+
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopDragging);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", stopDragging);
+    window.addEventListener("touchcancel", stopDragging);
+
+    return () => {
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopDragging);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", stopDragging);
+      window.removeEventListener("touchcancel", stopDragging);
+    };
+  }, [historicalCompareDragging, historicalCompareMode]);
 
   useEffect(() => {
     categoriesApi.getCategories().then(cats => {
@@ -1302,7 +1344,31 @@ export function MapPage() {
   };
 
   const handleHistoricalCompareToggle = () => {
-    setHistoricalCompareMode((previousMode) => !previousMode);
+    setHistoricalCompareMode((previousMode) => {
+      const nextMode = !previousMode;
+      if (!nextMode) {
+        setHistoricalCompareDragging(false);
+      }
+      return nextMode;
+    });
+  };
+
+  const updateHistoricalComparePosition = (clientX: number) => {
+    const container = mapRef.current?.getContainer();
+    if (!container) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    if (rect.width <= 0) {
+      return;
+    }
+    const nextPosition = ((clientX - rect.left) / rect.width) * 100;
+    setHistoricalComparePosition(Math.max(0, Math.min(100, Math.round(nextPosition))));
+  };
+
+  const startHistoricalCompareDrag = (clientX: number) => {
+    updateHistoricalComparePosition(clientX);
+    setHistoricalCompareDragging(true);
   };
 
   const handleHistoricalModeToggle = () => {
@@ -2345,12 +2411,32 @@ export function MapPage() {
           className="historical-split-indicator"
           style={{ "--historical-split": `${historicalComparePosition}%` } as React.CSSProperties}
         >
-          <div className="historical-split-line" />
-          <div className="historical-split-handle">
+          <button
+            type="button"
+            className="historical-split-line"
+            onMouseDown={(event) => startHistoricalCompareDrag(event.clientX)}
+            onTouchStart={(event) => {
+              if (event.touches[0]) {
+                startHistoricalCompareDrag(event.touches[0].clientX);
+              }
+            }}
+            aria-label={t("historical.comparePosition")}
+          />
+          <button
+            type="button"
+            className="historical-split-handle"
+            onMouseDown={(event) => startHistoricalCompareDrag(event.clientX)}
+            onTouchStart={(event) => {
+              if (event.touches[0]) {
+                startHistoricalCompareDrag(event.touches[0].clientX);
+              }
+            }}
+            aria-label={t("historical.comparePosition")}
+          >
             <span />
             <span />
             <span />
-          </div>
+          </button>
         </div>
       )}
 
@@ -2425,6 +2511,7 @@ export function MapPage() {
             year={historicalYear}
             opacity={historicalOpacity}
             comparePosition={historicalCompareMode ? historicalComparePosition : null}
+            onBusyChange={setHistoricalOverlayBusy}
           />
         )}
         <RoutingControl
