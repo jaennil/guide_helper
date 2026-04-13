@@ -6,7 +6,7 @@ import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
 import { getLocalizedCategoryName } from '../utils/categories';
-import { MapPin } from 'lucide-react';
+import { ArrowUpRight, FilterX, MapPin } from 'lucide-react';
 import './ExplorePage.css';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
@@ -27,6 +27,10 @@ export default function ExplorePage() {
   const [season, setSeason] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [offset, setOffset] = useState(0);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const getCurrentSeason = (): string => {
     const month = new Date().getMonth() + 1;
@@ -35,19 +39,21 @@ export default function ExplorePage() {
     if (month >= 9 && month <= 11) return 'autumn';
     return 'winter';
   };
-  const [initialLoad, setInitialLoad] = useState(true);
-
-  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    categoriesApi.getCategories().then(cats => {
+    categoriesApi.getCategories().then((cats) => {
       setAvailableCategories(cats);
-    }).catch(err => console.error('Failed to load categories:', err));
+    }).catch((err) => console.error('Failed to load categories:', err));
   }, []);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  const fetchRoutes = useCallback(async (searchValue: string, categoryIdValue: string, seasonValue: string, sortValue: SortOption, offsetValue: number, append: boolean) => {
+  const fetchRoutes = useCallback(async (
+    searchValue: string,
+    categoryIdValue: string,
+    seasonValue: string,
+    sortValue: SortOption,
+    offsetValue: number,
+    append: boolean,
+  ) => {
     setLoading(true);
     setError('');
     try {
@@ -60,7 +66,7 @@ export default function ExplorePage() {
         offset: offsetValue,
       });
       if (append) {
-        setRoutes(prev => [...prev, ...data.routes]);
+        setRoutes((prev) => [...prev, ...data.routes]);
       } else {
         setRoutes(data.routes);
       }
@@ -73,20 +79,17 @@ export default function ExplorePage() {
     }
   }, [t]);
 
-  // Initial load, sort, category and season change
   useEffect(() => {
     setOffset(0);
     fetchRoutes(search, categoryId, season, sort, 0, false);
-  }, [sort, categoryId, season]);
+  }, [sort, categoryId, season, fetchRoutes]);
 
-  // Refetch when another page updates a route (e.g. rename in ProfilePage)
   useEffect(() => {
     const handler = () => fetchRoutes(search, categoryId, season, sort, 0, false);
     window.addEventListener('routeUpdated', handler);
     return () => window.removeEventListener('routeUpdated', handler);
   }, [fetchRoutes, search, categoryId, season, sort]);
 
-  // Search with debounce
   const handleSearchChange = (value: string) => {
     setSearch(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -102,6 +105,18 @@ export default function ExplorePage() {
     fetchRoutes(search, categoryId, season, sort, newOffset, true);
   };
 
+  const handleResetFilters = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    setSearch('');
+    setCategoryId('');
+    setSeason('');
+    setSort('newest');
+    setOffset(0);
+    fetchRoutes('', '', '', 'newest', 0, false);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(dateLocale, {
       year: 'numeric',
@@ -110,77 +125,118 @@ export default function ExplorePage() {
     });
   };
 
+  const categoryName = categoryId
+    ? availableCategories.find((category) => category.id === categoryId)?.name
+    : undefined;
+  const activeFilters = [
+    search.trim() ? { key: 'search', label: search.trim() } : null,
+    categoryName ? { key: 'category', label: getLocalizedCategoryName(categoryName, t) } : null,
+    season ? { key: 'season', label: t(`seasons.${season}` as any) } : null,
+    sort !== 'newest' ? { key: 'sort', label: t(`explore.sort${sort === 'oldest' ? 'Oldest' : sort === 'popular' ? 'Popular' : 'TopRated'}` as any) } : null,
+  ].filter((value): value is { key: string; label: string } => Boolean(value));
+
   const hasMore = routes.length < total;
 
   return (
     <div className="explore-page">
       <header className="explore-header">
-        <h1>{t('explore.title')}</h1>
+        <div>
+          <h1>{t('explore.title')}</h1>
+          <p className="explore-header-subtitle">{t('explore.results', { count: total })}</p>
+        </div>
         <div className="header-actions">
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('explore.backToMap')}
           </button>
           <button onClick={toggleTheme} className="theme-toggle-btn" title={t('theme.toggle')}>
-            {theme === 'light' ? '\u263D' : '\u2600'}
+            {theme === 'light' ? '☽' : '☀'}
           </button>
         </div>
       </header>
 
       <div className="explore-content">
-        <div className="explore-controls">
-          <input
-            type="text"
-            className="explore-search"
-            placeholder={t('explore.searchPlaceholder')}
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          <select
-            className="explore-tag-filter"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">{t('explore.allCategories')}</option>
-            {availableCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {t(`tags.${cat.name}` as any) || cat.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="explore-tag-filter"
-            value={season}
-            onChange={(e) => setSeason(e.target.value)}
-          >
-            <option value="">{t('seasons.all')}</option>
-            <option value="winter">{t('seasons.winter')}</option>
-            <option value="spring">{t('seasons.spring')}</option>
-            <option value="summer">{t('seasons.summer')}</option>
-            <option value="autumn">{t('seasons.autumn')}</option>
-          </select>
-          <button
-            className={`explore-season-toggle${season === getCurrentSeason() ? ' active' : ''}`}
-            onClick={() => setSeason(s => s === getCurrentSeason() ? '' : getCurrentSeason())}
-          >
-            {t('seasons.current')}
-          </button>
-          <select
-            className="explore-sort"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortOption)}
-          >
-            <option value="newest">{t('explore.sortNewest')}</option>
-            <option value="oldest">{t('explore.sortOldest')}</option>
-            <option value="popular">{t('explore.sortPopular')}</option>
-            <option value="top_rated">{t('explore.sortTopRated')}</option>
-          </select>
-        </div>
+        <section className="explore-controls-card">
+          <div className="explore-controls-head">
+            <div>
+              <span className="explore-overline">{t('explore.filtersTitle')}</span>
+              <p className="explore-controls-copy">{t('explore.results', { count: total })}</p>
+            </div>
+            {activeFilters.length > 0 && (
+              <button type="button" className="explore-clear-btn" onClick={handleResetFilters}>
+                <FilterX size={14} /> {t('common.reset')}
+              </button>
+            )}
+          </div>
+
+          <div className="explore-controls">
+            <input
+              type="text"
+              className="explore-search"
+              placeholder={t('explore.searchPlaceholder')}
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+            <select
+              className="explore-tag-filter"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">{t('explore.allCategories')}</option>
+              {availableCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {t(`tags.${cat.name}` as any) || cat.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="explore-tag-filter"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+            >
+              <option value="">{t('seasons.all')}</option>
+              <option value="winter">{t('seasons.winter')}</option>
+              <option value="spring">{t('seasons.spring')}</option>
+              <option value="summer">{t('seasons.summer')}</option>
+              <option value="autumn">{t('seasons.autumn')}</option>
+            </select>
+            <button
+              className={`explore-season-toggle${season === getCurrentSeason() ? ' active' : ''}`}
+              onClick={() => setSeason((current) => current === getCurrentSeason() ? '' : getCurrentSeason())}
+            >
+              {t('seasons.current')}
+            </button>
+            <select
+              className="explore-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+            >
+              <option value="newest">{t('explore.sortNewest')}</option>
+              <option value="oldest">{t('explore.sortOldest')}</option>
+              <option value="popular">{t('explore.sortPopular')}</option>
+              <option value="top_rated">{t('explore.sortTopRated')}</option>
+            </select>
+          </div>
+
+          {activeFilters.length > 0 && (
+            <div className="explore-active-filters">
+              {activeFilters.map((filter) => (
+                <span key={filter.key} className="explore-filter-chip">{filter.label}</span>
+              ))}
+            </div>
+          )}
+        </section>
 
         {error && <div className="error-message">{error}</div>}
 
         {!initialLoad && routes.length === 0 && !loading && (
           <div className="explore-empty">
             <p>{t('explore.noRoutes')}</p>
+            <span>{t('explore.emptyHint')}</span>
+            {activeFilters.length > 0 && (
+              <button type="button" className="btn-secondary" onClick={handleResetFilters}>
+                {t('common.reset')}
+              </button>
+            )}
           </div>
         )}
 
@@ -188,52 +244,53 @@ export default function ExplorePage() {
           <>
             <div className="explore-grid">
               {routes.map((route) => (
-                <div
+                <article
                   key={route.id}
                   className="explore-card"
                   onClick={() => navigate(`/shared/${route.share_token}`)}
                 >
-                  <h3 className="explore-card-name">{route.name}</h3>
+                  <div className="explore-card-top">
+                    <h3 className="explore-card-name">{route.name}</h3>
+                    <span className="explore-card-open">{t('common.open')} <ArrowUpRight size={14} /></span>
+                  </div>
                   <div className="explore-card-meta">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} />{route.points_count}</span>
+                    <span className="explore-meta-item"><MapPin size={14} />{t('explore.pointsCount', { count: route.points_count })}</span>
                     <span className="explore-card-date">{formatDate(route.created_at)}</span>
                   </div>
                   <div className="explore-card-stats">
-                    <span className="explore-card-likes">
-                      &#9825; {route.likes_count}
-                    </span>
+                    <span className="explore-card-likes">♡ {route.likes_count}</span>
                     {route.ratings_count > 0 && (
-                      <span className="explore-card-rating">
-                        &#9733; {route.avg_rating.toFixed(1)} ({route.ratings_count})
-                      </span>
+                      <span className="explore-card-rating">★ {route.avg_rating.toFixed(1)} ({route.ratings_count})</span>
                     )}
                   </div>
                   {route.category_ids.length > 0 && (
                     <div className="route-tags">
                       {route.category_ids.map((id) => {
-                        const cat = availableCategories.find(c => c.id === id);
-                        return <span key={id} className="route-tag">{cat ? getLocalizedCategoryName(cat.name, t) : id}</span>;
+                        const category = availableCategories.find((value) => value.id === id);
+                        return (
+                          <span key={id} className="route-tag">
+                            {category ? getLocalizedCategoryName(category.name, t) : id}
+                          </span>
+                        );
                       })}
                     </div>
                   )}
                   {route.seasons.length > 0 && (
                     <div className="route-tags">
-                      {route.seasons.map((s) => (
-                        <span key={s} className={`route-tag season-tag season-${s}`}>{t(`seasons.${s}` as any)}</span>
+                      {route.seasons.map((value) => (
+                        <span key={value} className={`route-tag season-tag season-${value}`}>
+                          {t(`seasons.${value}` as any)}
+                        </span>
                       ))}
                     </div>
                   )}
-                </div>
+                </article>
               ))}
             </div>
 
             {hasMore && (
               <div className="explore-load-more">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                  className="btn-primary"
-                >
+                <button onClick={handleLoadMore} disabled={loading} className="btn-primary">
                   {loading ? t('common.loading') : t('explore.loadMore')}
                 </button>
               </div>

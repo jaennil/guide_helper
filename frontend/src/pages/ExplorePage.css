@@ -1,6 +1,8 @@
 .explore-page {
   min-height: 100vh;
-  background-color: var(--bg-page);
+  background:
+    radial-gradient(circle at top left, rgba(var(--color-brand-rgb), 0.12), transparent 28%),
+    var(--bg-page);
 }
 
 .explore-header {
@@ -8,36 +10,92 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 2rem;
-  background: var(--bg-primary);
+  background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
   border-bottom: 1px solid var(--border-light);
   box-shadow: var(--shadow-xs);
+  backdrop-filter: blur(14px);
 }
 
 .explore-header h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
+.explore-header-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
 .explore-content {
   max-width: 1200px;
   margin: 1.5rem auto;
-  padding: 0 1.25rem;
+  padding: 0 1.25rem 2rem;
 }
 
-/* ── Controls ── */
+.explore-controls-card {
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-primary) 90%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.explore-controls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0.9rem;
+}
+
+.explore-overline {
+  display: inline-block;
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.explore-controls-copy {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.explore-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.explore-clear-btn:hover {
+  background: var(--bg-hover);
+  border-color: rgba(var(--color-brand-rgb), 0.45);
+}
+
 .explore-controls {
   display: flex;
   gap: 10px;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
 }
 
 .explore-search {
   flex: 1;
-  min-width: 200px;
+  min-width: 220px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
@@ -47,11 +105,15 @@
   color: var(--text-primary);
   transition: all var(--transition-fast);
 }
+
 .explore-search:focus {
   border-color: var(--color-brand);
   box-shadow: var(--focus-ring);
 }
-.explore-search::placeholder { color: var(--text-dim); }
+
+.explore-search::placeholder {
+  color: var(--text-dim);
+}
 
 .explore-sort,
 .explore-tag-filter {
@@ -64,8 +126,9 @@
   cursor: pointer;
   outline: none;
   transition: all var(--transition-fast);
-  min-width: 140px;
+  min-width: 150px;
 }
+
 .explore-sort:focus,
 .explore-tag-filter:focus {
   border-color: var(--color-brand);
@@ -82,43 +145,87 @@
   cursor: pointer;
   transition: all var(--transition-fast);
 }
+
 .explore-season-toggle.active {
   background: var(--color-brand);
   color: #fff;
   border-color: var(--color-brand);
 }
 
-/* ── Grid ── */
+.explore-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.9rem;
+}
+
+.explore-filter-chip {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(var(--color-brand-rgb), 0.12);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .explore-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
-/* ── Card ── */
 .explore-card {
-  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  border-radius: 18px;
+  padding: 1.15rem;
   cursor: pointer;
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
 }
+
+.explore-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -55% auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(var(--color-brand-rgb), 0.08);
+  pointer-events: none;
+}
+
 .explore-card:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-4px);
   border-color: rgba(var(--color-brand-rgb), 0.3);
 }
 
+.explore-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .explore-card-name {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.explore-card-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -126,9 +233,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.8rem;
+  gap: 12px;
+  font-size: 0.82rem;
   color: var(--text-light);
-  margin-bottom: 0.75rem;
+}
+
+.explore-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .explore-card-date {
@@ -153,20 +266,32 @@
   font-weight: 500;
 }
 
-.explore-card-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-}
-
-/* ── Empty / Loading ── */
 .explore-empty,
 .explore-loading {
   text-align: center;
-  padding: 4rem 1rem;
+  padding: 4rem 1.25rem;
   color: var(--text-light);
   font-size: 0.95rem;
+  border: 1px dashed var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+.explore-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.explore-empty p {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.explore-empty span {
+  color: var(--text-secondary);
 }
 
 .explore-load-more {
@@ -175,7 +300,6 @@
   margin-top: 2rem;
 }
 
-/* ── Responsive ── */
 @media (max-width: 768px) {
   .explore-header {
     flex-direction: column;
@@ -183,18 +307,31 @@
     text-align: center;
     padding: 1rem;
   }
+
+  .explore-controls-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .explore-controls {
     flex-direction: column;
   }
+
   .explore-sort,
-  .explore-tag-filter {
+  .explore-tag-filter,
+  .explore-season-toggle,
+  .explore-clear-btn {
+    width: 100%;
     min-width: unset;
+    justify-content: center;
   }
+
   .explore-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
+
   .explore-content {
-    padding: 0 0.75rem;
+    padding: 0 0.75rem 1.5rem;
   }
 }

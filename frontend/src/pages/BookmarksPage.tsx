@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
-import { MapPin } from 'lucide-react';
+import { MapPin, ArrowUpRight } from 'lucide-react';
 import { getLocalizedCategoryName } from '../utils/categories';
 import './BookmarksPage.css';
 
@@ -20,9 +20,9 @@ export default function BookmarksPage() {
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    categoriesApi.getCategories().then(cats => {
+    categoriesApi.getCategories().then((cats) => {
       setAvailableCategories(cats);
-    }).catch(err => console.error('Failed to load categories:', err));
+    }).catch((err) => console.error('Failed to load categories:', err));
   }, []);
 
   useEffect(() => {
@@ -55,18 +55,36 @@ export default function BookmarksPage() {
   return (
     <div className="bookmarks-page">
       <header className="bookmarks-header">
-        <h1>{t('bookmarks.title')}</h1>
+        <div>
+          <h1>{t('bookmarks.title')}</h1>
+          <p className="bookmarks-header-subtitle">{t('bookmarks.savedCount', { count: routes.length })}</p>
+        </div>
         <div className="header-actions">
           <button onClick={() => navigate('/map')} className="btn-secondary">
             {t('bookmarks.backToMap')}
           </button>
+          <button onClick={() => navigate('/explore')} className="btn-secondary">
+            {t('explore.catalog')}
+          </button>
           <button onClick={toggleTheme} className="theme-toggle-btn" title={t('theme.toggle')}>
-            {theme === 'light' ? '\u263D' : '\u2600'}
+            {theme === 'light' ? '☽' : '☀'}
           </button>
         </div>
       </header>
 
       <div className="bookmarks-content">
+        <section className="bookmarks-summary">
+          <div>
+            <span className="bookmarks-overline">{t('bookmarks.title')}</span>
+            <p>{t('bookmarks.savedCount', { count: routes.length })}</p>
+          </div>
+          {routes.length > 0 && (
+            <button type="button" className="btn-secondary" onClick={() => navigate('/explore')}>
+              {t('explore.catalog')}
+            </button>
+          )}
+        </section>
+
         {error && <div className="error-message">{error}</div>}
 
         {loading && (
@@ -76,6 +94,7 @@ export default function BookmarksPage() {
         {!loading && routes.length === 0 && !error && (
           <div className="bookmarks-empty">
             <p>{t('bookmarks.empty')}</p>
+            <span>{t('bookmarks.emptyHint')}</span>
             <button onClick={() => navigate('/explore')} className="btn-primary">
               {t('explore.catalog')}
             </button>
@@ -85,37 +104,47 @@ export default function BookmarksPage() {
         {routes.length > 0 && (
           <div className="bookmarks-grid">
             {routes.map((route) => (
-              <div
+              <article
                 key={route.id}
                 className="bookmarks-card"
                 onClick={() => navigate(`/shared/${route.share_token}`)}
               >
-                <h3 className="bookmarks-card-name">{route.name}</h3>
+                <div className="bookmarks-card-top">
+                  <h3 className="bookmarks-card-name">{route.name}</h3>
+                  <span className="bookmarks-card-open">{t('common.open')} <ArrowUpRight size={14} /></span>
+                </div>
                 <div className="bookmarks-card-meta">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} />{route.points_count}</span>
+                  <span className="bookmarks-meta-item"><MapPin size={14} />{t('bookmarks.pointsCount', { count: route.points_count })}</span>
                   <span className="bookmarks-card-date">{formatDate(route.created_at)}</span>
                 </div>
                 <div className="bookmarks-card-stats">
-                  <span className="bookmarks-card-likes">&#9825; {route.likes_count}</span>
+                  <span className="bookmarks-card-likes">♡ {route.likes_count}</span>
                   {route.ratings_count > 0 && (
-                    <span className="bookmarks-card-rating">
-                      &#9733; {route.avg_rating.toFixed(1)} ({route.ratings_count})
-                    </span>
+                    <span className="bookmarks-card-rating">★ {route.avg_rating.toFixed(1)} ({route.ratings_count})</span>
                   )}
                 </div>
                 {route.category_ids.length > 0 && (
                   <div className="route-tags">
                     {route.category_ids.map((id) => {
-                      const cat = availableCategories.find(c => c.id === id);
+                      const category = availableCategories.find((value) => value.id === id);
                       return (
                         <span key={id} className="route-tag">
-                          {cat ? getLocalizedCategoryName(cat.name, t) : id}
+                          {category ? getLocalizedCategoryName(category.name, t) : id}
                         </span>
                       );
                     })}
                   </div>
                 )}
-              </div>
+                {route.seasons.length > 0 && (
+                  <div className="route-tags">
+                    {route.seasons.map((value) => (
+                      <span key={value} className={`route-tag season-tag season-${value}`}>
+                        {t(`seasons.${value}` as any)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </article>
             ))}
           </div>
         )}

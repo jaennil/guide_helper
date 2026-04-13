@@ -331,6 +331,16 @@ export default function ProfilePage() {
     }
   };
 
+  const closeRouteActionMenu = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const details = target.closest('details');
+    if (details instanceof HTMLDetailsElement) {
+      details.open = false;
+    }
+  };
+
   const toggleRouteSelection = (id: string) => {
     setSelectedRouteIds((prev) => {
       const next = new Set(prev);
@@ -520,7 +530,10 @@ export default function ProfilePage() {
           {activeTab === 'routes' && (
             <div className="routes-tab">
               <div className="routes-header">
-                <h2>{t('profile.mySavedRoutes')}</h2>
+                <div className="routes-header-copy">
+                  <h2>{t('profile.mySavedRoutes')}</h2>
+                  <p>{t('explore.results', { count: routes.length })}</p>
+                </div>
                 <div className="routes-actions">
                   {selectedRouteIds.size > 0 && (
                     <button
@@ -590,13 +603,17 @@ export default function ProfilePage() {
                             ) : (
                               <h3 className="route-card-title">{route.name}</h3>
                             )}
-                            {(route.category_ids?.length ?? 0) > 0 && (
-                              <div className="route-tags">
-                                {route.category_ids.map((id) => (
-                                  <span key={id} className="route-tag">{getLocalizedCategoryName(categoryMap[id], t) || id}</span>
-                                ))}
-                              </div>
-                            )}
+                            <div className="route-tags route-tags-inline">
+                              {(route.category_ids?.length ?? 0) > 0 && route.category_ids.map((id) => (
+                                <span key={id} className="route-tag">{getLocalizedCategoryName(categoryMap[id], t) || id}</span>
+                              ))}
+                              {(route.seasons?.length ?? 0) > 0 && route.seasons.map((season) => (
+                                <span key={season} className={`route-tag season-tag season-${season}`}>{t(`seasons.${season}` as any)}</span>
+                              ))}
+                              <span className={`route-tag route-visibility-badge ${route.share_token ? 'shared' : 'private'}`}>
+                                {route.share_token ? t('profile.sharedStatusPublic') : t('profile.sharedStatusPrivate')}
+                              </span>
+                            </div>
                             {(route.start_location || route.end_location) && (
                               <div className="route-card-location">
                                 <span className="route-loc-name">{route.start_location}</span>
@@ -628,59 +645,66 @@ export default function ProfilePage() {
                           {selectedRouteIds.has(route.id) && <div className="route-selected-badge">✓</div>}
                         </div>
                         <div className="route-card-footer">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/map?route=${route.id}`); }}
-                            className="btn-secondary"
-                          >
-                            {t('profile.view')}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleStartRename(route); }}
-                            className="btn-secondary"
-                          >
-                            {t('profile.rename')}
-                          </button>
-                          {route.share_token ? (
-                            <>
+                          <div className="route-card-actions-primary">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/map?route=${route.id}`); }}
+                              className="btn-secondary"
+                            >
+                              {t('profile.view')}
+                            </button>
+                            {route.share_token ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleCopyLink(route.share_token!); }}
                                 className="btn-secondary"
                               >
                                 {t('profile.copyLink')}
                               </button>
+                            ) : (
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleUnshareRoute(route.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleShareRoute(route.id); }}
                                 className="btn-secondary"
                               >
-                                {t('profile.unshare')}
+                                {t('profile.share')}
                               </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleShareRoute(route.id); }}
-                              className="btn-secondary"
-                            >
-                              {t('profile.share')}
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); exportAsGpx(route.name, route.points); }}
-                            className="btn-secondary"
-                          >
-                            {t('export.gpx')}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); exportAsKml(route.name, route.points); }}
-                            className="btn-secondary"
-                          >
-                            {t('export.kml')}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteRoute(route.id); }}
-                            className="btn-danger"
-                          >
-                            {t('profile.delete')}
-                          </button>
+                            )}
+                          </div>
+                          <details className="route-card-more" onClick={(e) => e.stopPropagation()}>
+                            <summary className="route-card-more-toggle">{t('profile.moreActions')}</summary>
+                            <div className="route-card-more-menu">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); handleStartRename(route); }}
+                                className="btn-secondary"
+                              >
+                                {t('profile.rename')}
+                              </button>
+                              {route.share_token && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); handleUnshareRoute(route.id); }}
+                                  className="btn-secondary"
+                                >
+                                  {t('profile.unshare')}
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); exportAsGpx(route.name, route.points); }}
+                                className="btn-secondary"
+                              >
+                                {t('export.gpx')}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); exportAsKml(route.name, route.points); }}
+                                className="btn-secondary"
+                              >
+                                {t('export.kml')}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); handleDeleteRoute(route.id); }}
+                                className="btn-danger"
+                              >
+                                {t('profile.delete')}
+                              </button>
+                            </div>
+                          </details>
                         </div>
                       </div>
                     );
