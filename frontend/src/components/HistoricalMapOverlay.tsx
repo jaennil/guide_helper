@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import maplibregl from 'maplibre-gl';
@@ -30,6 +30,37 @@ export function HistoricalMapOverlay({
   const settleTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const latestYearRef = useRef(year);
 
+  const applyCompareClipPath = useCallback(() => {
+    if (!layerRef.current) {
+      return;
+    }
+
+    const overlayContainer = layerRef.current.getContainer();
+    const mapContainer = map.getContainer();
+
+    if (!overlayContainer || !mapContainer) {
+      return;
+    }
+
+    if (comparePosition == null) {
+      overlayContainer.style.clipPath = 'inset(0 0 0 0)';
+      (overlayContainer.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = 'inset(0 0 0 0)';
+      return;
+    }
+
+    const overlayRect = overlayContainer.getBoundingClientRect();
+    const mapRect = mapContainer.getBoundingClientRect();
+    const splitX = mapRect.left + (mapRect.width * comparePosition) / 100;
+    const topInset = Math.max(0, mapRect.top - overlayRect.top);
+    const bottomInset = Math.max(0, overlayRect.bottom - mapRect.bottom);
+    const leftInset = Math.max(0, mapRect.left - overlayRect.left);
+    const rightInset = Math.max(0, overlayRect.right - splitX);
+    const clipPath = `inset(${topInset}px ${rightInset}px ${bottomInset}px ${leftInset}px)`;
+
+    overlayContainer.style.clipPath = clipPath;
+    (overlayContainer.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = clipPath;
+  }, [comparePosition, map]);
+
   useEffect(() => {
     latestYearRef.current = year;
   }, [year]);
@@ -53,6 +84,7 @@ export function HistoricalMapOverlay({
       container.style.opacity = String(opacity);
       container.style.pointerEvents = 'none';
       container.style.transition = 'opacity 160ms ease, clip-path 160ms ease';
+      requestAnimationFrame(applyCompareClipPath);
       console.log('[historical] GL container configured, z-index=500');
     }
 
@@ -77,6 +109,7 @@ export function HistoricalMapOverlay({
       filterByDate(glMap, String(latestYearRef.current));
       glMap.resize();
       glMap.triggerRepaint();
+      requestAnimationFrame(applyCompareClipPath);
       console.log('[historical] date filter applied:', latestYearRef.current);
     });
 
@@ -104,7 +137,7 @@ export function HistoricalMapOverlay({
         glMapRef.current = null;
       }
     };
-  }, [map, onBusyChange]);
+  }, [applyCompareClipPath, map, onBusyChange]);
 
   // Year filter
   useEffect(() => {
@@ -128,9 +161,10 @@ export function HistoricalMapOverlay({
         filterByDate(glMapRef.current, String(year));
         glMapRef.current.resize();
         glMapRef.current.triggerRepaint();
+        requestAnimationFrame(applyCompareClipPath);
       }
     }, 200);
-  }, [onBusyChange, year]);
+  }, [applyCompareClipPath, onBusyChange, year]);
 
   // Opacity
   useEffect(() => {
@@ -141,19 +175,26 @@ export function HistoricalMapOverlay({
   }, [opacity]);
 
   useEffect(() => {
-    if (!layerRef.current) {
-      return;
-    }
-    const container = layerRef.current.getContainer();
-    if (!container) {
-      return;
-    }
-    const clipPath = comparePosition == null
-      ? 'inset(0 0 0 0)'
-      : `inset(0 ${100 - comparePosition}% 0 0)`;
-    container.style.clipPath = clipPath;
-    (container.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = clipPath;
-  }, [comparePosition]);
+    applyCompareClipPath();
+  }, [applyCompareClipPath]);
+
+  useEffect(() => {
+    const syncClipPath = () => {
+      requestAnimationFrame(applyCompareClipPath);
+    };
+
+    map.on('move', syncClipPath);
+    map.on('zoom', syncClipPath);
+    map.on('resize', syncClipPath);
+    window.addEventListener('resize', syncClipPath);
+
+    return () => {
+      map.off('move', syncClipPath);
+      map.off('zoom', syncClipPath);
+      map.off('resize', syncClipPath);
+      window.removeEventListener('resize', syncClipPath);
+    };
+  }, [applyCompareClipPath, map]);
 
   return null;
 }
