@@ -42,5 +42,11 @@ claude-code-api/claude-config/
 main.log
 texput.log
 
+# Local tooling and generated document bundles
+.playwright-mcp/
+doc/latex.zip
+doc/latex/lms.zip
+doc/latex/lms/
+
 # Office lock files
 **/.~lock.*
