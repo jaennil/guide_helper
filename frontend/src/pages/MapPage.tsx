@@ -109,6 +109,15 @@ const PHOTO_PREVIEW_STEP = 4;
 const DEFAULT_PHOTO_PREVIEW_SHAPE: PhotoPreviewShape = "square";
 const MIN_HISTORICAL_YEAR = 1700;
 const HISTORICAL_SPEED_STEPS = [1, 5, 20] as const;
+const HISTORICAL_MILESTONE_YEARS = [1703, 1812, 1917, 1945, 1991] as const;
+
+interface HistoricalEraDefinition {
+  id: string;
+  start: number;
+  end: number;
+  titleKey: string;
+  descriptionKey: string;
+}
 
 function routePointsMatch(
   left: Pick<RoutePoint, "position" | "name">,
@@ -1397,14 +1406,82 @@ export function MapPage() {
   const routeHistoricalYear = normalizedRouteStartedAt
     ? clampHistoricalYear(new Date(normalizedRouteStartedAt).getFullYear(), currentHistoricalYear)
     : null;
-  const historicalMilestones = [
-    { year: MIN_HISTORICAL_YEAR, label: String(MIN_HISTORICAL_YEAR) },
-    { year: 1812, label: "1812" },
-    { year: 1917, label: "1917" },
-    { year: 1945, label: "1945" },
-    { year: 1991, label: "1991" },
-    { year: currentHistoricalYear, label: t("historical.now") },
-  ];
+  const historicalMilestones = useMemo(
+    () => [
+      ...HISTORICAL_MILESTONE_YEARS.map((year) => ({ year, label: String(year) })),
+      { year: currentHistoricalYear, label: t("historical.now") },
+    ],
+    [currentHistoricalYear, t],
+  );
+  const historicalEraDefinitions = useMemo<HistoricalEraDefinition[]>(
+    () => [
+      {
+        id: "earlyEmpire",
+        start: MIN_HISTORICAL_YEAR,
+        end: 1811,
+        titleKey: "historical.era.earlyEmpire.title",
+        descriptionKey: "historical.era.earlyEmpire.description",
+      },
+      {
+        id: "imperialCity",
+        start: 1812,
+        end: 1916,
+        titleKey: "historical.era.imperialCity.title",
+        descriptionKey: "historical.era.imperialCity.description",
+      },
+      {
+        id: "revolution",
+        start: 1917,
+        end: 1944,
+        titleKey: "historical.era.revolution.title",
+        descriptionKey: "historical.era.revolution.description",
+      },
+      {
+        id: "postwar",
+        start: 1945,
+        end: 1990,
+        titleKey: "historical.era.postwar.title",
+        descriptionKey: "historical.era.postwar.description",
+      },
+      {
+        id: "postSoviet",
+        start: 1991,
+        end: Math.max(1991, currentHistoricalYear - 1),
+        titleKey: "historical.era.postSoviet.title",
+        descriptionKey: "historical.era.postSoviet.description",
+      },
+      {
+        id: "contemporary",
+        start: currentHistoricalYear,
+        end: currentHistoricalYear,
+        titleKey: "historical.era.contemporary.title",
+        descriptionKey: "historical.era.contemporary.description",
+      },
+    ],
+    [currentHistoricalYear],
+  );
+  const historicalContext = useMemo(() => {
+    const matchedEra =
+      historicalEraDefinitions.find(
+        (era) => historicalYear >= era.start && historicalYear <= era.end,
+      ) ?? historicalEraDefinitions[historicalEraDefinitions.length - 1];
+
+    const includesRouteYear =
+      routeHistoricalYear !== null &&
+      routeHistoricalYear >= matchedEra.start &&
+      routeHistoricalYear <= matchedEra.end;
+
+    return {
+      ...matchedEra,
+      title: t(matchedEra.titleKey as never),
+      description: t(matchedEra.descriptionKey as never),
+      periodLabel:
+        matchedEra.end >= currentHistoricalYear
+          ? t("historical.periodToNow", { from: matchedEra.start })
+          : t("historical.periodRange", { from: matchedEra.start, to: matchedEra.end }),
+      includesRouteYear,
+    };
+  }, [currentHistoricalYear, historicalEraDefinitions, historicalYear, routeHistoricalYear, t]);
   const historicalProgress = Math.max(
     0,
     Math.min(100, ((historicalYear - MIN_HISTORICAL_YEAR) / (currentHistoricalYear - MIN_HISTORICAL_YEAR)) * 100),
@@ -2327,6 +2404,38 @@ export function MapPage() {
             </div>
           </div>
 
+          <div className="historical-context">
+            <div className="historical-context-copy">
+              <div className="historical-context-meta">
+                <span className="historical-context-period">{historicalContext.periodLabel}</span>
+                {routeHistoricalYear === historicalYear && (
+                  <span className="historical-context-chip">
+                    {t("historical.routeYearChip")}
+                  </span>
+                )}
+                {routeHistoricalYear !== historicalYear &&
+                  routeHistoricalYear !== null &&
+                  historicalContext.includesRouteYear && (
+                    <span className="historical-context-chip muted">
+                      {t("historical.routePeriodChip")}
+                    </span>
+                  )}
+              </div>
+              <div className="historical-context-title">{historicalContext.title}</div>
+              <div className="historical-context-description">{historicalContext.description}</div>
+            </div>
+            {routeHistoricalYear && historicalYear !== routeHistoricalYear && (
+              <button
+                type="button"
+                className="historical-context-action"
+                onClick={() => handleHistoricalYearChange(routeHistoricalYear)}
+              >
+                <CalendarDays size={14} />
+                <span>{t("historical.routeYearAction", { year: routeHistoricalYear })}</span>
+              </button>
+            )}
+          </div>
+
           <div className="historical-track-shell">
             <div className="historical-track">
               <div className="historical-track-fill" />
@@ -2359,24 +2468,11 @@ export function MapPage() {
 
           <div className="historical-footer">
             <div className="historical-year-labels">
-              <span>{MIN_HISTORICAL_YEAR}</span>
-              <span>1812</span>
-              <span>1917</span>
-              <span>1945</span>
-              <span>1991</span>
-              <span>{currentHistoricalYear}</span>
+              {historicalMilestones.map((milestone) => (
+                <span key={`historical-year-label-${milestone.year}`}>{milestone.label}</span>
+              ))}
             </div>
             <div className="historical-footer-row">
-              {routeHistoricalYear && (
-                <button
-                  type="button"
-                  className={`historical-route-year-btn${historicalYear === routeHistoricalYear ? " active" : ""}`}
-                  onClick={() => handleHistoricalYearChange(routeHistoricalYear)}
-                >
-                  <CalendarDays size={14} />
-                  <span>{t("historical.routeYear", { year: routeHistoricalYear })}</span>
-                </button>
-              )}
               {historicalCompareMode && (
                 <div className="historical-compare-row">
                   <span>{t("historical.comparePosition")}</span>

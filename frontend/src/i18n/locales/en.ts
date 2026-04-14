@@ -185,6 +185,29 @@ export const en = {
   "historical.comparePosition": "Divider",
   "historical.now": "Now",
   "historical.routeYear": "Route: {{year}}",
+  "historical.routeYearAction": "Jump to route year · {{year}}",
+  "historical.routeYearChip": "Route year",
+  "historical.routePeriodChip": "Route period",
+  "historical.periodRange": "{{from}}-{{to}}",
+  "historical.periodToNow": "{{from}}-now",
+  "historical.era.earlyEmpire.title": "Early imperial Russia",
+  "historical.era.earlyEmpire.description":
+    "The 18th-century city often differs sharply from the present one: blocks, embankments, and the street grid are laid out in another way.",
+  "historical.era.imperialCity.title": "19th-century imperial city",
+  "historical.era.imperialCity.description":
+    "After 1812 many cities were rebuilt and expanded with new avenues, boulevards, civic buildings, and more regular urban plans.",
+  "historical.era.revolution.title": "Revolutions and early USSR",
+  "historical.era.revolution.description":
+    "This period reshapes administration, street names, and land use, so the map often reflects a fast-changing and uneven urban environment.",
+  "historical.era.postwar.title": "Post-war development",
+  "historical.era.postwar.description":
+    "After 1945 cities grow through housing districts, transport hubs, and major public facilities that form the familiar Soviet urban layer.",
+  "historical.era.postSoviet.title": "Post-Soviet transformation",
+  "historical.era.postSoviet.description":
+    "The Soviet structure is still visible, but roads, commerce, and public space already begin to shift toward the contemporary city.",
+  "historical.era.contemporary.title": "Contemporary city",
+  "historical.era.contemporary.description":
+    "The current map works as the baseline for comparison and makes it easier to see how much the historical environment differs from today.",
   "weather.title": "Weather",
   "weather.loading": "Loading...",
   "weather.now": "Now",

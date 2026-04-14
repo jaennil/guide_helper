@@ -185,6 +185,29 @@ export const ru = {
   "historical.comparePosition": "Разделитель",
   "historical.now": "Сейчас",
   "historical.routeYear": "Маршрут: {{year}}",
+  "historical.routeYearAction": "К году маршрута · {{year}}",
+  "historical.routeYearChip": "Год маршрута",
+  "historical.routePeriodChip": "Период маршрута",
+  "historical.periodRange": "{{from}}-{{to}}",
+  "historical.periodToNow": "{{from}}-сейчас",
+  "historical.era.earlyEmpire.title": "Ранняя имперская Россия",
+  "historical.era.earlyEmpire.description":
+    "Городская ткань XVIII века часто заметно отличается от современной: иначе устроены кварталы, набережные и уличная сетка.",
+  "historical.era.imperialCity.title": "Имперский город XIX века",
+  "historical.era.imperialCity.description":
+    "После 1812 года города активно перестраиваются: появляются новые магистрали, бульвары, общественные здания и регулярные планы.",
+  "historical.era.revolution.title": "Революции и ранний СССР",
+  "historical.era.revolution.description":
+    "Меняются функции городской среды, административное деление и названия улиц, а карта фиксирует переходный и очень неоднородный период.",
+  "historical.era.postwar.title": "Послевоенное развитие",
+  "historical.era.postwar.description":
+    "После 1945 года быстро растут жилые районы, транспортные узлы и крупные общественные объекты, формируя знакомый советский слой города.",
+  "historical.era.postSoviet.title": "Постсоветская трансформация",
+  "historical.era.postSoviet.description":
+    "Советская структура ещё читается, но коммерческая застройка, дороги и общественные пространства уже начинают заметно меняться.",
+  "historical.era.contemporary.title": "Современное состояние",
+  "historical.era.contemporary.description":
+    "Текущая карта служит базовой точкой сравнения: по ней удобнее всего оценивать, насколько историческая среда отличается от сегодняшней.",
   "weather.title": "Погода",
   "weather.loading": "Загрузка...",
   "weather.now": "Сейчас",
