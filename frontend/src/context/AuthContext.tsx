@@ -4,6 +4,12 @@ import type { AuthResponse } from '../api/auth';
 import { profileApi } from '../api/profile';
 import type { UserProfile } from '../api/profile';
 import { jwtDecode } from 'jwt-decode';
+import {
+  cacheUserProfile,
+  clearPrivateOfflineData,
+  getCachedUserProfile,
+  shouldUseOfflineFallback,
+} from '../utils/offlineCache';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -31,9 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await profileApi.getProfile();
       setUser(profile);
+      cacheUserProfile(profile);
+      return profile;
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
+      const cachedProfile = getCachedUserProfile();
+      if (cachedProfile && shouldUseOfflineFallback(error)) {
+        setUser(cachedProfile);
+        return cachedProfile;
+      }
       setUser(null);
+      return null;
     }
   };
 
@@ -64,6 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('Token refresh failed:', error);
+      const cachedProfile = getCachedUserProfile();
+      if (cachedProfile && shouldUseOfflineFallback(error)) {
+        setIsAuthenticated(true);
+        setUser(cachedProfile);
+        return true;
+      }
       logout();
       return false;
     }
@@ -136,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    void clearPrivateOfflineData();
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setIsAuthenticated(false);

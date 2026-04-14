@@ -1,0 +1,71 @@
+.pwa-status-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2100;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.pwa-status-card {
+  pointer-events: auto;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-panel) 90%, rgba(8, 12, 24, 0.24));
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.pwa-status-card-offline {
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border));
+}
+
+.pwa-status-label {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--color-brand-rgb), 0.14);
+  color: var(--color-brand);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pwa-status-card h3 {
+  margin: 0 0 6px;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.pwa-status-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.pwa-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (max-width: 768px) {
+  .pwa-status-stack {
+    right: 12px;
+    bottom: 12px;
+    width: min(100vw - 24px, 420px);
+  }
+
+  .pwa-status-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+}

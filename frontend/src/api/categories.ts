@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import { cacheCategories, getCachedCategories, shouldUseOfflineFallback } from '../utils/offlineCache';
 
 const CATEGORIES_URL = `${API_BASE_URL}/api/v1/categories`;
 const ADMIN_CATEGORIES_URL = `${API_BASE_URL}/api/v1/admin/categories`;
@@ -17,8 +18,19 @@ const getAuthHeader = () => {
 
 export const categoriesApi = {
   async getCategories(): Promise<Category[]> {
-    const response = await axios.get(CATEGORIES_URL);
-    return response.data;
+    try {
+      const response = await axios.get(CATEGORIES_URL);
+      await cacheCategories(response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedCategories = await getCachedCategories();
+        if (cachedCategories) {
+          return cachedCategories;
+        }
+      }
+      throw error;
+    }
   },
 
   async createCategory(name: string): Promise<Category> {

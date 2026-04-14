@@ -1,5 +1,20 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import {
+  cacheBookmarks,
+  cacheExploreResponse,
+  cachePrivateRoute,
+  cachePrivateRoutes,
+  cacheSharedRoute,
+  getCachedBookmarks,
+  getCachedExploreResponse,
+  getCachedPrivateRoute,
+  getCachedPrivateRoutes,
+  getCachedSharedRoute,
+  patchCachedPrivateRoute,
+  removeCachedPrivateRoute,
+  shouldUseOfflineFallback,
+} from '../utils/offlineCache';
 
 const ROUTES_URL = `${API_BASE_URL}/api/v1/routes`;
 
@@ -134,23 +149,46 @@ const getAuthHeader = () => {
 
 export const routesApi = {
   async getRoutes(): Promise<Route[]> {
-    const response = await axios.get(ROUTES_URL, {
-      headers: getAuthHeader(),
-    });
-    return response.data;
+    try {
+      const response = await axios.get(ROUTES_URL, {
+        headers: getAuthHeader(),
+      });
+      await cachePrivateRoutes(response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedRoutes = await getCachedPrivateRoutes();
+        if (cachedRoutes) {
+          return cachedRoutes;
+        }
+      }
+      throw error;
+    }
   },
 
   async getRoute(id: string): Promise<Route> {
-    const response = await axios.get(`${ROUTES_URL}/${id}`, {
-      headers: getAuthHeader(),
-    });
-    return response.data;
+    try {
+      const response = await axios.get(`${ROUTES_URL}/${id}`, {
+        headers: getAuthHeader(),
+      });
+      await cachePrivateRoute(response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedRoute = await getCachedPrivateRoute(id);
+        if (cachedRoute) {
+          return cachedRoute;
+        }
+      }
+      throw error;
+    }
   },
 
   async createRoute(data: CreateRouteRequest): Promise<Route> {
     const response = await axios.post(ROUTES_URL, data, {
       headers: getAuthHeader(),
     });
+    await cachePrivateRoute(response.data);
     return response.data;
   },
 
@@ -158,6 +196,7 @@ export const routesApi = {
     const response = await axios.put(`${ROUTES_URL}/${id}`, data, {
       headers: getAuthHeader(),
     });
+    await cachePrivateRoute(response.data);
     return response.data;
   },
 
@@ -165,6 +204,7 @@ export const routesApi = {
     await axios.delete(`${ROUTES_URL}/${id}`, {
       headers: getAuthHeader(),
     });
+    await removeCachedPrivateRoute(id);
   },
 
   async importFromGeoJson(file: File): Promise<Route> {
@@ -176,6 +216,7 @@ export const routesApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    await cachePrivateRoute(response.data);
     return response.data;
   },
 
@@ -183,6 +224,7 @@ export const routesApi = {
     const response = await axios.post(`${ROUTES_URL}/${id}/share`, {}, {
       headers: getAuthHeader(),
     });
+    await patchCachedPrivateRoute(id, { share_token: response.data.share_token });
     return response.data;
   },
 
@@ -190,16 +232,39 @@ export const routesApi = {
     await axios.delete(`${ROUTES_URL}/${id}/share`, {
       headers: getAuthHeader(),
     });
+    await patchCachedPrivateRoute(id, { share_token: undefined });
   },
 
   async exploreRoutes(params: ExploreParams = {}): Promise<ExploreResponse> {
-    const response = await axios.get(`${ROUTES_URL}/explore`, { params });
-    return response.data;
+    try {
+      const response = await axios.get(`${ROUTES_URL}/explore`, { params });
+      await cacheExploreResponse(params, response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedResponse = await getCachedExploreResponse(params);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+      }
+      throw error;
+    }
   },
 
   async getSharedRoute(token: string): Promise<Route> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/shared/${token}`);
-    return response.data;
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/v1/shared/${token}`);
+      await cacheSharedRoute(token, response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedRoute = await getCachedSharedRoute(token);
+        if (cachedRoute) {
+          return cachedRoute;
+        }
+      }
+      throw error;
+    }
   },
 
   async getComments(routeId: string): Promise<Comment[]> {
@@ -284,10 +349,21 @@ export const routesApi = {
   },
 
   async getBookmarks(): Promise<ExploreRoute[]> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/bookmarks`, {
-      headers: getAuthHeader(),
-    });
-    return response.data;
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/v1/bookmarks`, {
+        headers: getAuthHeader(),
+      });
+      await cacheBookmarks(response.data);
+      return response.data;
+    } catch (error) {
+      if (shouldUseOfflineFallback(error)) {
+        const cachedBookmarks = await getCachedBookmarks();
+        if (cachedBookmarks) {
+          return cachedBookmarks;
+        }
+      }
+      throw error;
+    }
   },
 
   async generateDescription(routeId: string): Promise<{ description: string }> {
@@ -301,6 +377,7 @@ export const routesApi = {
     const response = await axios.post(`${ROUTES_URL}/${routeId}/description`, { description }, {
       headers: getAuthHeader(),
     });
+    await cachePrivateRoute(response.data);
     return response.data;
   },
 };

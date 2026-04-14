@@ -12,6 +12,7 @@ import { EmbedMapPage } from './pages/EmbedMapPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PWAStatus } from './components/PWAStatus';
 import AdminPage from './pages/AdminPage';
 import BookmarksPage from './pages/BookmarksPage';
 import './App.css';
@@ -62,6 +63,7 @@ function App() {
           <Route path="/embed/:token" element={<EmbedMapPage />} />
           <Route path="/" element={<Navigate to="/map" replace />} />
         </Routes>
+        <PWAStatus />
       </AuthProvider>
       </LanguageProvider>
       </ThemeProvider>
