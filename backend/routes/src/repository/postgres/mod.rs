@@ -1345,7 +1345,8 @@ impl BookmarkRepository for PostgresBookmarkRepository {
                 COALESCE((SELECT COUNT(*) FROM route_likes WHERE route_id = r.id), 0) AS likes_count,
                 COALESCE((SELECT AVG(rating::float8) FROM route_ratings WHERE route_id = r.id), 0.0) AS avg_rating,
                 COALESCE((SELECT COUNT(*) FROM route_ratings WHERE route_id = r.id), 0) AS ratings_count,
-                COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids
+                COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                COALESCE(r.seasons, ARRAY[]::text[]) AS seasons
             FROM route_bookmarks rb
             JOIN routes r ON r.id = rb.route_id
             WHERE rb.user_id = $1
