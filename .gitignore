@@ -15,6 +15,9 @@ code
 **/dist/
 **/build/
 **/node_modules/
+mobile/dist-android/
+mobile/.expo/
+mobile/android/
 
 # Large local media artifacts
 *.mp4
