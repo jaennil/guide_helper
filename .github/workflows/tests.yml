@@ -6,12 +6,14 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'mobile/**'
       - '.github/workflows/tests.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'mobile/**'
       - '.github/workflows/tests.yml'
 
 jobs:
@@ -22,6 +24,7 @@ jobs:
       tiles: ${{ steps.filter.outputs.tiles }}
       auth: ${{ steps.filter.outputs.auth }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -36,6 +39,8 @@ jobs:
               - 'backend/auth/**'
             frontend:
               - 'frontend/**'
+            mobile:
+              - 'mobile/**'
 
   test-cache:
     needs: changes
@@ -122,3 +127,27 @@ jobs:
       - name: Lint
         working-directory: ./frontend
         run: npm run lint || echo "Lint command not found, skipping"
+
+  test-mobile:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: ./mobile
+        run: npm run typecheck
+
+      - name: Build Android bundle
+        working-directory: ./mobile
+        run: npx expo export --platform android --output-dir dist-android
