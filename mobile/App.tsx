@@ -92,6 +92,34 @@ function ActionButton({
   );
 }
 
+function formatGpsAccuracy(accuracy?: number | null) {
+  if (typeof accuracy !== "number") {
+    return "точность неизвестна";
+  }
+
+  return `±${Math.round(accuracy)} м`;
+}
+
+function getGpsQuality(accuracy?: number | null) {
+  if (typeof accuracy !== "number") {
+    return "GPS: ожидание";
+  }
+
+  if (accuracy <= 15) {
+    return "GPS: отличный";
+  }
+
+  if (accuracy <= 40) {
+    return "GPS: хороший";
+  }
+
+  if (accuracy <= 100) {
+    return "GPS: слабый";
+  }
+
+  return "GPS: неточный";
+}
+
 export default function App() {
   const {
     session,
@@ -102,7 +130,9 @@ export default function App() {
     backgroundAvailable,
     isBusy,
     isUploading,
+    isSyncing,
     error,
+    pendingUploads,
     startSession,
     pauseSession,
     resumeSession,
@@ -110,6 +140,8 @@ export default function App() {
     resetSession,
     renameSession,
     saveRoute,
+    queueRouteForUpload,
+    syncPendingUploads,
   } = useTrackingSession();
 
   const [email, setEmail] = useState("");
@@ -130,6 +162,7 @@ export default function App() {
     latitude: sample.latitude,
     longitude: sample.longitude,
   }));
+  const lastSample = session.samples[session.samples.length - 1];
   const lastCoordinate = coordinates[coordinates.length - 1];
   const mapRegion = buildRegion(coordinates);
   const canRenderNativeMap = Platform.OS !== "android" || HAS_ANDROID_MAPS_KEY;
@@ -174,6 +207,36 @@ export default function App() {
       Alert.alert(
         "Сохранение не удалось",
         saveError instanceof Error ? saveError.message : "Не удалось сохранить маршрут.",
+      );
+    }
+  }
+
+  async function handleQueueRoute() {
+    try {
+      const queuedRoute = await queueRouteForUpload();
+      Alert.alert(
+        "Маршрут сохранён локально",
+        `Черновик ${queuedRoute.id} будет выгружен после авторизации и появления сети.`,
+      );
+    } catch (queueError) {
+      Alert.alert(
+        "Локальное сохранение не удалось",
+        queueError instanceof Error ? queueError.message : "Не удалось сохранить маршрут локально.",
+      );
+    }
+  }
+
+  async function handleSyncPendingUploads() {
+    try {
+      const result = await syncPendingUploads();
+      Alert.alert(
+        "Синхронизация завершена",
+        `Выгружено: ${result.synced}. Осталось с ошибкой: ${result.failed}.`,
+      );
+    } catch (syncError) {
+      Alert.alert(
+        "Синхронизация не удалась",
+        syncError instanceof Error ? syncError.message : "Не удалось синхронизировать маршруты.",
       );
     }
   }
@@ -269,6 +332,9 @@ export default function App() {
             <Text style={styles.chip}>Статус: {session.status}</Text>
             <Text style={styles.chip}>FG: {foregroundPermission}</Text>
             <Text style={styles.chip}>BG: {backgroundPermission}</Text>
+            <Text style={styles.chip}>{getGpsQuality(lastSample?.accuracy)}</Text>
+            <Text style={styles.chip}>{formatGpsAccuracy(lastSample?.accuracy)}</Text>
+            <Text style={styles.chip}>Очередь: {pendingUploads.length}</Text>
             <Text style={styles.chip}>
               Фон: {backgroundAvailable ? (backgroundActive ? "активен" : "готов") : "недоступен"}
             </Text>
@@ -278,6 +344,7 @@ export default function App() {
             <MetricCard label="Дистанция" value={formatDistance(metrics.distanceKm)} />
             <MetricCard label="Время" value={formatDuration(metrics.durationMs)} />
             <MetricCard label="Средняя скорость" value={`${metrics.averageSpeedKmh.toFixed(1)} км/ч`} />
+            <MetricCard label="Текущая скорость" value={`${metrics.currentSpeedKmh.toFixed(1)} км/ч`} />
             <MetricCard label="Пик" value={`${metrics.maxSpeedKmh.toFixed(1)} км/ч`} />
           </View>
 
@@ -314,6 +381,7 @@ export default function App() {
           <Text style={styles.mapCaption}>
             Точек: {session.samples.length}
             {session.lastSavedRouteId ? ` • Последний route_id: ${session.lastSavedRouteId}` : ""}
+            {session.lastQueuedUploadId ? ` • В очереди: ${session.lastQueuedUploadId}` : ""}
           </Text>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -374,6 +442,22 @@ export default function App() {
                 void handleSaveRoute();
               }}
               disabled={!hasAuthSession || isUploading || session.samples.length < 2}
+            />
+            <ActionButton
+              title="Сохранить локально"
+              variant="secondary"
+              onPress={() => {
+                void handleQueueRoute();
+              }}
+              disabled={isUploading || isSyncing || session.samples.length < 2}
+            />
+            <ActionButton
+              title={isSyncing ? "Синхронизация..." : `Синхронизировать ${pendingUploads.length}`}
+              variant="secondary"
+              onPress={() => {
+                void handleSyncPendingUploads();
+              }}
+              disabled={!hasAuthSession || isSyncing || pendingUploads.length === 0}
             />
             <ActionButton
               title="Сбросить"

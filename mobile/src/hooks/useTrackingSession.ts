@@ -3,6 +3,11 @@ import { AppState } from "react-native";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { createTrackedRoute } from "../api/routes";
+import {
+  readPendingRouteUploads,
+  writePendingRouteUploads,
+  type PendingRouteUpload,
+} from "../storage/pendingRouteUploads";
 import { readJsonFile, writeJsonFile, deleteJsonFile } from "../storage/jsonStore";
 import type {
   SavedRouteResponse,
@@ -49,6 +54,14 @@ function buildDefaultRouteName() {
   })}`;
 }
 
+function buildPendingUploadId() {
+  return `pending-${Date.now()}`;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function useTrackingSession() {
   const [session, setSession] = useState<TrackingSession>(EMPTY_SESSION);
   const [metrics, setMetrics] = useState<TrackingMetrics>(
@@ -60,9 +73,12 @@ export function useTrackingSession() {
   const [backgroundAvailable, setBackgroundAvailable] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingUploads, setPendingUploads] = useState<PendingRouteUpload[]>([]);
 
   const sessionRef = useRef<TrackingSession>(EMPTY_SESSION);
+  const pendingUploadsRef = useRef<PendingRouteUpload[]>([]);
   const watchRef = useRef<Location.LocationSubscription | null>(null);
 
   async function persistSession(nextSession: TrackingSession) {
@@ -76,6 +92,23 @@ export function useTrackingSession() {
     }
 
     await writeJsonFile(SESSION_FILE, nextSession);
+  }
+
+  async function persistPendingUploads(nextUploads: PendingRouteUpload[]) {
+    pendingUploadsRef.current = nextUploads;
+    setPendingUploads(nextUploads);
+    await writePendingRouteUploads(nextUploads);
+  }
+
+  async function removePendingUpload(uploadId: string | undefined) {
+    if (!uploadId) {
+      return;
+    }
+
+    const nextUploads = pendingUploadsRef.current.filter((upload) => upload.id !== uploadId);
+    if (nextUploads.length !== pendingUploadsRef.current.length) {
+      await persistPendingUploads(nextUploads);
+    }
   }
 
   async function refreshPermissionState() {
@@ -329,20 +362,108 @@ export function useTrackingSession() {
       await flushBackgroundSamplesIntoSession();
       const payload = buildTrackedRoutePayload(sessionRef.current);
       const savedRoute = await createTrackedRoute(payload);
+      await removePendingUpload(sessionRef.current.lastQueuedUploadId);
 
       await persistSession({
         ...sessionRef.current,
         lastSavedRouteId: savedRoute.id,
+        lastQueuedUploadId: undefined,
       });
 
       return savedRoute;
     } catch (saveError) {
-      const message =
-        saveError instanceof Error ? saveError.message : "Не удалось сохранить маршрут.";
+      const message = errorMessage(saveError, "Не удалось сохранить маршрут.");
       setError(message);
       throw saveError;
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  async function queueRouteForUpload() {
+    const currentSession = sessionRef.current;
+    if (currentSession.samples.length < 2) {
+      throw new Error("Для локального сохранения нужно минимум две GPS-точки.");
+    }
+
+    await flushBackgroundSamplesIntoSession();
+
+    const upload: PendingRouteUpload = {
+      id: buildPendingUploadId(),
+      createdAt: new Date().toISOString(),
+      payload: buildTrackedRoutePayload(sessionRef.current),
+      sampleCount: sessionRef.current.samples.length,
+    };
+
+    await persistPendingUploads([
+      ...pendingUploadsRef.current.filter(
+        (pendingUpload) => pendingUpload.id !== sessionRef.current.lastQueuedUploadId,
+      ),
+      upload,
+    ]);
+
+    await persistSession({
+      ...sessionRef.current,
+      lastQueuedUploadId: upload.id,
+    });
+
+    setError(null);
+    return upload;
+  }
+
+  async function syncPendingUploads() {
+    if (pendingUploadsRef.current.length === 0) {
+      return { synced: 0, failed: 0 };
+    }
+
+    setIsSyncing(true);
+    setError(null);
+
+    try {
+      const remainingUploads: PendingRouteUpload[] = [];
+      let synced = 0;
+      let failed = 0;
+      let savedCurrentSessionRouteId: string | undefined;
+
+      for (const upload of pendingUploadsRef.current) {
+        try {
+          const savedRoute = await createTrackedRoute(upload.payload);
+          synced += 1;
+
+          if (sessionRef.current.lastQueuedUploadId === upload.id) {
+            savedCurrentSessionRouteId = savedRoute.id;
+          }
+        } catch (syncError) {
+          failed += 1;
+          remainingUploads.push({
+            ...upload,
+            lastTriedAt: new Date().toISOString(),
+            lastError: errorMessage(syncError, "Не удалось синхронизировать маршрут."),
+          });
+        }
+      }
+
+      await persistPendingUploads(remainingUploads);
+
+      if (savedCurrentSessionRouteId) {
+        await persistSession({
+          ...sessionRef.current,
+          lastSavedRouteId: savedCurrentSessionRouteId,
+          lastQueuedUploadId: undefined,
+        });
+      }
+
+      if (failed > 0) {
+        const message =
+          synced > 0
+            ? `Синхронизировано: ${synced}. Осталось с ошибкой: ${failed}.`
+            : remainingUploads[0]?.lastError ?? "Не удалось синхронизировать маршруты.";
+        setError(message);
+      }
+
+      return { synced, failed };
+    } finally {
+      setIsSyncing(false);
     }
   }
 
@@ -353,6 +474,11 @@ export function useTrackingSession() {
       const storedSession = await readJsonFile<TrackingSession>(SESSION_FILE);
       if (storedSession && mounted) {
         await persistSession(storedSession);
+      }
+
+      const storedPendingUploads = await readPendingRouteUploads();
+      if (mounted) {
+        await persistPendingUploads(storedPendingUploads);
       }
 
       await refreshPermissionState();
@@ -391,7 +517,9 @@ export function useTrackingSession() {
     backgroundAvailable,
     isBusy,
     isUploading,
+    isSyncing,
     error,
+    pendingUploads,
     startSession,
     pauseSession,
     resumeSession,
@@ -399,5 +527,7 @@ export function useTrackingSession() {
     resetSession,
     renameSession,
     saveRoute,
+    queueRouteForUpload,
+    syncPendingUploads,
   };
 }

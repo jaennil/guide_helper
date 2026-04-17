@@ -22,6 +22,7 @@ export interface TrackingSession {
   pausedDurationMs: number;
   samples: TrackSample[];
   lastSavedRouteId?: string;
+  lastQueuedUploadId?: string;
 }
 
 export interface TrackingMetrics {
