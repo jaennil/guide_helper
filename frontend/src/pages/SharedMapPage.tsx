@@ -79,11 +79,6 @@ export function SharedMapPage() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!token) return;
-    loadSharedRoute(token);
-  }, [token]);
-
   const loadBookmarkStatus = useCallback(async (routeId: string) => {
     if (!user) return;
     try {
@@ -111,7 +106,7 @@ export function SharedMapPage() {
     }
   };
 
-  const loadSharedRoute = async (shareToken: string) => {
+  const loadSharedRoute = useCallback(async (shareToken: string) => {
     setLoading(true);
     setError('');
     try {
@@ -154,7 +149,12 @@ export function SharedMapPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadBookmarkStatus, t]);
+
+  useEffect(() => {
+    if (!token) return;
+    loadSharedRoute(token);
+  }, [loadSharedRoute, token]);
 
   const handleTileProviderChange = (providerId: string) => {
     setTileProvider(providerId);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { routesApi } from '../api/routes';
@@ -21,11 +21,7 @@ export function LikeRatingBar({ routeId }: LikeRatingBarProps) {
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [ratingLoading, setRatingLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [routeId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [likeData, ratingData] = await Promise.all([
         routesApi.getLikeCount(routeId),
@@ -46,7 +42,11 @@ export function LikeRatingBar({ routeId }: LikeRatingBarProps) {
     } catch (err) {
       console.error('Failed to load like/rating data:', err);
     }
-  };
+  }, [isAuthenticated, routeId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleToggleLike = async () => {
     if (!isAuthenticated || likeLoading) return;

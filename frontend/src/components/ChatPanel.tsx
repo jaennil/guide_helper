@@ -10,6 +10,7 @@ import {
   type ConversationSummary,
 } from '../api/chat';
 import { useLanguage } from '../context/LanguageContext';
+import { getErrorMessage, getErrorStatus } from '../utils/errors';
 import './ChatPanel.css';
 
 interface DisplayMessage {
@@ -175,16 +176,9 @@ export function ChatPanel({
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const resolveChatError = useCallback((err: any) => {
-    const status = err?.response?.status;
-    const payload = err?.response?.data;
-    const message = typeof payload === 'string'
-      ? payload.trim()
-      : typeof payload?.message === 'string'
-        ? payload.message.trim()
-        : typeof err?.message === 'string'
-          ? err.message.trim()
-          : '';
+  const resolveChatError = useCallback((err: unknown) => {
+    const status = getErrorStatus(err);
+    const message = getErrorMessage(err, '');
 
     if (status === 429) {
       return t('chat.rateLimited');
@@ -283,11 +277,11 @@ export function ChatPanel({
           setMessages((prev) => prev.filter((m) => m.id !== streamingMsgId));
         },
       );
-    } catch (err: any) {
+    } catch (err) {
       // Remove streaming placeholder if it exists
       setMessages((prev) => prev.filter((m) => m.role !== 'assistant' || m.content !== ''));
 
-      if (err?.response?.status === 429) {
+      if (getErrorStatus(err) === 429) {
         setError(resolveChatError(err));
         return;
       }
@@ -304,7 +298,7 @@ export function ChatPanel({
         };
         previewShowPointActions(response.actions);
         setMessages((prev) => [...prev, assistantMsg]);
-      } catch (fallbackErr: any) {
+      } catch (fallbackErr) {
         setError(resolveChatError(fallbackErr ?? err));
       }
     } finally {

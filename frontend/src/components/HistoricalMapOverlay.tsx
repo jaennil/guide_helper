@@ -29,6 +29,8 @@ export function HistoricalMapOverlay({
   const renderTokenRef = useRef(0);
   const settleTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const latestYearRef = useRef(year);
+  const opacityRef = useRef(opacity);
+  const comparePositionRef = useRef<number | null>(comparePosition);
 
   const applyCompareClipPath = useCallback(() => {
     if (!layerRef.current) {
@@ -42,7 +44,9 @@ export function HistoricalMapOverlay({
       return;
     }
 
-    if (comparePosition == null) {
+    const splitPosition = comparePositionRef.current;
+
+    if (splitPosition == null) {
       overlayContainer.style.clipPath = 'inset(0 0 0 0)';
       (overlayContainer.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = 'inset(0 0 0 0)';
       return;
@@ -50,7 +54,7 @@ export function HistoricalMapOverlay({
 
     const overlayRect = overlayContainer.getBoundingClientRect();
     const mapRect = mapContainer.getBoundingClientRect();
-    const splitX = mapRect.left + (mapRect.width * comparePosition) / 100;
+    const splitX = mapRect.left + (mapRect.width * splitPosition) / 100;
     const topInset = Math.max(0, mapRect.top - overlayRect.top);
     const bottomInset = Math.max(0, overlayRect.bottom - mapRect.bottom);
     const leftInset = Math.max(0, mapRect.left - overlayRect.left);
@@ -59,21 +63,31 @@ export function HistoricalMapOverlay({
 
     overlayContainer.style.clipPath = clipPath;
     (overlayContainer.style as CSSStyleDeclaration & { webkitClipPath?: string }).webkitClipPath = clipPath;
-  }, [comparePosition, map]);
+  }, [map]);
 
   useEffect(() => {
     latestYearRef.current = year;
   }, [year]);
 
+  useEffect(() => {
+    opacityRef.current = opacity;
+  }, [opacity]);
+
+  useEffect(() => {
+    comparePositionRef.current = comparePosition;
+    applyCompareClipPath();
+  }, [applyCompareClipPath, comparePosition]);
+
   // Create the MapLibre GL layer
   useEffect(() => {
     console.log('[historical] creating OHM overlay');
 
-    const gl = L.maplibreGL({
+    const glOptions: L.LeafletMaplibreGLOptions & { pane: string } = {
       style: OHM_STYLE_URL,
       interactive: false,
       pane: 'overlayPane',
-    } as any);
+    };
+    const gl = L.maplibreGL(glOptions);
     gl.addTo(map);
     layerRef.current = gl;
 
@@ -81,7 +95,7 @@ export function HistoricalMapOverlay({
     if (container) {
       // Keep in tilePane but set high z-index so it renders above base tiles
       container.style.zIndex = '500';
-      container.style.opacity = String(opacity);
+      container.style.opacity = String(opacityRef.current);
       container.style.pointerEvents = 'none';
       container.style.transition = 'opacity 160ms ease, clip-path 160ms ease';
       requestAnimationFrame(applyCompareClipPath);
@@ -113,7 +127,7 @@ export function HistoricalMapOverlay({
       console.log('[historical] date filter applied:', latestYearRef.current);
     });
 
-    glMap.on('error', (e: any) => {
+    glMap.on('error', (e: maplibregl.ErrorEvent) => {
       console.error('[historical] MapLibre error:', e.error?.message || e);
     });
 
@@ -173,10 +187,6 @@ export function HistoricalMapOverlay({
       if (c) c.style.opacity = String(opacity);
     }
   }, [opacity]);
-
-  useEffect(() => {
-    applyCompareClipPath();
-  }, [applyCompareClipPath]);
 
   useEffect(() => {
     const syncClipPath = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { routesApi } from '../api/routes';
@@ -21,11 +21,7 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
   const [error, setError] = useState('');
   const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadComments();
-  }, [routeId]);
-
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     setLoading(true);
     try {
       const data = await routesApi.getComments(routeId);
@@ -35,7 +31,11 @@ export function CommentSection({ routeId, routeOwnerId }: CommentSectionProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [routeId]);
+
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
 
   const handleSubmit = async () => {
     if (!text.trim() || !user) return;

@@ -7,6 +7,7 @@ import {
   getWeatherDescription,
   type WeatherData,
 } from "../utils/weather";
+import { asTranslationKey } from "../i18n";
 
 interface WeatherPanelProps {
   points: GeoPoint[];
@@ -58,7 +59,7 @@ export function WeatherPanel({ points, startedAt }: WeatherPanelProps) {
       {weather && (
         <>
           <div className="weather-subtitle">
-            {t(`weather.mode.${weather.mode}` as any)}
+            {t(asTranslationKey(`weather.mode.${weather.mode}`))}
           </div>
           <div className="weather-reference">
             {startedAt
@@ -88,7 +89,7 @@ export function WeatherPanel({ points, startedAt }: WeatherPanelProps) {
               {Math.round(weather.current.temperature)}°C
             </span>
             <span className="weather-desc">
-              {t(`weather.${getWeatherDescription(weather.current.weathercode)}` as any)}
+              {t(asTranslationKey(`weather.${getWeatherDescription(weather.current.weathercode)}`))}
             </span>
           </div>
           <div className="weather-details">

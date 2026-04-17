@@ -54,7 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Apply theme on mount
   useEffect(() => {
     applyTheme(theme);
-  }, []);
+  }, [theme]);
 
   // Listen for system preference changes
   useEffect(() => {

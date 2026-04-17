@@ -7,6 +7,8 @@ import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
 import { getLocalizedCategoryName } from '../utils/categories';
 import { ArrowUpRight, FilterX, MapPin } from 'lucide-react';
+import { asTranslationKey } from '../i18n';
+import { getErrorMessage } from '../utils/errors';
 import './ExplorePage.css';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'top_rated';
@@ -31,6 +33,7 @@ export default function ExplorePage() {
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const searchRef = useRef(search);
 
   const getCurrentSeason = (): string => {
     const month = new Date().getMonth() + 1;
@@ -71,8 +74,8 @@ export default function ExplorePage() {
         setRoutes(data.routes);
       }
       setTotal(data.total);
-    } catch (err: any) {
-      setError(err.response?.data || t('explore.loadFailed'));
+    } catch (err) {
+      setError(getErrorMessage(err, t('explore.loadFailed')));
     } finally {
       setLoading(false);
       setInitialLoad(false);
@@ -81,7 +84,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setOffset(0);
-    fetchRoutes(search, categoryId, season, sort, 0, false);
+    fetchRoutes(searchRef.current, categoryId, season, sort, 0, false);
   }, [sort, categoryId, season, fetchRoutes]);
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export default function ExplorePage() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    searchRef.current = value;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setOffset(0);
@@ -110,6 +114,7 @@ export default function ExplorePage() {
       clearTimeout(debounceRef.current);
     }
     setSearch('');
+    searchRef.current = '';
     setCategoryId('');
     setSeason('');
     setSort('newest');
@@ -131,8 +136,8 @@ export default function ExplorePage() {
   const activeFilters = [
     search.trim() ? { key: 'search', label: search.trim() } : null,
     categoryName ? { key: 'category', label: getLocalizedCategoryName(categoryName, t) } : null,
-    season ? { key: 'season', label: t(`seasons.${season}` as any) } : null,
-    sort !== 'newest' ? { key: 'sort', label: t(`explore.sort${sort === 'oldest' ? 'Oldest' : sort === 'popular' ? 'Popular' : 'TopRated'}` as any) } : null,
+    season ? { key: 'season', label: t(asTranslationKey(`seasons.${season}`)) } : null,
+    sort !== 'newest' ? { key: 'sort', label: t(asTranslationKey(`explore.sort${sort === 'oldest' ? 'Oldest' : sort === 'popular' ? 'Popular' : 'TopRated'}`)) } : null,
   ].filter((value): value is { key: string; label: string } => Boolean(value));
 
   const hasMore = routes.length < total;
@@ -184,7 +189,7 @@ export default function ExplorePage() {
               <option value="">{t('explore.allCategories')}</option>
               {availableCategories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {t(`tags.${cat.name}` as any) || cat.name}
+                  {t(asTranslationKey(`tags.${cat.name}`)) || cat.name}
                 </option>
               ))}
             </select>
@@ -279,7 +284,7 @@ export default function ExplorePage() {
                     <div className="route-tags">
                       {route.seasons.map((value) => (
                         <span key={value} className={`route-tag season-tag season-${value}`}>
-                          {t(`seasons.${value}` as any)}
+                          {t(asTranslationKey(`seasons.${value}`))}
                         </span>
                       ))}
                     </div>

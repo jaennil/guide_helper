@@ -153,6 +153,54 @@ export function RoutePlayback({ points, segments, onClose }: RoutePlaybackProps)
     };
   }, [points, segments, map]);
 
+  // ── Check photo points ──
+  const checkPhotoPoints = useCallback((prog: number) => {
+    const path = fullPathRef.current;
+    const cumDist = cumDistRef.current;
+    const pointIdxs = pointIndicesRef.current;
+    if (path.length === 0 || cumDist.length === 0) return;
+
+    const totalDist = cumDist[cumDist.length - 1];
+    const currentDist = prog * totalDist;
+
+    points.forEach((point, i) => {
+      if (!point.photo || shownPhotosRef.current.has(i)) return;
+
+      const pathIdx = pointIdxs[i];
+      if (pathIdx === undefined) return;
+
+      const pointDist = cumDist[pathIdx] || 0;
+      // Trigger when we get close enough (within 1% of total distance)
+      const threshold = totalDist * 0.01;
+
+      if (currentDist >= pointDist - threshold && currentDist <= pointDist + threshold) {
+        shownPhotosRef.current.add(i);
+
+        const src = getPhotoSrc(point.photo);
+        if (src) {
+          console.log(`[playback] showing photo for point ${i}`);
+          setPhotoHiding(false);
+          setActivePhoto({
+            src: point.photo?.original || src,
+            label: t('playback.point', { index: i + 1 }),
+          });
+
+          // Clear previous timer
+          if (photoTimerRef.current) clearTimeout(photoTimerRef.current);
+
+          // Hide after 3 seconds
+          photoTimerRef.current = setTimeout(() => {
+            setPhotoHiding(true);
+            setTimeout(() => {
+              setActivePhoto(null);
+              setPhotoHiding(false);
+            }, 300);
+          }, 3000);
+        }
+      }
+    });
+  }, [points, t]);
+
   // ── Update visuals for a given progress value ──
   const updateVisuals = useCallback((prog: number) => {
     const path = fullPathRef.current;
@@ -206,55 +254,7 @@ export function RoutePlayback({ points, segments, onClose }: RoutePlaybackProps)
 
     // Check if we're passing a photo point
     checkPhotoPoints(prog);
-  }, [map]);
-
-  // ── Check photo points ──
-  const checkPhotoPoints = useCallback((prog: number) => {
-    const path = fullPathRef.current;
-    const cumDist = cumDistRef.current;
-    const pointIdxs = pointIndicesRef.current;
-    if (path.length === 0 || cumDist.length === 0) return;
-
-    const totalDist = cumDist[cumDist.length - 1];
-    const currentDist = prog * totalDist;
-
-    points.forEach((point, i) => {
-      if (!point.photo || shownPhotosRef.current.has(i)) return;
-
-      const pathIdx = pointIdxs[i];
-      if (pathIdx === undefined) return;
-
-      const pointDist = cumDist[pathIdx] || 0;
-      // Trigger when we get close enough (within 1% of total distance)
-      const threshold = totalDist * 0.01;
-
-      if (currentDist >= pointDist - threshold && currentDist <= pointDist + threshold) {
-        shownPhotosRef.current.add(i);
-
-        const src = getPhotoSrc(point.photo);
-        if (src) {
-          console.log(`[playback] showing photo for point ${i}`);
-          setPhotoHiding(false);
-          setActivePhoto({
-            src: point.photo?.original || src,
-            label: t('playback.point', { index: i + 1 }),
-          });
-
-          // Clear previous timer
-          if (photoTimerRef.current) clearTimeout(photoTimerRef.current);
-
-          // Hide after 3 seconds
-          photoTimerRef.current = setTimeout(() => {
-            setPhotoHiding(true);
-            setTimeout(() => {
-              setActivePhoto(null);
-              setPhotoHiding(false);
-            }, 300);
-          }, 3000);
-        }
-      }
-    });
-  }, [points, t]);
+  }, [checkPhotoPoints, map]);
 
   // ── Animation loop ──
   useEffect(() => {

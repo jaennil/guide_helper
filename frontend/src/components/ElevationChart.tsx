@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { cumulativeDistances, formatDistance, type GeoPoint } from "../utils/geo";
 
@@ -25,16 +25,18 @@ export function ElevationChart({ points, elevations }: ElevationChartProps) {
   const maxElev = Math.max(...elevations);
   const elevRange = maxElev - minElev || 1;
 
-  const toX = (dist: number) => PADDING.left + (dist / maxDist) * innerW;
-  const toY = (elev: number) =>
-    PADDING.top + innerH - ((elev - minElev) / elevRange) * innerH;
+  const toX = useCallback((dist: number) => PADDING.left + (dist / maxDist) * innerW, [maxDist]);
+  const toY = useCallback(
+    (elev: number) => PADDING.top + innerH - ((elev - minElev) / elevRange) * innerH,
+    [elevRange, minElev],
+  );
 
   // Build SVG path for the area fill and the line
   const linePath = useMemo(() => {
     return distances
       .map((d, i) => `${i === 0 ? "M" : "L"}${toX(d).toFixed(1)},${toY(elevations[i]).toFixed(1)}`)
       .join(" ");
-  }, [distances, elevations]);
+  }, [distances, elevations, toX, toY]);
 
   const areaPath = useMemo(() => {
     if (distances.length === 0) return "";
@@ -45,7 +47,7 @@ export function ElevationChart({ points, elevations }: ElevationChartProps) {
       .join(" ");
     const end = `L${toX(distances[distances.length - 1]).toFixed(1)},${bottomY} Z`;
     return `${start} ${line} ${end}`;
-  }, [distances, elevations]);
+  }, [distances, elevations, toX, toY]);
 
   // Y-axis ticks (3-4 values)
   const yTicks = useMemo(() => {

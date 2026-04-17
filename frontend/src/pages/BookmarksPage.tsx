@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -7,6 +7,8 @@ import type { ExploreRoute } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
 import { MapPin, ArrowUpRight } from 'lucide-react';
 import { getLocalizedCategoryName } from '../utils/categories';
+import { asTranslationKey } from '../i18n';
+import { getErrorMessage } from '../utils/errors';
 import './BookmarksPage.css';
 
 export default function BookmarksPage() {
@@ -25,24 +27,24 @@ export default function BookmarksPage() {
     }).catch((err) => console.error('Failed to load categories:', err));
   }, []);
 
-  useEffect(() => {
-    loadBookmarks();
-  }, []);
-
-  const loadBookmarks = async () => {
+  const loadBookmarks = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await routesApi.getBookmarks();
       console.log(`[BookmarksPage] loaded ${data.length} bookmarks`);
       setRoutes(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('[BookmarksPage] failed to load bookmarks:', err);
-      setError(err.response?.data || t('bookmarks.loadFailed'));
+      setError(getErrorMessage(err, t('bookmarks.loadFailed')));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadBookmarks();
+  }, [loadBookmarks]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(dateLocale, {
@@ -139,7 +141,7 @@ export default function BookmarksPage() {
                   <div className="route-tags">
                     {route.seasons.map((value) => (
                       <span key={value} className={`route-tag season-tag season-${value}`}>
-                        {t(`seasons.${value}` as any)}
+                        {t(asTranslationKey(`seasons.${value}`))}
                       </span>
                     ))}
                   </div>

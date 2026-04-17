@@ -11,6 +11,8 @@ interface NominatimResult {
   boundingbox: [string, string, string, string];
 }
 
+type TileLayerWithTemplate = L.TileLayer & { _url?: string };
+
 /** Convert latitude/longitude to slippy map tile coordinates at a given zoom */
 function latLngToTile(lat: number, lng: number, zoom: number): { x: number; y: number } {
   const n = Math.pow(2, zoom);
@@ -26,8 +28,8 @@ function latLngToTile(lat: number, lng: number, zoom: number): { x: number; y: n
 function getTileUrlTemplate(map: L.Map): string | null {
   let url: string | null = null;
   map.eachLayer((layer) => {
-    if ((layer as any)._url && !url) {
-      url = (layer as any)._url;
+    if (layer instanceof L.TileLayer && !url) {
+      url = (layer as TileLayerWithTemplate)._url ?? null;
     }
   });
   return url;
@@ -147,8 +149,8 @@ export function GeoSearchControl() {
         setIsOpen(true);
         setSearched(true);
         setActiveIndex(-1);
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
           console.error("[geo-search] fetch failed:", err);
         }
       } finally {

@@ -11,6 +11,8 @@ import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import { settingsApi, DEFAULT_DIFFICULTY_THRESHOLDS } from '../api/settings';
 import type { DifficultyThresholds } from '../api/settings';
+import { asTranslationKey } from '../i18n';
+import { getErrorMessage } from '../utils/errors';
 import './AdminPage.css';
 
 type AdminTab = 'dashboard' | 'users' | 'routes' | 'comments' | 'categories' | 'settings';
@@ -78,9 +80,9 @@ export default function AdminPage() {
       ]);
       setAuthStats(auth);
       setRoutesStats(routes);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load admin stats:', err);
-      setStatsError(err.response?.data || t('admin.loadFailed'));
+      setStatsError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setStatsLoading(false);
     }
@@ -97,9 +99,9 @@ export default function AdminPage() {
       });
       setUsers(data.users);
       setUsersTotal(data.total);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load users:', err);
-      setUsersError(err.response?.data || t('admin.loadFailed'));
+      setUsersError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setUsersLoading(false);
     }
@@ -115,9 +117,9 @@ export default function AdminPage() {
       });
       setAdminRoutes(data.routes);
       setRoutesTotal(data.total);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load admin routes:', err);
-      setRoutesError(err.response?.data || t('admin.loadFailed'));
+      setRoutesError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setRoutesLoading(false);
     }
@@ -133,9 +135,9 @@ export default function AdminPage() {
       });
       setAdminComments(data.comments);
       setCommentsTotal(data.total);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load admin comments:', err);
-      setCommentsError(err.response?.data || t('admin.loadFailed'));
+      setCommentsError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setCommentsLoading(false);
     }
@@ -147,9 +149,9 @@ export default function AdminPage() {
     try {
       const data = await categoriesApi.getCategories();
       setCategories(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load categories:', err);
-      setCategoriesError(err.response?.data || t('admin.loadFailed'));
+      setCategoriesError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setCategoriesLoading(false);
     }
@@ -162,9 +164,9 @@ export default function AdminPage() {
     try {
       const data = await settingsApi.getDifficultyThresholds();
       setThresholds(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load settings:', err);
-      setSettingsError(err.response?.data || t('admin.loadFailed'));
+      setSettingsError(getErrorMessage(err, t('admin.loadFailed')));
     } finally {
       setSettingsLoading(false);
     }
@@ -199,9 +201,9 @@ export default function AdminPage() {
       await adminApi.updateUserRole(userId, newRole);
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
       if (authStats) loadStats();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update role:', err);
-      toast.error(err.response?.data || t('admin.roleUpdateFailed'));
+      toast.error(getErrorMessage(err, t('admin.roleUpdateFailed')));
     }
   };
 
@@ -220,9 +222,9 @@ export default function AdminPage() {
         try {
           await routesApi.deleteRoute(routeId);
           loadAdminRoutes();
-        } catch (err: any) {
+        } catch (err) {
           console.error('Failed to delete route:', err);
-          toast.error(err.response?.data || t('admin.routes.deleteFailed'));
+          toast.error(getErrorMessage(err, t('admin.routes.deleteFailed')));
         }
       },
     });
@@ -236,9 +238,9 @@ export default function AdminPage() {
         try {
           await routesApi.deleteComment(commentId);
           loadAdminComments();
-        } catch (err: any) {
+        } catch (err) {
           console.error('Failed to delete comment:', err);
-          toast.error(err.response?.data || t('admin.comments.deleteFailed'));
+          toast.error(getErrorMessage(err, t('admin.comments.deleteFailed')));
         }
       },
     });
@@ -250,9 +252,9 @@ export default function AdminPage() {
       await categoriesApi.createCategory(newCategoryName.trim());
       setNewCategoryName('');
       loadCategories();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create category:', err);
-      toast.error(err.response?.data || t('admin.categories.createFailed'));
+      toast.error(getErrorMessage(err, t('admin.categories.createFailed')));
     }
   };
 
@@ -262,9 +264,9 @@ export default function AdminPage() {
       await categoriesApi.updateCategory(editingCategory.id, editingCategory.name.trim());
       setEditingCategory(null);
       loadCategories();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update category:', err);
-      toast.error(err.response?.data || t('admin.categories.updateFailed'));
+      toast.error(getErrorMessage(err, t('admin.categories.updateFailed')));
     }
   };
 
@@ -276,9 +278,9 @@ export default function AdminPage() {
         try {
           await categoriesApi.deleteCategory(id);
           loadCategories();
-        } catch (err: any) {
+        } catch (err) {
           console.error('Failed to delete category:', err);
-          toast.error(err.response?.data || t('admin.categories.deleteFailed'));
+          toast.error(getErrorMessage(err, t('admin.categories.deleteFailed')));
         }
       },
     });
@@ -296,9 +298,9 @@ export default function AdminPage() {
       await settingsApi.updateDifficultyThresholds(thresholds);
       setSettingsSuccess(t('admin.settings.saved'));
       console.log('[admin] difficulty thresholds saved');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save settings:', err);
-      setSettingsError(err.response?.data || t('admin.settings.saveFailed'));
+      setSettingsError(getErrorMessage(err, t('admin.settings.saveFailed')));
     } finally {
       setSettingsSaving(false);
     }
@@ -348,7 +350,7 @@ export default function AdminPage() {
               className={`tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {t(`admin.${tab}` as any)}
+              {t(asTranslationKey(`admin.${tab}`))}
             </button>
           ))}
         </nav>

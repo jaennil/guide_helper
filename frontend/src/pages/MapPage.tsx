@@ -52,6 +52,8 @@ import {
   ROUTE_LINE_COLOR_PRESETS,
   normalizeRouteLineColor,
 } from "../utils/routeColors";
+import { asTranslationKey } from "../i18n";
+import { getErrorMessage } from "../utils/errors";
 
 type RouteMode = "auto" | "manual";
 export type PhotoPreviewShape = "square" | "circle";
@@ -400,11 +402,16 @@ export const RoutingControl = React.memo(function RoutingControl({
   }, [engineId, map, categoryKey]);
 
   useEffect(() => {
+    const polylines = polylinesRef.current;
     return () => {
-      polylinesRef.current.forEach((pl) => {
-        try { map.removeLayer(pl); } catch (_) {}
+      polylines.forEach((pl) => {
+        try {
+          map.removeLayer(pl);
+        } catch {
+          // Layer may already be removed by Leaflet during map teardown.
+        }
       });
-      polylinesRef.current.clear();
+      polylines.clear();
     };
   }, [map]);
 
@@ -1054,7 +1061,7 @@ const RouteInspector = React.memo(function RouteInspector({
                   className={`tag-button${selectedCategoryIds.includes(cat.id) ? " active" : ""}`}
                   onClick={() => toggleCategory(cat.id)}
                 >
-                  {t(`tags.${cat.name}` as any) || cat.name}
+                  {t(asTranslationKey(`tags.${cat.name}`)) || cat.name}
                 </button>
               ))}
             </div>
@@ -1071,7 +1078,7 @@ const RouteInspector = React.memo(function RouteInspector({
                   className={`tag-button${selectedSeasons.includes(season) ? " active" : ""}`}
                   onClick={() => toggleSeason(season)}
                 >
-                  {t(`seasons.${season}` as any)}
+                  {t(asTranslationKey(`seasons.${season}`))}
                 </button>
               ))}
             </div>
@@ -1622,8 +1629,8 @@ export function MapPage() {
       setAiDescription(result.description);
       setShowAiModal(true);
       console.log("AI description generated for route:", loadedRouteInfo.id);
-    } catch (err: any) {
-      const msg = err.response?.data?.error || err.response?.data || t("ai.unavailable");
+    } catch (err) {
+      const msg = getErrorMessage(err, t("ai.unavailable"));
       toast.error(msg);
       console.error("Failed to generate AI description:", err);
     } finally {
@@ -1639,7 +1646,7 @@ export function MapPage() {
       setShowAiModal(false);
       toast.success(t("map.routeSaved"));
       console.log("AI description saved for route:", loadedRouteInfo.id);
-    } catch (err: any) {
+    } catch (err) {
       toast.error(t("map.saveFailed"));
       console.error("Failed to save AI description:", err);
     } finally {
@@ -1713,8 +1720,8 @@ export function MapPage() {
       setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
       setLoadedRouteInfo({ id: savedRoute.id, user_id: savedRoute.user_id, name: savedRoute.name });
       toast.success(t("map.routeSaved"));
-    } catch (err: any) {
-      setSaveError(err.response?.data || t("map.saveFailed"));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, t("map.saveFailed")));
     } finally {
       setSaveLoading(false);
     }

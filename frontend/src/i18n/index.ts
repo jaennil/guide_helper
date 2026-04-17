@@ -5,6 +5,10 @@ export type Locale = 'en' | 'ru';
 export type TranslationKey = keyof typeof en;
 export const translations: Record<Locale, Record<TranslationKey, string>> = { en, ru };
 
+export function asTranslationKey(key: string): TranslationKey {
+  return key as TranslationKey;
+}
+
 export function t(locale: Locale, key: TranslationKey, params?: Record<string, string | number>): string {
   let text = translations[locale][key] ?? key;
   if (params) {

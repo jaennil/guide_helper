@@ -63,7 +63,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [locale, setLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;

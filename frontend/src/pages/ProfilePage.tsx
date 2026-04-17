@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,8 @@ import { categoriesApi } from '../api/categories';
 import type { Category } from '../api/categories';
 import { getLocalizedCategoryName } from '../utils/categories';
 import { normalizeRouteLineColor } from '../utils/routeColors';
+import { asTranslationKey } from '../i18n';
+import { getErrorMessage } from '../utils/errors';
 import L from 'leaflet';
 import { MapPin, ArrowLeftRight, ArrowRight, MessageCircle, Heart, Star } from 'lucide-react';
 
@@ -140,13 +142,7 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (activeTab === 'routes') {
-      loadRoutes();
-    }
-  }, [activeTab]);
-
-  const loadRoutes = async () => {
+  const loadRoutes = useCallback(async () => {
     setRoutesLoading(true);
     setRoutesError('');
     try {
@@ -185,12 +181,18 @@ export default function ProfilePage() {
       setCommentCounts(counts);
       setLikeCounts(likes);
       setRatingAggregates(ratings);
-    } catch (err: any) {
-      setRoutesError(err.response?.data || t('profile.loadRoutesFailed'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.loadRoutesFailed')));
     } finally {
       setRoutesLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    if (activeTab === 'routes') {
+      loadRoutes();
+    }
+  }, [activeTab, loadRoutes]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,8 +207,8 @@ export default function ProfilePage() {
       });
       await refreshUser();
       setProfileSuccess(t('profile.updateSuccess'));
-    } catch (err: any) {
-      setProfileError(err.response?.data || t('profile.updateFailed'));
+    } catch (err) {
+      setProfileError(getErrorMessage(err, t('profile.updateFailed')));
     } finally {
       setProfileLoading(false);
     }
@@ -239,8 +241,8 @@ export default function ProfilePage() {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      setPasswordError(err.response?.data || t('profile.passwordChangeFailed'));
+    } catch (err) {
+      setPasswordError(getErrorMessage(err, t('profile.passwordChangeFailed')));
     } finally {
       setPasswordLoading(false);
     }
@@ -255,8 +257,8 @@ export default function ProfilePage() {
       const link = `${window.location.origin}/shared/${share_token}`;
       await navigator.clipboard.writeText(link);
       toast.success(t('profile.linkCopied'));
-    } catch (err: any) {
-      setRoutesError(err.response?.data || t('profile.shareFailed'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.shareFailed')));
     }
   };
 
@@ -272,8 +274,8 @@ export default function ProfilePage() {
       setRoutes(routes.map(r =>
         r.id === routeId ? { ...r, share_token: undefined } : r
       ));
-    } catch (err: any) {
-      setRoutesError(err.response?.data || t('profile.unshareFailed'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.unshareFailed')));
     }
   };
 
@@ -306,8 +308,8 @@ export default function ProfilePage() {
     try {
       await routesApi.deleteRoute(routeId);
       setRoutes(routes.filter(r => r.id !== routeId));
-    } catch (err: any) {
-      setRoutesError(err.response?.data || t('profile.deleteFailed'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.deleteFailed')));
     }
   };
 
@@ -321,8 +323,8 @@ export default function ProfilePage() {
     try {
       const importedRoute = await routesApi.importFromGeoJson(file);
       setRoutes([importedRoute, ...routes]);
-    } catch (err: any) {
-      setRoutesError(err.response?.data || t('profile.importFailed'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.importFailed')));
     } finally {
       setImportLoading(false);
       if (fileInputRef.current) {
@@ -432,7 +434,7 @@ export default function ProfilePage() {
 
                 <div className="form-group">
                   <label>{t('profile.role')}</label>
-                  <input type="text" value={user?.role ? t(`admin.roles.${user.role}` as any) : ''} disabled />
+                  <input type="text" value={user?.role ? t(asTranslationKey(`admin.roles.${user.role}`)) : ''} disabled />
                 </div>
 
                 <div className="form-group">
@@ -608,7 +610,7 @@ export default function ProfilePage() {
                                 <span key={id} className="route-tag">{getLocalizedCategoryName(categoryMap[id], t) || id}</span>
                               ))}
                               {(route.seasons?.length ?? 0) > 0 && route.seasons.map((season) => (
-                                <span key={season} className={`route-tag season-tag season-${season}`}>{t(`seasons.${season}` as any)}</span>
+                                <span key={season} className={`route-tag season-tag season-${season}`}>{t(asTranslationKey(`seasons.${season}`))}</span>
                               ))}
                               <span className={`route-tag route-visibility-badge ${route.share_token ? 'shared' : 'private'}`}>
                                 {route.share_token ? t('profile.sharedStatusPublic') : t('profile.sharedStatusPrivate')}

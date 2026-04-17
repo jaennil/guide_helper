@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
+import { getErrorMessage } from '../utils/errors';
 import './Auth.css';
 
 export function Auth() {
@@ -28,8 +29,8 @@ export function Auth() {
         await register(email, password);
       }
       navigate('/map');
-    } catch (err: any) {
-      setError(err.response?.data || 'Authentication failed');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Authentication failed'));
     } finally {
       setLoading(false);
     }

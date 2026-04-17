@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../api/config';
+import type { RoutePoint } from '../api/routes';
 
 interface PhotoNotificationOptions {
   routeId: string;
   enabled: boolean;
-  onPhotoUpdate: (points: any[]) => void;
+  onPhotoUpdate: (points: RoutePoint[]) => void;
 }
 
 const INITIAL_RECONNECT_MS = 1000;
