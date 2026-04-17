@@ -25,6 +25,7 @@ jobs:
       auth: ${{ steps.filter.outputs.auth }}
       frontend: ${{ steps.filter.outputs.frontend }}
       mobile: ${{ steps.filter.outputs.mobile }}
+      workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -41,10 +42,12 @@ jobs:
               - 'frontend/**'
             mobile:
               - 'mobile/**'
+            workflow:
+              - '.github/workflows/tests.yml'
 
   test-cache:
     needs: changes
-    if: needs.changes.outputs.cache == 'true'
+    if: needs.changes.outputs.cache == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +64,7 @@ jobs:
 
   test-tiles:
     needs: changes
-    if: needs.changes.outputs.tiles == 'true'
+    if: needs.changes.outputs.tiles == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +81,7 @@ jobs:
 
   test-auth:
     needs: changes
-    if: needs.changes.outputs.auth == 'true'
+    if: needs.changes.outputs.auth == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -110,7 +113,7 @@ jobs:
 
   lint-frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +133,7 @@ jobs:
 
   test-mobile:
     needs: changes
-    if: needs.changes.outputs.mobile == 'true'
+    if: needs.changes.outputs.mobile == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
