@@ -57,7 +57,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.23'
+          go-version-file: backend/cache/go.mod
           cache-dependency-path: backend/cache/go.sum
 
       - name: Test cache service
@@ -75,7 +75,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.23'
+          go-version-file: backend/tiles/go.mod
           cache-dependency-path: backend/tiles/go.sum
 
       - name: Test tiles service
