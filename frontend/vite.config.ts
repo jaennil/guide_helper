@@ -30,7 +30,7 @@ export default defineConfig({
           }
 
           if (id.includes('react-markdown') || id.includes('micromark') || id.includes('remark') || id.includes('unified')) {
-            return 'vendor-markdown';
+            return undefined;
           }
 
           if (id.includes('react') || id.includes('scheduler')) {
