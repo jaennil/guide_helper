@@ -11,6 +11,45 @@ export default defineConfig({
       '/api/v1': 'http://localhost:8088',
     },
   },
+  build: {
+    // Leaflet/MapLibre are isolated into lazy vendor chunks; warn only on unexpected growth above them.
+    chunkSizeWarningLimit: 1100,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          if (id.includes('maplibre-gl') || id.includes('@maplibre') || id.includes('@openhistoricalmap')) {
+            return 'vendor-historical-map';
+          }
+
+          if (id.includes('leaflet') || id.includes('react-leaflet')) {
+            return 'vendor-leaflet';
+          }
+
+          if (id.includes('react-markdown') || id.includes('micromark') || id.includes('remark') || id.includes('unified')) {
+            return 'vendor-markdown';
+          }
+
+          if (id.includes('react') || id.includes('scheduler')) {
+            return 'vendor-react';
+          }
+
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+
+          if (id.includes('exifr')) {
+            return 'vendor-photo';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

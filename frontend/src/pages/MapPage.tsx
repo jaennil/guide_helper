@@ -28,11 +28,8 @@ import { LikeRatingBar } from "../components/LikeRatingBar";
 import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
-import { HistoricalMapOverlay } from "../components/HistoricalMapOverlay";
 import { WeatherPanel } from "../components/WeatherPanel";
-import { RoutePlayback } from "../components/RoutePlayback";
 import { NotificationBell } from "../components/NotificationBell";
-import { ChatPanel } from "../components/ChatPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
@@ -54,6 +51,16 @@ import {
 } from "../utils/routeColors";
 import { asTranslationKey } from "../i18n";
 import { getErrorMessage } from "../utils/errors";
+
+const HistoricalMapOverlay = React.lazy(() =>
+  import("../components/HistoricalMapOverlay").then((module) => ({ default: module.HistoricalMapOverlay })),
+);
+const RoutePlayback = React.lazy(() =>
+  import("../components/RoutePlayback").then((module) => ({ default: module.RoutePlayback })),
+);
+const ChatPanel = React.lazy(() =>
+  import("../components/ChatPanel").then((module) => ({ default: module.ChatPanel })),
+);
 
 type RouteMode = "auto" | "manual";
 export type PhotoPreviewShape = "square" | "circle";
@@ -1221,6 +1228,7 @@ export function MapPage() {
   const [historicalOverlayBusy, setHistoricalOverlayBusy] = useState(false);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatPanelMounted, setChatPanelMounted] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
@@ -1253,6 +1261,12 @@ export function MapPage() {
       setHistoricalCompareDragging(false);
     }
   }, [historicalMode]);
+
+  useEffect(() => {
+    if (chatOpen) {
+      setChatPanelMounted(true);
+    }
+  }, [chatOpen]);
 
   useEffect(() => {
     if (!historicalMode || !historicalPlaying || historicalOverlayBusy) {
@@ -2614,12 +2628,14 @@ export function MapPage() {
         <MapClickHandler onMapClick={handleMapClick} />
         <GeoSearchControl />
         {historicalMode && (
-          <HistoricalMapOverlay
-            year={historicalYear}
-            opacity={historicalOpacity}
-            comparePosition={historicalCompareMode ? historicalComparePosition : null}
-            onBusyChange={setHistoricalOverlayBusy}
-          />
+          <React.Suspense fallback={null}>
+            <HistoricalMapOverlay
+              year={historicalYear}
+              opacity={historicalOpacity}
+              comparePosition={historicalCompareMode ? historicalComparePosition : null}
+              onBusyChange={setHistoricalOverlayBusy}
+            />
+          </React.Suspense>
         )}
         <RoutingControl
           waypoints={waypoints}
@@ -2763,11 +2779,13 @@ export function MapPage() {
           );
         })}
         {playbackActive && routePoints.length >= 2 && (
-          <RoutePlayback
-            points={routePoints}
-            segments={routeSegments}
-            onClose={() => setPlaybackActive(false)}
-          />
+          <React.Suspense fallback={null}>
+            <RoutePlayback
+              points={routePoints}
+              segments={routeSegments}
+              onClose={() => setPlaybackActive(false)}
+            />
+          </React.Suspense>
         )}
       </MapContainer>
       {!playbackActive && routePoints.length >= 2 && (
@@ -2793,21 +2811,25 @@ export function MapPage() {
           />
         </>
       )}
-      <ChatPanel
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onPreviewPoints={handleChatPreviewPoints}
-        onFocusPoints={handleChatFocusPoints}
-        onApplyPoints={handleChatApplyPoints}
-        onShowRoutes={handleChatShowRoutes}
-        mapContext={{
-          points: routePoints.slice(-8).map((point) => ({
-            lat: point.position[0],
-            lng: point.position[1],
-            name: point.name,
-          })),
-        }}
-      />
+      {chatPanelMounted && (
+        <React.Suspense fallback={null}>
+          <ChatPanel
+            isOpen={chatOpen}
+            onClose={() => setChatOpen(false)}
+            onPreviewPoints={handleChatPreviewPoints}
+            onFocusPoints={handleChatFocusPoints}
+            onApplyPoints={handleChatApplyPoints}
+            onShowRoutes={handleChatShowRoutes}
+            mapContext={{
+              points: routePoints.slice(-8).map((point) => ({
+                lat: point.position[0],
+                lng: point.position[1],
+                name: point.name,
+              })),
+            }}
+          />
+        </React.Suspense>
+      )}
       {showConfirmClear && (
         <ConfirmDialog
           message={t("map.clearAllPoints")}
