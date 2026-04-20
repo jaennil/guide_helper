@@ -1,7 +1,9 @@
 \documentclass[14pt,a4paper]{extarticle}
 
 \usepackage{fontspec}
-\setmainfont{Liberation Serif}
+\IfFontExistsTF{Times New Roman}
+  {\setmainfont{Times New Roman}}
+  {\setmainfont{Nimbus Roman}}
 \usepackage[russian]{babel}
 \usepackage[
   left=30mm,

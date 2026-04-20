@@ -5,7 +5,9 @@
 
 % --- Шрифты (XeLaTeX) ---
 \usepackage{fontspec}
-\setmainfont{Liberation Serif} % метрически совместим с Times New Roman
+\IfFontExistsTF{Times New Roman}
+  {\setmainfont{Times New Roman}}
+  {\setmainfont{Nimbus Roman}} % fallback для Linux-сборки без MS Fonts
 \setsansfont{Liberation Sans}
 \setmonofont{Liberation Mono}
 

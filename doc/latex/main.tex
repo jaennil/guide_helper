@@ -8,9 +8,12 @@
 % Нумерация: титульный лист = стр. 1 (без номера)
 \setcounter{page}{2}
 
-\pagestyle{fancy}
+% Задание на ВКР
+\input{chapters/assignment-content}
+\clearpage
 
 % Аннотация
+\pagestyle{fancy}
 \input{chapters/annotation}
 \clearpage
 
@@ -28,16 +31,22 @@
 % Глава 2: Разработка и реализация системы
 \input{chapters/02-implementation}
 
-% Временно исключено из сборки:
-% \input{chapters/03-testing}
-% \input{chapters/conclusion}
-% \clearpage
-% \printbibliography[heading=bibliography, title={СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}]
-% \appendix
-% \input{chapters/appendix-a}
-% \clearpage
-% \input{chapters/appendix-b}
-% \clearpage
-% \input{chapters/appendix-v}
+% Глава 3: Тестирование и оценка системы
+\input{chapters/03-testing}
+
+% Заключение
+\input{chapters/conclusion}
+\clearpage
+
+% Список источников
+\printbibliography[heading=bibintoc, title={СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}]
+
+% Приложения
+\appendix
+\input{chapters/appendix-a}
+\clearpage
+\input{chapters/appendix-b}
+\clearpage
+\input{chapters/appendix-v}
 
 \end{document}
