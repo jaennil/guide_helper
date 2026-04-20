@@ -11,15 +11,24 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-const RUSSIAN_SPEAKING_COUNTRIES = new Set(['RU', 'BY', 'KZ', 'UA', 'KG', 'TJ', 'UZ', 'TM', 'MD']);
-const IP_DETECT_TIMEOUT_MS = 3000;
+const RUSSIAN_LANGUAGE_PREFIXES = ['ru', 'be', 'uk', 'kk', 'ky', 'tg', 'uz'];
+
+function detectBrowserLocale(): Locale {
+  const languageTags = navigator.languages?.length ? navigator.languages : [navigator.language];
+  const normalizedTags = languageTags.map((language) => language.toLowerCase());
+  return normalizedTags.some((language) =>
+    RUSSIAN_LANGUAGE_PREFIXES.some((prefix) => language === prefix || language.startsWith(`${prefix}-`)),
+  )
+    ? 'ru'
+    : 'en';
+}
 
 function getInitialLocale(): Locale {
   const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   if (stored === 'ru' || stored === 'en') {
     return stored;
   }
-  return 'en';
+  return detectBrowserLocale();
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
@@ -30,40 +39,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, newLocale);
     console.log(`[i18n] locale changed to: ${newLocale}`);
   }, []);
-
-  useEffect(() => {
-    const hasStoredLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) !== null;
-    if (hasStoredLanguage) {
-      console.log('[i18n] using stored locale:', locale);
-      return;
-    }
-
-    console.log('[i18n] no stored locale, detecting by IP...');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), IP_DETECT_TIMEOUT_MS);
-
-    fetch('https://ipapi.co/json/', { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        const country = data?.country_code;
-        console.log('[i18n] detected country:', country);
-        if (country && RUSSIAN_SPEAKING_COUNTRIES.has(country)) {
-          setLocale('ru');
-        } else {
-          setLocale('en');
-        }
-      })
-      .catch((err) => {
-        console.warn('[i18n] IP detection failed, defaulting to en:', err.message);
-        setLocale('en');
-      })
-      .finally(() => clearTimeout(timeoutId));
-
-    return () => {
-      controller.abort();
-      clearTimeout(timeoutId);
-    };
-  }, [locale, setLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
