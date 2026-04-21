@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { getStoredTokens } from "../api/auth";
+import { getCategories, type Category } from "../api/categories";
 import {
   deleteUserRoute,
   getUserRoutesWithFallback,
@@ -37,6 +38,13 @@ interface NoticeState {
   text?: string;
 }
 
+const SEASON_LABELS: Record<string, string> = {
+  winter: "Зима",
+  spring: "Весна",
+  summer: "Лето",
+  autumn: "Осень",
+};
+
 function formatRouteDate(value?: string) {
   if (!value) {
     return "Не указана";
@@ -54,6 +62,10 @@ function formatRouteDate(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatSeasonLabel(value: string) {
+  return SEASON_LABELS[value] ?? value;
 }
 
 function sortRoutesByUpdatedAt(routes: RouteResponse[]) {
@@ -237,6 +249,12 @@ export function RoutesScreen({
   const [deletingPendingId, setDeletingPendingId] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"network" | "cache" | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const categoryLabelById = categories.reduce<Record<string, string>>((accumulator, category) => {
+    accumulator[category.id] = category.name;
+    return accumulator;
+  }, {});
 
   async function loadRoutes() {
     setIsLoading(true);
@@ -271,6 +289,15 @@ export function RoutesScreen({
       );
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadCategoriesCatalog() {
+    try {
+      const nextCategories = await getCategories();
+      setCategories(nextCategories);
+    } catch {
+      setCategories([]);
     }
   }
 
@@ -391,6 +418,7 @@ export function RoutesScreen({
   useEffect(() => {
     if (isActive) {
       void loadRoutes();
+      void loadCategoriesCatalog();
     }
   }, [isActive]);
 
@@ -502,7 +530,20 @@ export function RoutesScreen({
                     {upload.payload.seasons.length > 0 ? (
                       <View style={styles.badgeRow}>
                         {upload.payload.seasons.map((season) => (
-                          <Badge key={`${upload.id}-${season}`} label={season} />
+                          <Badge
+                            key={`${upload.id}-${season}`}
+                            label={formatSeasonLabel(season)}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    {upload.payload.category_ids.length > 0 ? (
+                      <View style={styles.badgeRow}>
+                        {upload.payload.category_ids.map((categoryId) => (
+                          <Badge
+                            key={`${upload.id}-${categoryId}`}
+                            label={categoryLabelById[categoryId] ?? categoryId}
+                          />
                         ))}
                       </View>
                     ) : null}
@@ -632,7 +673,20 @@ export function RoutesScreen({
                     {route.seasons.length > 0 ? (
                       <View style={styles.badgeRow}>
                         {route.seasons.map((season) => (
-                          <Badge key={`${route.id}-${season}`} label={season} />
+                          <Badge
+                            key={`${route.id}-${season}`}
+                            label={formatSeasonLabel(season)}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    {route.category_ids.length > 0 ? (
+                      <View style={styles.badgeRow}>
+                        {route.category_ids.map((categoryId) => (
+                          <Badge
+                            key={`${route.id}-${categoryId}`}
+                            label={categoryLabelById[categoryId] ?? categoryId}
+                          />
                         ))}
                       </View>
                     ) : null}

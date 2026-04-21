@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import { getCategories, type Category } from "../api/categories";
 import {
   deleteUserRoute,
   getUserRouteWithFallback,
@@ -24,6 +25,12 @@ const FALLBACK_REGION = {
   longitudeDelta: 0.02,
 };
 const HAS_ANDROID_MAPS_KEY = Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY);
+const SEASON_LABELS: Record<string, string> = {
+  winter: "Зима",
+  spring: "Весна",
+  summer: "Лето",
+  autumn: "Осень",
+};
 
 interface RouteDetailsScreenProps {
   routeId: string;
@@ -49,6 +56,10 @@ function formatRouteDate(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatSeasonLabel(value: string) {
+  return SEASON_LABELS[value] ?? value;
 }
 
 function getPointFallbackName(point: RoutePointResponse, index: number, totalPoints: number) {
@@ -154,12 +165,17 @@ export function RouteDetailsScreen({
   onDeleted,
 }: RouteDetailsScreenProps) {
   const [route, setRoute] = useState<RouteResponse | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"network" | "cache" | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const canRenderNativeMap = Platform.OS !== "android" || HAS_ANDROID_MAPS_KEY;
+  const categoryLabelById = categories.reduce<Record<string, string>>((accumulator, category) => {
+    accumulator[category.id] = category.name;
+    return accumulator;
+  }, {});
 
   async function loadRoute() {
     setIsLoading(true);
@@ -198,9 +214,19 @@ export function RouteDetailsScreen({
     }
   }
 
+  async function loadCategoriesCatalog() {
+    try {
+      const nextCategories = await getCategories();
+      setCategories(nextCategories);
+    } catch {
+      setCategories([]);
+    }
+  }
+
   useEffect(() => {
     if (isActive) {
       void loadRoute();
+      void loadCategoriesCatalog();
     }
   }, [isActive, routeId]);
 
@@ -278,11 +304,19 @@ export function RouteDetailsScreen({
                   {route.start_location ?? "Старт не определён"} → {route.end_location ?? "Финиш не определён"}
                 </Text>
               ) : null}
-              <View style={styles.badgeRow}>
-                {route.seasons.map((season) => (
-                  <Badge key={`${route.id}-${season}`} label={season} />
-                ))}
-              </View>
+              {route.seasons.length > 0 || route.category_ids.length > 0 ? (
+                <View style={styles.badgeRow}>
+                  {route.seasons.map((season) => (
+                    <Badge key={`${route.id}-${season}`} label={formatSeasonLabel(season)} />
+                  ))}
+                  {route.category_ids.map((categoryId) => (
+                    <Badge
+                      key={`${route.id}-${categoryId}`}
+                      label={categoryLabelById[categoryId] ?? categoryId}
+                    />
+                  ))}
+                </View>
+              ) : null}
               {route.share_token ? (
                 <View style={styles.shareBox}>
                   <Text style={styles.shareLabel}>Статус публикации</Text>
