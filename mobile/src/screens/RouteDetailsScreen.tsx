@@ -9,12 +9,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import {
   deleteUserRoute,
   getUserRouteWithFallback,
   type RoutePointResponse,
   type RouteResponse,
 } from "../api/routes";
+
+const FALLBACK_REGION = {
+  latitude: 55.7558,
+  longitude: 37.6173,
+  latitudeDelta: 0.02,
+  longitudeDelta: 0.02,
+};
+const HAS_ANDROID_MAPS_KEY = Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY);
 
 interface RouteDetailsScreenProps {
   routeId: string;
@@ -56,6 +65,35 @@ function getPointFallbackName(point: RoutePointResponse, index: number, totalPoi
   }
 
   return `Точка ${index + 1}`;
+}
+
+function buildRegion(points: RoutePointResponse[]) {
+  if (points.length === 0) {
+    return FALLBACK_REGION;
+  }
+
+  if (points.length === 1) {
+    return {
+      latitude: points[0].lat,
+      longitude: points[0].lng,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+  }
+
+  const latitudes = points.map((point) => point.lat);
+  const longitudes = points.map((point) => point.lng);
+  const minLatitude = Math.min(...latitudes);
+  const maxLatitude = Math.max(...latitudes);
+  const minLongitude = Math.min(...longitudes);
+  const maxLongitude = Math.max(...longitudes);
+
+  return {
+    latitude: (minLatitude + maxLatitude) / 2,
+    longitude: (minLongitude + maxLongitude) / 2,
+    latitudeDelta: Math.max(0.01, (maxLatitude - minLatitude) * 1.6),
+    longitudeDelta: Math.max(0.01, (maxLongitude - minLongitude) * 1.6),
+  };
 }
 
 function Badge({
@@ -121,6 +159,7 @@ export function RouteDetailsScreen({
   const [error, setError] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"network" | "cache" | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const canRenderNativeMap = Platform.OS !== "android" || HAS_ANDROID_MAPS_KEY;
 
   async function loadRoute() {
     setIsLoading(true);
@@ -278,6 +317,61 @@ export function RouteDetailsScreen({
             </View>
 
             <View style={styles.card}>
+              <Text style={styles.cardTitle}>Маршрут на карте</Text>
+              <View style={styles.mapFrame}>
+                {canRenderNativeMap ? (
+                  <MapView
+                    style={styles.map}
+                    region={buildRegion(route.points)}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                  >
+                    {route.points.length > 1 ? (
+                      <Polyline
+                        coordinates={route.points.map((point) => ({
+                          latitude: point.lat,
+                          longitude: point.lng,
+                        }))}
+                        strokeColor={route.line_color ?? "#4f7cff"}
+                        strokeWidth={5}
+                      />
+                    ) : null}
+                    {route.points[0] ? (
+                      <Marker
+                        coordinate={{
+                          latitude: route.points[0].lat,
+                          longitude: route.points[0].lng,
+                        }}
+                        title="Старт"
+                        pinColor="#22c55e"
+                      />
+                    ) : null}
+                    {route.points.length > 1 ? (
+                      <Marker
+                        coordinate={{
+                          latitude: route.points[route.points.length - 1].lat,
+                          longitude: route.points[route.points.length - 1].lng,
+                        }}
+                        title="Финиш"
+                        pinColor="#ef4444"
+                      />
+                    ) : null}
+                  </MapView>
+                ) : (
+                  <View style={styles.mapFallback}>
+                    <Text style={styles.mapFallbackTitle}>Карта недоступна в текущей сборке</Text>
+                    <Text style={styles.mapFallbackText}>
+                      Детали маршрута доступны и без Android Maps key, но для встроенной карты нужен
+                      `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.card}>
               <Text style={styles.cardTitle}>Точки маршрута</Text>
               <View style={styles.pointList}>
                 {route.points.map((point, index) => (
@@ -419,6 +513,33 @@ const styles = StyleSheet.create({
     color: "#f7f8fd",
     fontSize: 13,
     lineHeight: 20,
+  },
+  mapFrame: {
+    borderColor: "#2c345b",
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  map: {
+    height: 240,
+    width: "100%",
+  },
+  mapFallback: {
+    backgroundColor: "#0f1324",
+    gap: 10,
+    minHeight: 220,
+    justifyContent: "center",
+    padding: 18,
+  },
+  mapFallbackTitle: {
+    color: "#f7f8fd",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  mapFallbackText: {
+    color: "#aab1cb",
+    fontSize: 14,
+    lineHeight: 21,
   },
   pointList: {
     gap: 12,
