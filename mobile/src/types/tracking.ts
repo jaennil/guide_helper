@@ -1,5 +1,7 @@
 export type TrackingStatus = "idle" | "recording" | "paused" | "stopped";
 export type SampleSource = "foreground" | "background";
+export type PhotoPreviewShape = "square" | "circle";
+export type RoutePointSemanticHint = "stop" | "turn";
 
 export interface TrackSample {
   latitude: number;
@@ -17,12 +19,20 @@ export interface TrackingSession {
   name: string;
   status: TrackingStatus;
   startedAt?: string;
+  routeStartedAt?: string;
   pausedAt?: string;
   endedAt?: string;
   pausedDurationMs: number;
   samples: TrackSample[];
+  routePoints: RoutePointPayload[];
+  categoryIds: string[];
+  seasons: string[];
+  lineColor: string;
+  serverRouteId?: string;
   lastSavedRouteId?: string;
   lastQueuedUploadId?: string;
+  serverBaselineFingerprint?: string;
+  queuedBaselineFingerprint?: string;
 }
 
 export interface TrackingMetrics {
@@ -38,8 +48,22 @@ export interface RoutePointPayload {
   lng: number;
   name?: string;
   note?: string;
+  semantic_hint?: RoutePointSemanticHint;
+  marker_color?: string;
+  marker_size?: number;
+  preview_size?: number;
+  preview_shape?: PhotoPreviewShape;
+  photo?: RoutePhotoPayload;
   segment_mode?: "manual";
   segment_duration_minutes?: number;
+}
+
+export type RoutePhotoStatus = "pending" | "processing" | "done" | "failed";
+
+export interface RoutePhotoPayload {
+  original: string;
+  thumbnail_url?: string;
+  status: RoutePhotoStatus;
 }
 
 export interface CreateTrackedRoutePayload {
@@ -50,3 +74,5 @@ export interface CreateTrackedRoutePayload {
   line_color?: string;
   started_at?: string;
 }
+
+export type UpdateTrackedRoutePayload = CreateTrackedRoutePayload;

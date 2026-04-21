@@ -7,6 +7,7 @@ const config: ExpoConfig = {
   name: "Guide Helper Mobile",
   slug: "guide-helper-mobile",
   version: "0.1.0",
+  platforms: ["android"],
   orientation: "portrait",
   userInterfaceStyle: "dark",
   scheme: "guidehelper-mobile",
@@ -23,10 +24,17 @@ const config: ExpoConfig = {
         isAndroidForegroundServiceEnabled: true,
       },
     ],
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Разрешите Guide Helper доступ к фото, чтобы прикреплять изображения к точкам маршрута.",
+        cameraPermission:
+          "Разрешите Guide Helper использовать камеру, чтобы фотографировать точки маршрута прямо во время прогулки.",
+        microphonePermission: false,
+      },
+    ],
   ],
-  ios: {
-    bundleIdentifier: "ru.dubrovskih.guidehelper.mobile",
-  },
   android: {
     package: "ru.dubrovskih.guidehelper.mobile",
     config: googleMapsApiKey

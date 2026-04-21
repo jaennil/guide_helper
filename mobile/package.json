@@ -6,6 +6,9 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:debug:install": "cd android && ./gradlew installDebug",
+    "android:preview:build": "cd android && ./gradlew assembleRelease",
+    "android:preview:install": "cd android && ./gradlew installRelease",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit"
@@ -13,6 +16,7 @@
   "dependencies": {
     "expo": "~54.0.0",
     "expo-file-system": "~19.0.21",
+    "expo-image-picker": "~17.0.10",
     "expo-location": "~19.0.8",
     "expo-task-manager": "~14.0.9",
     "react": "19.1.0",
