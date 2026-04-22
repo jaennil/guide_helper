@@ -19,7 +19,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type PhotoData, type Route as SavedRoute } from "../api/routes";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
-import { MapMenuButton } from "../components/MapMenuButton";
 import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
@@ -27,10 +26,10 @@ import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
-import { NotificationBell } from "../components/NotificationBell";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PointPopup } from "../components/RoutePointInspector";
 import { RouteInspectorPanel } from "../components/RouteInspectorPanel";
+import { RouteMapToolbar } from "../components/RouteMapToolbar";
 import {
   ManualRoutes,
   RoutingControl,
@@ -42,8 +41,6 @@ import {
 } from "../components/HistoricalTimelinePanel";
 import type { ChatPoint } from "../api/chat";
 import { ROUTING_ENGINES, DEFAULT_ENGINE, type RoutingEngineId } from "../utils/routingEngines";
-import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
-import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 import {
   DEFAULT_ROUTE_LINE_COLOR,
@@ -284,8 +281,6 @@ export function MapPage() {
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPanelMounted, setChatPanelMounted] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
@@ -1336,200 +1331,69 @@ export function MapPage() {
 
   return (
     <div className="App">
-      <div className="map-header">
-        {/* ── Left: Route mode pills ── */}
-        <div className="header-pills">
-          <button
-            className={`header-pill${routeMode === "auto" ? " active" : ""}`}
-            onClick={() => setRouteMode("auto")}
-          >
-            <Route size={14} /> {t("map.modeAuto")}
-          </button>
-          <button
-            className={`header-pill${routeMode === "manual" ? " active" : ""}`}
-            onClick={() => setRouteMode("manual")}
-          >
-            <Minus size={14} /> {t("map.modeManual")}
-          </button>
-          {routeMode === "auto" && (
-            <CustomSelect
-              options={ROUTING_ENGINES.map(e => ({ value: e.id, label: e.label }))}
-              value={routingEngine}
-              onChange={(v) => handleEngineChange(v as RoutingEngineId)}
-            />
-          )}
-        </div>
-
-        {/* ── Right: Actions ── */}
-        <div className="header-actions">
-          <input type="file" ref={photoImportRef} multiple accept="image/*" onChange={handleImportPhotos} style={{ display: "none" }} />
-
-          {/* Tile selector */}
-          <CustomSelect
-            options={TILE_PROVIDERS.map(p => ({ value: p.id, label: p.name }))}
-            value={tileProvider}
-            onChange={handleTileProviderChange}
-          />
-
-          {/* Save Route — prominent */}
-          {canSaveCurrentRoute && (
-            <button
-              onClick={handleSaveRoute}
-              className="btn btn-primary btn-sm btn-pill"
-            >
-              {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
-            </button>
-          )}
-
-          {/* Catalog — standalone button */}
-          <button
-            className="btn btn-ghost btn-sm btn-icon"
-            onClick={() => navigate("/explore")}
-            title={t("explore.catalog")}
-          >
-            <Compass size={18} />
-          </button>
-
-          {/* Tools dropdown */}
-          <div className="header-dropdown-wrap">
-            <button
-              className="btn btn-secondary btn-sm btn-icon"
-              onClick={() => { setToolsOpen(!toolsOpen); setUserMenuOpen(false); }}
-              title="Tools"
-            >
-              <Wrench size={18} />
-            </button>
-            {toolsOpen && (
-              <div className="header-dropdown" onClick={() => setToolsOpen(false)}>
-                <button onClick={() => photoImportRef.current?.click()}>{t("map.importPhotos")}</button>
-                {loadedRouteInfo && routePoints.length >= 2 && (
-                  <>
-                    <button onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}>{t("export.gpx")}</button>
-                    <button onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}>{t("export.kml")}</button>
-                    <button onClick={handleGenerateAiDescription} disabled={aiGenerating}>{aiGenerating ? t("ai.generating") : t("ai.generateButton")}</button>
-                  </>
-                )}
-                {routePoints.length >= 2 && (
-                  <button onClick={() => setPlaybackActive(true)}>{t("playback.button")}</button>
-                )}
-                <button onClick={handleHistoricalModeToggle}>
-                  {historicalMode ? "✓ " : ""}{t("historical.toggle")}
-                </button>
-                {(routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) && (
-                  <button onClick={handleClearRoute} className="dropdown-danger">{t("map.clear")}</button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* AI Chat */}
-          <button
-            className={`btn btn-ghost btn-sm btn-icon${chatOpen ? " active-toggle" : ""}`}
-            onClick={() => setChatOpen(!chatOpen)}
-            title={t("chat.toggle")}
-          >
-            <Sparkles size={18} />
-          </button>
-
-          {/* Notifications */}
-          <NotificationBell />
-
-          {/* User menu dropdown */}
-          <div className="header-dropdown-wrap">
-            <button
-              className="btn btn-ghost btn-sm header-user-btn"
-              onClick={() => { setUserMenuOpen(!userMenuOpen); setToolsOpen(false); }}
-            >
-              {(user?.name || user?.email || t("map.profile")).slice(0, 12)}
-            </button>
-            {userMenuOpen && (
-              <div className="header-dropdown header-dropdown-right" onClick={() => setUserMenuOpen(false)}>
-                <button onClick={() => navigate("/profile")}>{t("map.profile")}</button>
-                <button onClick={() => navigate("/bookmarks")}>{t("bookmarks.title")}</button>
-                <button onClick={toggleTheme}>{theme === "light" ? "🌙 " : "☀️ "}{t("theme.toggle")}</button>
-                <hr />
-                <button onClick={handleLogout} className="dropdown-danger">{t("map.logout")}</button>
-              </div>
-            )}
-          </div>
-        </div>
-        <MapMenuButton>
-          <button
-            onClick={() => photoImportRef.current?.click()}
-            className="import-photos-btn"
-          >
-            {t("map.importPhotos")}
-          </button>
-          {canSaveCurrentRoute && (
-            <button
-              onClick={handleSaveRoute}
-              className="save-btn"
-            >
-              {loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
-            </button>
-          )}
-          {loadedRouteInfo && routePoints.length >= 2 && (
-            <>
-              <button
-                onClick={() => exportAsGpx(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
-                className="btn-secondary"
-              >
-                {t("export.gpx")}
-              </button>
-              <button
-                onClick={() => exportAsKml(loadedRouteInfo.name, routePoints.map(p => ({ lat: p.position[0], lng: p.position[1], name: p.name, note: p.note })))}
-                className="btn-secondary"
-              >
-                {t("export.kml")}
-              </button>
-              <button
-                onClick={handleGenerateAiDescription}
-                disabled={aiGenerating}
-                className="btn-secondary"
-              >
-                {aiGenerating ? t("ai.generating") : t("ai.generateButton")}
-              </button>
-            </>
-          )}
-          {routePoints.length >= 2 && (
-            <button
-              onClick={() => setPlaybackActive(true)}
-              className="btn-secondary"
-            >
-              {t("playback.button")}
-            </button>
-          )}
-          {(routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) && (
-            <button onClick={handleClearRoute} className="clear-btn">
-              {t("map.clear")}
-            </button>
-          )}
-          <button
-            onClick={handleHistoricalModeToggle}
-            className={`btn-secondary explore-nav-btn${historicalMode ? " active-toggle" : ""}`}
-          >
-            {t("historical.toggle")}
-          </button>
-          <button onClick={() => navigate("/explore")} className="btn-secondary explore-nav-btn">
-            {t("explore.catalog")}
-          </button>
-          <button onClick={() => navigate("/bookmarks")} className="btn-secondary explore-nav-btn">
-            {t("bookmarks.title")}
-          </button>
-          <button onClick={() => setChatOpen(!chatOpen)} className="btn-secondary explore-nav-btn">
-            {t("chat.toggle")}
-          </button>
-          <button onClick={() => navigate("/profile")} className="profile-btn">
-            {user?.name || user?.email || t("map.profile")}
-          </button>
-          <button onClick={toggleTheme} className="theme-toggle-btn" title={t("theme.toggle")}>
-            {theme === "light" ? "\u263D" : "\u2600"}
-          </button>
-          <button onClick={handleLogout} className="logout-btn">
-            {t("map.logout")}
-          </button>
-        </MapMenuButton>
-      </div>
+      <RouteMapToolbar
+        routeMode={routeMode}
+        onRouteModeChange={setRouteMode}
+        routingEngine={routingEngine}
+        routingEngineOptions={ROUTING_ENGINES.map((engine) => ({ value: engine.id, label: engine.label }))}
+        onRoutingEngineChange={handleEngineChange}
+        tileProvider={tileProvider}
+        tileProviderOptions={TILE_PROVIDERS.map((provider) => ({ value: provider.id, label: provider.name }))}
+        onTileProviderChange={handleTileProviderChange}
+        canSaveCurrentRoute={canSaveCurrentRoute}
+        saveLabel={loadedRouteInfo ? t("map.saveChanges") : t("map.saveRoute")}
+        onSaveRoute={handleSaveRoute}
+        onOpenCatalog={() => navigate("/explore")}
+        onImportPhotos={() => photoImportRef.current?.click()}
+        canExport={Boolean(loadedRouteInfo && routePoints.length >= 2)}
+        onExportGpx={() => {
+          if (!loadedRouteInfo) {
+            return;
+          }
+          exportAsGpx(loadedRouteInfo.name, routePoints.map((point) => ({
+            lat: point.position[0],
+            lng: point.position[1],
+            name: point.name,
+            note: point.note,
+          })));
+        }}
+        onExportKml={() => {
+          if (!loadedRouteInfo) {
+            return;
+          }
+          exportAsKml(loadedRouteInfo.name, routePoints.map((point) => ({
+            lat: point.position[0],
+            lng: point.position[1],
+            name: point.name,
+            note: point.note,
+          })));
+        }}
+        canGenerateAiDescription={Boolean(loadedRouteInfo && routePoints.length >= 2)}
+        aiGenerating={aiGenerating}
+        onGenerateAiDescription={handleGenerateAiDescription}
+        canPlayback={routePoints.length >= 2}
+        onStartPlayback={() => setPlaybackActive(true)}
+        historicalMode={historicalMode}
+        onToggleHistoricalMode={handleHistoricalModeToggle}
+        hasClearableContent={routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0}
+        onClearRoute={handleClearRoute}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((previous) => !previous)}
+        userLabel={user?.name || user?.email || t("map.profile")}
+        onOpenProfile={() => navigate("/profile")}
+        onOpenBookmarks={() => navigate("/bookmarks")}
+        isLightTheme={theme === "light"}
+        onToggleTheme={toggleTheme}
+        onLogout={handleLogout}
+      />
+      <input
+        type="file"
+        ref={photoImportRef}
+        multiple
+        accept="image/*"
+        onChange={handleImportPhotos}
+        style={{ display: "none" }}
+      />
 
       {overlayRoutes.length > 0 && (
         <div className="overlay-legend">
