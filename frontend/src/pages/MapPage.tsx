@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import toast from "react-hot-toast";
-import exifr from "exifr";
 import {
   MapContainer,
   Marker,
@@ -59,9 +58,9 @@ import {
   routeToOverlayRoute,
   toDatetimeLocalValue,
 } from "../utils/routeEditorData";
+import { importPhotosToRoutePoints } from "../utils/routePhotoImport";
+import { focusMapOnPoint, focusMapOnPoints } from "../utils/routeMapViewport";
 import {
-  DEFAULT_PHOTO_PREVIEW_SHAPE,
-  DEFAULT_PHOTO_PREVIEW_SIZE,
   DEFAULT_POINT_MARKER_COLOR,
   DEFAULT_POINT_MARKER_SIZE,
   clampPhotoPreviewSize,
@@ -889,139 +888,36 @@ export function MapPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    console.log(`[photo-import] starting import of ${files.length} files`);
+    const result = await importPhotosToRoutePoints({
+      files: Array.from(files),
+      existingPointCount: routePoints.length,
+      nextPointId: pointIdRef.current,
+      routeMode,
+    });
 
-    interface ParsedPhoto {
-      lat: number;
-      lng: number;
-      base64: string;
-      date: Date | null;
-    }
-
-    const results = await Promise.allSettled(
-      Array.from(files).map(async (file): Promise<ParsedPhoto | null> => {
-        try {
-          const exifData = await exifr.parse(file, true);
-
-          if (!exifData?.latitude || !exifData?.longitude) {
-            console.log(`[photo-import] no GPS data in: ${file.name}`);
-            return null;
-          }
-
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const result = event.target?.result;
-              if (typeof result === "string") resolve(result);
-              else reject(new Error("Failed to read file as data URL"));
-            };
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          });
-
-          console.log(
-            `[photo-import] parsed ${file.name}: lat=${exifData.latitude}, lng=${exifData.longitude}`
-          );
-
-          return {
-            lat: exifData.latitude,
-            lng: exifData.longitude,
-            base64,
-            date: exifData.DateTimeOriginal
-              ? new Date(exifData.DateTimeOriginal)
-              : null,
-          };
-        } catch (err) {
-          console.error(`[photo-import] failed to parse ${file.name}:`, err);
-          return null;
-        }
-      })
-    );
-
-    const parsed: ParsedPhoto[] = [];
-    let skipped = 0;
-
-    for (const result of results) {
-      if (result.status === "fulfilled" && result.value !== null) {
-        parsed.push(result.value);
-      } else {
-        skipped++;
-      }
-    }
-
-    if (parsed.length === 0) {
-      console.log(`[photo-import] no photos with GPS data found`);
+    if (result.newPoints.length === 0) {
+      console.log("[photo-import] no photos with GPS data found");
       toast.error(t("map.noGpsPhotos"));
       if (photoImportRef.current) photoImportRef.current.value = "";
       return;
     }
 
-    // Sort by EXIF date if available
-    parsed.sort((a, b) => {
-      if (a.date && b.date) return a.date.getTime() - b.date.getTime();
-      if (a.date) return -1;
-      if (b.date) return 1;
-      return 0;
-    });
-
-    console.log(
-      `[photo-import] sorted ${parsed.length} photos, ${skipped} skipped`
-    );
-
-    // Create route points and segments
-    const newPoints: RoutePoint[] = parsed.map((photo) => ({
-      id: pointIdRef.current++,
-      position: [photo.lat, photo.lng] as [number, number],
-      markerColor: DEFAULT_POINT_MARKER_COLOR,
-      markerSize: DEFAULT_POINT_MARKER_SIZE,
-      previewSize: DEFAULT_PHOTO_PREVIEW_SIZE,
-      previewShape: DEFAULT_PHOTO_PREVIEW_SHAPE,
-      photo: { original: photo.base64, status: "pending" } as PhotoData,
-    }));
-
-    setSelectedPointId(newPoints[newPoints.length - 1]?.id ?? null);
+    pointIdRef.current = result.nextPointId;
+    setSelectedPointId(result.newPoints[result.newPoints.length - 1]?.id ?? null);
     setChatPreviewPoints([]);
+    setRoutePoints((prev) => [...prev, ...result.newPoints]);
+    setRouteSegments((prevSegments) => [...prevSegments, ...result.newSegments]);
 
-    setRoutePoints((prev) => {
-      const newSegments: RouteSegment[] = [];
-
-      // Connect first imported point to last existing point
-      if (prev.length > 0) {
-        newSegments.push({
-          fromIndex: prev.length - 1,
-          toIndex: prev.length,
-          mode: routeMode,
-          durationMinutes: undefined,
-        });
-      }
-
-      // Connect imported points to each other
-      for (let i = 1; i < newPoints.length; i++) {
-        newSegments.push({
-          fromIndex: prev.length + i - 1,
-          toIndex: prev.length + i,
-          mode: routeMode,
-          durationMinutes: undefined,
-        });
-      }
-
-      setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
-
-      return [...prev, ...newPoints];
-    });
-
-    // Build alert message
-    let message = t("map.photosImported", { added: parsed.length });
-    if (skipped > 0) {
-      message += "\n" + t("map.photosSkipped", { skipped });
+    let message = t("map.photosImported", { added: result.newPoints.length });
+    if (result.skipped > 0) {
+      message += "\n" + t("map.photosSkipped", { skipped: result.skipped });
     }
     toast.success(message);
 
     console.log(
-      `[photo-import] import complete: ${parsed.length} added, ${skipped} skipped`
+      `[photo-import] import complete: ${result.newPoints.length} added, ${result.skipped} skipped`
     );
 
-    // Reset file input
     if (photoImportRef.current) photoImportRef.current.value = "";
   };
 
@@ -1036,35 +932,12 @@ export function MapPage() {
     localStorage.setItem("tileProvider", providerId);
   };
 
-  const focusMapOnPoints = (points: RoutePoint[]) => {
-    const map = mapRef.current;
-    if (!map || points.length === 0) {
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-
-      if (points.length === 1) {
-        map.setView(points[0].position, Math.max(map.getZoom(), 16), {
-          animate: true,
-        });
-        return;
-      }
-
-      const bounds = L.latLngBounds(
-        points.map((point) => L.latLng(point.position[0], point.position[1]))
-      );
-      map.fitBounds(bounds.pad(0.2), { animate: true, maxZoom: 16 });
-    });
+  const focusCurrentPoints = (points: RoutePoint[]) => {
+    focusMapOnPoints(mapRef.current, points);
   };
 
-  const focusMapOnPoint = (pointId: number) => {
-    const targetPoint = routePoints.find((point) => point.id === pointId);
-    if (!targetPoint) {
-      return;
-    }
-    focusMapOnPoints([targetPoint]);
+  const focusCurrentPoint = (pointId: number) => {
+    focusMapOnPoint(mapRef.current, routePoints, pointId);
   };
 
   const handleChatPreviewPoints = (points: ChatPoint[]) => {
@@ -1086,12 +959,12 @@ export function MapPage() {
     }
 
     if (hasAllChatPointsOnRoute(routePoints, focusTargets)) {
-      focusMapOnPoints(routePoints.length >= 2 ? routePoints : focusTargets);
+      focusCurrentPoints(routePoints.length >= 2 ? routePoints : focusTargets);
       return;
     }
 
     setChatPreviewPoints(focusTargets);
-    focusMapOnPoints(focusTargets);
+    focusCurrentPoints(focusTargets);
   };
 
   const handleChatApplyPoints = (points: ChatPoint[]) => {
@@ -1277,7 +1150,7 @@ export function MapPage() {
           onMarkerSizeChange={handlePointMarkerSizeChange}
           onPreviewSizeChange={handlePointPreviewSizeChange}
           onPreviewShapeChange={handlePointPreviewShapeChange}
-          onFocusPoint={focusMapOnPoint}
+          onFocusPoint={focusCurrentPoint}
           onSaveRoute={handleSaveRoute}
           onPublishDraft={handlePublishDraft}
           onCreateVersion={handleCreateVersion}
