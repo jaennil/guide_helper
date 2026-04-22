@@ -7,18 +7,13 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useParams } from "react-router-dom";
 import { routesApi } from "../api/routes";
 import {
-  RoutingControl,
   ManualRoutes,
+  RoutingControl,
   SegmentDurationMarkers,
-  createMarkerIcon,
-  getPhotoSrc,
-  type PhotoPreviewShape,
-  type RoutePoint,
-  type RouteSegment,
-} from "./MapPage";
+} from "../components/RouteSegmentLayers";
 import { DEFAULT_ROUTE_LINE_COLOR, normalizeRouteLineColor } from "../utils/routeColors";
-
-type RouteMode = "auto" | "manual";
+import { createMarkerIcon, getPhotoSrc } from "../utils/routePointStyles";
+import type { PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 
 export function EmbedMapPage() {
   const { token } = useParams<{ token: string }>();

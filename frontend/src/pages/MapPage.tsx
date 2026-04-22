@@ -6,8 +6,6 @@ import {
   Marker,
   Popup,
   useMapEvents,
-  Polyline,
-  Tooltip,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -31,28 +29,40 @@ import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { NotificationBell } from "../components/NotificationBell";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { PointDetailsEditor, PointPopup } from "../components/RoutePointInspector";
+import {
+  ManualRoutes,
+  RoutingControl,
+  SegmentDurationMarkers,
+} from "../components/RouteSegmentLayers";
 import {
   HistoricalCompareIndicator,
   HistoricalTimelinePanel,
 } from "../components/HistoricalTimelinePanel";
 import type { ChatPoint } from "../api/chat";
-import { ROUTING_ENGINES, DEFAULT_ENGINE, fetchRoute, type RoutingEngineId } from "../utils/routingEngines";
+import { ROUTING_ENGINES, DEFAULT_ENGINE, type RoutingEngineId } from "../utils/routingEngines";
 import { Wrench, Sparkles, Compass, Route, Minus } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
-import {
-  estimateRouteTime,
-  formatDistance,
-  formatDuration,
-  inferRouteActivity,
-  inferRouteSurface,
-  totalDistance,
-} from "../utils/geo";
 import {
   DEFAULT_ROUTE_LINE_COLOR,
   ROUTE_LINE_COLOR_PRESETS,
   normalizeRouteLineColor,
 } from "../utils/routeColors";
+import {
+  DEFAULT_PHOTO_PREVIEW_SHAPE,
+  DEFAULT_PHOTO_PREVIEW_SIZE,
+  DEFAULT_POINT_MARKER_COLOR,
+  DEFAULT_POINT_MARKER_SIZE,
+  clampPhotoPreviewSize,
+  clampPointMarkerSize,
+  createColoredMarkerIcon,
+  createMarkerIcon,
+  getPhotoSrc,
+  normalizePhotoPreviewShape,
+  normalizePointMarkerColor,
+} from "../utils/routePointStyles";
+import type { PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 import { asTranslationKey } from "../i18n";
 import { getErrorMessage } from "../utils/errors";
 
@@ -66,34 +76,12 @@ const ChatPanel = React.lazy(() =>
   import("../components/ChatPanel").then((module) => ({ default: module.ChatPanel })),
 );
 
-type RouteMode = "auto" | "manual";
-export type PhotoPreviewShape = "square" | "circle";
-
 const TILE_PROVIDERS = [
   { id: "yandex", name: "Yandex", url: "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU&projection=web_mercator", attribution: "&copy; Yandex" },
   { id: "osm", name: "OpenStreetMap", url: "/api/v1/tile/{z}/{x}/{y}", attribution: "&copy; OpenStreetMap" },
   { id: "2gis", name: "2GIS", url: "https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1", attribution: "&copy; 2GIS" },
   { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
 ];
-
-export interface RoutePoint {
-  id: number;
-  position: [number, number];
-  name?: string;
-  note?: string;
-  markerColor?: string;
-  markerSize?: number;
-  previewSize?: number;
-  previewShape?: PhotoPreviewShape;
-  photo?: PhotoData;
-}
-
-export interface RouteSegment {
-  fromIndex: number;
-  toIndex: number;
-  mode: RouteMode;
-  durationMinutes?: number;
-}
 
 interface OverlayRoute {
   id: string;
@@ -112,16 +100,6 @@ const ROUTE_COLORS = [
 
 const CHAT_POINT_MATCH_EPSILON = 0.00001;
 const CHAT_PREVIEW_ROUTE_COLOR = "#f59e0b";
-const DEFAULT_POINT_MARKER_COLOR = "#3388ff";
-const DEFAULT_POINT_MARKER_SIZE = 30;
-const MIN_POINT_MARKER_SIZE = 22;
-const MAX_POINT_MARKER_SIZE = 46;
-const POINT_MARKER_SIZE_STEP = 2;
-const DEFAULT_PHOTO_PREVIEW_SIZE = 44;
-const MIN_PHOTO_PREVIEW_SIZE = 28;
-const MAX_PHOTO_PREVIEW_SIZE = 84;
-const PHOTO_PREVIEW_STEP = 4;
-const DEFAULT_PHOTO_PREVIEW_SHAPE: PhotoPreviewShape = "square";
 const MIN_HISTORICAL_YEAR = 1700;
 const HISTORICAL_SPEED_STEPS = [1, 5, 20] as const;
 const HISTORICAL_MILESTONE_YEARS = [1703, 1812, 1917, 1945, 1991] as const;
@@ -199,38 +177,6 @@ function buildSegmentsForAppendedPoints(
   return segments;
 }
 
-function clampPhotoPreviewSize(size?: number) {
-  if (typeof size !== "number" || Number.isNaN(size)) {
-    return DEFAULT_PHOTO_PREVIEW_SIZE;
-  }
-  return Math.max(
-    MIN_PHOTO_PREVIEW_SIZE,
-    Math.min(MAX_PHOTO_PREVIEW_SIZE, Math.round(size / PHOTO_PREVIEW_STEP) * PHOTO_PREVIEW_STEP),
-  );
-}
-
-function clampPointMarkerSize(size?: number) {
-  if (typeof size !== "number" || Number.isNaN(size)) {
-    return DEFAULT_POINT_MARKER_SIZE;
-  }
-  return Math.max(
-    MIN_POINT_MARKER_SIZE,
-    Math.min(MAX_POINT_MARKER_SIZE, Math.round(size / POINT_MARKER_SIZE_STEP) * POINT_MARKER_SIZE_STEP),
-  );
-}
-
-function normalizePointMarkerColor(color?: string) {
-  if (!color) {
-    return DEFAULT_POINT_MARKER_COLOR;
-  }
-  const trimmed = color.trim();
-  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : DEFAULT_POINT_MARKER_COLOR;
-}
-
-function normalizePhotoPreviewShape(shape?: string): PhotoPreviewShape {
-  return shape === "circle" ? "circle" : DEFAULT_PHOTO_PREVIEW_SHAPE;
-}
-
 function toDatetimeLocalValue(iso?: string) {
   if (!iso) {
     return "";
@@ -255,40 +201,9 @@ function fromDatetimeLocalValue(value: string) {
   return date.toISOString();
 }
 
-function buildSegmentTooltipText(
-  segment: RouteSegment,
-  coords: [number, number][],
-  categoryNames: string[] = [],
-) {
-  const distanceKm = totalDistance(
-    coords.map(([lat, lng]) => ({ lat, lng })),
-  );
-  const segmentModes = [segment.mode];
-  const activity = inferRouteActivity(categoryNames, segmentModes);
-  const surface = inferRouteSurface(segmentModes);
-  const estimatedMinutes = estimateRouteTime(distanceKm, 0, activity, surface);
-  const displayMinutes = segment.durationMinutes ?? estimatedMinutes;
-
-  return `${segment.fromIndex + 1} → ${segment.toIndex + 1} • ${formatDistance(distanceKm)} • ${formatDuration(displayMinutes)}`;
-}
-
 function clampHistoricalYear(year: number, maxYear: number) {
   return Math.min(maxYear, Math.max(MIN_HISTORICAL_YEAR, Math.round(year)));
 }
-
-function getSegmentMidpoint(fromPoint: L.LatLng, toPoint: L.LatLng): [number, number] {
-  return [
-    (fromPoint.lat + toPoint.lat) / 2,
-    (fromPoint.lng + toPoint.lng) / 2,
-  ];
-}
-
-const SEGMENT_DURATION_ANCHOR_ICON = L.divIcon({
-  className: "segment-duration-anchor",
-  html: "",
-  iconSize: [1, 1],
-  iconAnchor: [0, 0],
-});
 
 function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
   const map = useMapEvents({});
@@ -334,634 +249,6 @@ function MapClickHandler({
   });
   return null;
 }
-
-/**
- * RoutingControl — fetches route paths from the selected engine and
- * renders them as Polylines. No dependency on leaflet-routing-machine.
- */
-export const RoutingControl = React.memo(function RoutingControl({
-  waypoints,
-  routeSegments,
-  color = DEFAULT_ROUTE_LINE_COLOR,
-  engineId = DEFAULT_ENGINE,
-  categoryNames = [],
-}: {
-  waypoints: L.LatLng[];
-  routeSegments: RouteSegment[];
-  color?: string;
-  engineId?: RoutingEngineId;
-  categoryNames?: string[];
-}) {
-  const map = useMapEvents({});
-  const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
-  const categoryKey = categoryNames.join("|").toLowerCase();
-
-  useEffect(() => {
-    if (waypoints.length < 2) {
-      polylinesRef.current.forEach((pl) => map.removeLayer(pl));
-      polylinesRef.current.clear();
-      return;
-    }
-
-    const activeKeys = new Set<string>();
-
-    routeSegments.forEach((segment) => {
-      if (segment.mode !== "auto") return;
-      const key = `${segment.fromIndex}-${segment.toIndex}-${engineId}-${categoryKey}`;
-      activeKeys.add(key);
-
-      const fromPoint = waypoints[segment.fromIndex];
-      const toPoint = waypoints[segment.toIndex];
-      if (!fromPoint || !toPoint) return;
-
-      if (polylinesRef.current.has(key)) return;
-
-      const from: [number, number] = [fromPoint.lat, fromPoint.lng];
-      const to: [number, number] = [toPoint.lat, toPoint.lng];
-
-      fetchRoute(engineId, from, to).then((coords) => {
-        const tooltipText = buildSegmentTooltipText(segment, coords, categoryNames);
-        // Remove old polyline for this segment if engine changed
-        const latLngs = coords.map((c) => L.latLng(c[0], c[1]));
-        const polyline = L.polyline(latLngs, {
-          color,
-          opacity: 0.7,
-          weight: 4,
-        })
-          .bindTooltip(tooltipText, {
-            sticky: true,
-            direction: "top",
-            offset: [0, -4],
-            className: "route-segment-tooltip",
-          })
-          .addTo(map);
-        polylinesRef.current.set(key, polyline);
-      });
-    });
-
-    // Remove stale polylines
-    polylinesRef.current.forEach((pl, key) => {
-      if (!activeKeys.has(key)) {
-        map.removeLayer(pl);
-        polylinesRef.current.delete(key);
-      }
-    });
-  }, [waypoints, routeSegments, map, engineId, color, categoryKey, categoryNames]);
-
-  // Clear all when engine changes
-  useEffect(() => {
-    polylinesRef.current.forEach((pl) => map.removeLayer(pl));
-    polylinesRef.current.clear();
-  }, [engineId, map, categoryKey]);
-
-  useEffect(() => {
-    const polylines = polylinesRef.current;
-    return () => {
-      polylines.forEach((pl) => {
-        try {
-          map.removeLayer(pl);
-        } catch {
-          // Layer may already be removed by Leaflet during map teardown.
-        }
-      });
-      polylines.clear();
-    };
-  }, [map]);
-
-  return null;
-});
-
-export function ManualRoutes({
-  waypoints,
-  routeSegments,
-  color = DEFAULT_ROUTE_LINE_COLOR,
-  categoryNames = [],
-}: {
-  waypoints: L.LatLng[];
-  routeSegments: RouteSegment[];
-  color?: string;
-  categoryNames?: string[];
-}) {
-  const routes: Array<{ segment: RouteSegment; coords: [number, number][] }> = [];
-  routeSegments.forEach((segment) => {
-    if (segment.mode === "manual") {
-      const fromPoint = waypoints[segment.fromIndex];
-      const toPoint = waypoints[segment.toIndex];
-      if (fromPoint && toPoint) {
-        routes.push({
-          segment,
-          coords: [
-            [fromPoint.lat, fromPoint.lng],
-            [toPoint.lat, toPoint.lng],
-          ],
-        });
-      }
-    }
-  });
-
-  return (
-    <>
-      {routes.map(({ segment, coords }) => (
-        <Polyline
-          key={`${segment.fromIndex}-${segment.toIndex}`}
-          positions={coords}
-          color={color}
-          weight={4}
-          opacity={0.7}
-        >
-          <Tooltip
-            sticky
-            direction="top"
-            offset={[0, -4]}
-            className="route-segment-tooltip"
-          >
-            {buildSegmentTooltipText(segment, coords, categoryNames)}
-          </Tooltip>
-        </Polyline>
-      ))}
-    </>
-  );
-}
-
-function SegmentDurationBubble({
-  segment,
-  editable,
-  onDurationChange,
-}: {
-  segment: RouteSegment;
-  editable: boolean;
-  onDurationChange?: (segment: RouteSegment, durationMinutes: number | undefined) => void;
-}) {
-  const { t } = useLanguage();
-
-  const stopMapEvent = (event: React.SyntheticEvent) => {
-    event.stopPropagation();
-  };
-
-  if (!editable && !segment.durationMinutes) {
-    return null;
-  }
-
-  return (
-    <div
-      className={`segment-duration-bubble${editable ? " editable" : ""}`}
-      onClick={stopMapEvent}
-      onDoubleClick={stopMapEvent}
-      onMouseDown={stopMapEvent}
-      onPointerDown={stopMapEvent}
-      onWheel={stopMapEvent}
-    >
-      {editable ? (
-        <>
-          <input
-            type="number"
-            min={1}
-            max={10080}
-            step={1}
-            value={segment.durationMinutes ?? ""}
-            placeholder={t("map.segmentDurationPlaceholder")}
-            className="segment-duration-input"
-            onChange={(e) => {
-              const raw = e.target.value.trim();
-              if (!raw) {
-                onDurationChange?.(segment, undefined);
-                return;
-              }
-              const nextValue = Number(raw);
-              if (Number.isNaN(nextValue)) {
-                return;
-              }
-              onDurationChange?.(
-                segment,
-                Math.max(1, Math.min(10080, Math.round(nextValue))),
-              );
-            }}
-          />
-          <span className="segment-duration-unit">
-            {t("map.segmentDurationUnit")}
-          </span>
-        </>
-      ) : (
-        <span className="segment-duration-label">
-          {formatDuration(segment.durationMinutes ?? 0)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function SegmentDurationMarkers({
-  waypoints,
-  routeSegments,
-  editable = false,
-  onDurationChange,
-}: {
-  waypoints: L.LatLng[];
-  routeSegments: RouteSegment[];
-  editable?: boolean;
-  onDurationChange?: (segment: RouteSegment, durationMinutes: number | undefined) => void;
-}) {
-  const visibleSegments = routeSegments
-    .map((segment) => {
-      const fromPoint = waypoints[segment.fromIndex];
-      const toPoint = waypoints[segment.toIndex];
-      if (!fromPoint || !toPoint) {
-        return null;
-      }
-      return {
-        segment,
-        position: getSegmentMidpoint(fromPoint, toPoint) as [number, number],
-      };
-    })
-    .filter((item): item is { segment: RouteSegment; position: [number, number] } => Boolean(item))
-    .filter((item) => editable || item.segment.durationMinutes);
-
-  return (
-    <>
-      {visibleSegments.map(({ segment, position }) => (
-        <Marker
-          key={`segment-duration-${segment.fromIndex}-${segment.toIndex}`}
-          position={position}
-          icon={SEGMENT_DURATION_ANCHOR_ICON}
-          keyboard={false}
-        >
-          <Tooltip
-            permanent
-            interactive={editable}
-            direction="top"
-            offset={[0, -8]}
-            className={`segment-duration-tooltip${editable ? " editable" : ""}`}
-          >
-            <SegmentDurationBubble
-              segment={segment}
-              editable={editable}
-              onDurationChange={onDurationChange}
-            />
-          </Tooltip>
-        </Marker>
-      ))}
-    </>
-  );
-}
-
-export function getPhotoSrc(photo?: PhotoData): string | undefined {
-  if (!photo) return undefined;
-  return photo.thumbnail_url || photo.original;
-}
-
-function createPhotoMarkerHtml(
-  src: string,
-  previewSize?: number,
-  previewShape?: PhotoPreviewShape,
-  borderColor?: string,
-) {
-  const size = clampPhotoPreviewSize(previewSize);
-  const shape = normalizePhotoPreviewShape(previewShape);
-  const normalizedBorderColor = borderColor ? normalizePointMarkerColor(borderColor) : "white";
-  const borderStyle = `border-color:${normalizedBorderColor};`;
-  return `<div class="photo-marker-container" style="--marker-size:${size}px;--marker-radius:${shape === "circle" ? "50%" : "10px"};${borderStyle}"><img src="${src}" alt="Marker" /></div>`;
-}
-
-function createPointMarkerHtml(color?: string, markerSize?: number) {
-  const normalizedColor = normalizePointMarkerColor(color);
-  const size = clampPointMarkerSize(markerSize);
-  const centerSize = Math.max(8, Math.round(size * 0.34));
-
-  return `<div class="point-marker-container" style="--marker-color:${normalizedColor};--marker-size:${size}px;--marker-center-size:${centerSize}px"><span class="point-marker-center"></span></div>`;
-}
-
-export function createMarkerIcon(
-  photo?: PhotoData,
-  previewSize?: number,
-  previewShape?: PhotoPreviewShape,
-  markerColor?: string,
-  markerSize?: number,
-): L.Icon | L.DivIcon {
-  const src = getPhotoSrc(photo);
-  if (src) {
-    const size = clampPhotoPreviewSize(previewSize);
-    return L.divIcon({
-      className: "custom-photo-marker",
-      html: createPhotoMarkerHtml(src, size, previewShape, markerColor),
-      iconSize: [size, size],
-      iconAnchor: [Math.round(size / 2), size],
-      popupAnchor: [0, -size],
-    });
-  } else {
-    const size = clampPointMarkerSize(markerSize);
-    return L.divIcon({
-      className: "custom-point-marker",
-      html: createPointMarkerHtml(markerColor, size),
-      iconSize: [size, size],
-      iconAnchor: [Math.round(size / 2), size],
-      popupAnchor: [0, -size],
-    });
-  }
-}
-
-function createColoredMarkerIcon(
-  color: string,
-  photo?: PhotoData,
-  previewSize?: number,
-  previewShape?: PhotoPreviewShape,
-  markerColor?: string,
-  markerSize?: number,
-): L.DivIcon {
-  const src = getPhotoSrc(photo);
-  if (src) {
-    const size = clampPhotoPreviewSize(previewSize);
-    return L.divIcon({
-      className: "overlay-marker",
-      html: createPhotoMarkerHtml(src, size, previewShape, markerColor || color),
-      iconSize: [size, size],
-      iconAnchor: [Math.round(size / 2), size],
-      popupAnchor: [0, -size],
-    });
-  }
-  const size = clampPointMarkerSize(markerSize);
-  return L.divIcon({
-    className: "overlay-marker",
-    html: createPointMarkerHtml(markerColor || color, size),
-    iconSize: [size, size],
-    iconAnchor: [Math.round(size / 2), size],
-    popupAnchor: [0, -size],
-  });
-}
-
-const PointPopup = React.memo(function PointPopup({
-  point,
-  index,
-  onEdit,
-}: {
-  point: RoutePoint;
-  index: number;
-  onEdit: (pointId: number) => void;
-}) {
-  const { t } = useLanguage();
-  const photoSrc = getPhotoSrc(point.photo);
-  const note = point.note?.trim();
-
-  return (
-    <div className="point-popup">
-      <div className="point-popup-header">
-        <strong>{t("map.point", { index: index + 1 })}</strong>
-      </div>
-      {point.name && <div className="point-popup-name">{point.name}</div>}
-      <div className="point-popup-coords">
-        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-        {point.position[1].toFixed(6)}
-      </div>
-      {note && <div className="point-popup-note-text">{note}</div>}
-      {photoSrc && (
-        <div className="point-popup-photo">
-          <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
-        </div>
-      )}
-      <div className="point-popup-actions">
-        <button
-          type="button"
-          className="upload-photo-btn"
-          onClick={() => onEdit(point.id)}
-        >
-          {t("map.editPoint")}
-        </button>
-      </div>
-    </div>
-  );
-});
-
-const PointDetailsEditor = React.memo(function PointDetailsEditor({
-  point,
-  index,
-  onPhotoChange,
-  onNoteChange,
-  onMarkerColorChange,
-  onMarkerSizeChange,
-  onPreviewSizeChange,
-  onPreviewShapeChange,
-  onFocusPoint,
-}: {
-  point: RoutePoint;
-  index: number;
-  onPhotoChange: (pointId: number, photo: PhotoData | undefined) => void;
-  onNoteChange: (pointId: number, note: string) => void;
-  onMarkerColorChange: (pointId: number, markerColor: string) => void;
-  onMarkerSizeChange: (pointId: number, markerSize: number) => void;
-  onPreviewSizeChange: (pointId: number, previewSize: number) => void;
-  onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
-  onFocusPoint: (pointId: number) => void;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { t } = useLanguage();
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(t("map.selectImageFile"));
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result;
-        if (typeof result === "string") {
-          onPhotoChange(point.id, { original: result, status: "pending" });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemovePhoto = () => {
-    onPhotoChange(point.id, undefined);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onNoteChange(point.id, e.target.value);
-  };
-
-  const handlePreviewSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onPreviewSizeChange(point.id, Number(e.target.value));
-  };
-
-  const handlePreviewShapeChange = (previewShape: PhotoPreviewShape) => {
-    onPreviewShapeChange(point.id, previewShape);
-  };
-
-  const handleMarkerColorChange = (markerColor: string) => {
-    onMarkerColorChange(point.id, markerColor);
-  };
-
-  const handleMarkerSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onMarkerSizeChange(point.id, Number(e.target.value));
-  };
-
-  const markerColor = normalizePointMarkerColor(point.markerColor);
-  const markerSize = clampPointMarkerSize(point.markerSize);
-  const photoSrc = getPhotoSrc(point.photo);
-  const previewSize = clampPhotoPreviewSize(point.previewSize);
-  const previewShape = normalizePhotoPreviewShape(point.previewShape);
-
-  return (
-    <div className="point-editor">
-      <div className="route-inspector-section-header">
-        <div>
-          <div className="route-inspector-point-title">
-            {point.name?.trim() || t("map.point", { index: index + 1 })}
-          </div>
-          <div className="point-popup-coords">
-            {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-            {point.position[1].toFixed(6)}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="route-inspector-quick-action"
-          onClick={() => onFocusPoint(point.id)}
-        >
-          {t("chat.showOnMap")}
-        </button>
-      </div>
-      <div className="point-popup-note">
-        <label className="point-popup-note-label" htmlFor={`point-note-${point.id}`}>
-          {t("map.pointNoteLabel")}
-        </label>
-        <textarea
-          id={`point-note-${point.id}`}
-          className="point-note-textarea"
-          rows={4}
-          value={point.note ?? ""}
-          onChange={handleNoteChange}
-          placeholder={t("map.pointNotePlaceholder")}
-        />
-      </div>
-      <div className="point-style-controls">
-        <div className="point-style-header">
-          <label className="point-popup-note-label" htmlFor={`point-marker-color-${point.id}`}>
-            {t("map.pointMarkerColor")}
-          </label>
-          <input
-            id={`point-marker-color-${point.id}`}
-            type="color"
-            value={markerColor}
-            onChange={(e) => handleMarkerColorChange(e.target.value)}
-            className="point-marker-color-input"
-            aria-label={t("map.pointMarkerColor")}
-          />
-        </div>
-        <div className="point-style-swatches">
-          {ROUTE_LINE_COLOR_PRESETS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              className={`point-style-swatch${markerColor === color ? " active" : ""}`}
-              style={{ backgroundColor: color }}
-              onClick={() => handleMarkerColorChange(color)}
-              aria-label={`${t("map.pointMarkerColor")} ${color}`}
-              title={color}
-            />
-          ))}
-        </div>
-        {!photoSrc && (
-          <>
-            <div className="point-style-size-header">
-              <label
-                className="point-popup-note-label"
-                htmlFor={`point-marker-size-${point.id}`}
-              >
-                {t("map.pointMarkerSize")}
-              </label>
-              <span className="point-photo-size-value">
-                {t("map.pointMarkerSizeValue", { size: markerSize })}
-              </span>
-            </div>
-            <input
-              id={`point-marker-size-${point.id}`}
-              className="point-style-size-range"
-              type="range"
-              min={MIN_POINT_MARKER_SIZE}
-              max={MAX_POINT_MARKER_SIZE}
-              step={POINT_MARKER_SIZE_STEP}
-              value={markerSize}
-              onChange={handleMarkerSizeChange}
-            />
-          </>
-        )}
-      </div>
-      {photoSrc && (
-        <div className="point-popup-photo">
-          <img src={point.photo?.original || photoSrc} alt={t("map.point", { index: index + 1 })} />
-          <div className="point-photo-size-control">
-            <div className="point-photo-shape-toggle">
-              <span className="point-popup-note-label">{t("map.photoPreviewShape")}</span>
-              <div className="point-photo-shape-buttons">
-                <button
-                  type="button"
-                  className={`point-photo-shape-btn${previewShape === "square" ? " active" : ""}`}
-                  onClick={() => handlePreviewShapeChange("square")}
-                >
-                  {t("map.photoPreviewShapeSquare")}
-                </button>
-                <button
-                  type="button"
-                  className={`point-photo-shape-btn${previewShape === "circle" ? " active" : ""}`}
-                  onClick={() => handlePreviewShapeChange("circle")}
-                >
-                  {t("map.photoPreviewShapeCircle")}
-                </button>
-              </div>
-            </div>
-            <div className="point-photo-size-header">
-              <label
-                className="point-popup-note-label"
-                htmlFor={`point-preview-size-${point.id}`}
-              >
-                {t("map.photoPreviewSize")}
-              </label>
-              <span className="point-photo-size-value">
-                {t("map.photoPreviewSizeValue", { size: previewSize })}
-              </span>
-            </div>
-            <input
-              id={`point-preview-size-${point.id}`}
-              className="point-photo-size-range"
-              type="range"
-              min={MIN_PHOTO_PREVIEW_SIZE}
-              max={MAX_PHOTO_PREVIEW_SIZE}
-              step={PHOTO_PREVIEW_STEP}
-              value={previewSize}
-              onChange={handlePreviewSizeChange}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleRemovePhoto}
-            className="remove-photo-btn"
-          >
-            {t("map.removePhoto")}
-          </button>
-        </div>
-      )}
-      <div className="point-popup-actions">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          style={{ display: "none" }}
-          id={`photo-input-${point.id}`}
-        />
-        <label htmlFor={`photo-input-${point.id}`} className="upload-photo-btn">
-          {point.photo ? t("map.changePhoto") : t("map.attachPhoto")}
-        </label>
-      </div>
-    </div>
-  );
-});
 
 const RouteInspector = React.memo(function RouteInspector({
   routeName,

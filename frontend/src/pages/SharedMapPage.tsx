@@ -12,15 +12,10 @@ import { useTheme } from '../context/ThemeContext';
 import { routesApi } from '../api/routes';
 import { categoriesApi, type Category } from '../api/categories';
 import {
-  RoutingControl,
   ManualRoutes,
+  RoutingControl,
   SegmentDurationMarkers,
-  createMarkerIcon,
-  getPhotoSrc,
-  type PhotoPreviewShape,
-  type RoutePoint,
-  type RouteSegment,
-} from './MapPage';
+} from '../components/RouteSegmentLayers';
 import { RouteStatsPanel } from '../components/RouteStatsPanel';
 import { CommentSection } from '../components/CommentSection';
 import { LikeRatingBar } from '../components/LikeRatingBar';
@@ -32,8 +27,8 @@ import { useAuth } from '../context/AuthContext';
 import { QRCodeModal } from '../components/QRCodeModal';
 import { getLocalizedCategoryName } from '../utils/categories';
 import { DEFAULT_ROUTE_LINE_COLOR, normalizeRouteLineColor } from '../utils/routeColors';
-
-type RouteMode = 'auto' | 'manual';
+import { createMarkerIcon, getPhotoSrc } from '../utils/routePointStyles';
+import type { PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from '../types/routeMap';
 
 const TILE_PROVIDERS = [
   {

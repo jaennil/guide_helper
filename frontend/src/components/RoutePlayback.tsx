@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import { useMap } from 'react-leaflet';
 import { useLanguage } from '../context/LanguageContext';
-import { getPhotoSrc, type RoutePoint, type RouteSegment } from '../pages/MapPage';
+import { getPhotoSrc } from '../utils/routePointStyles';
+import type { RoutePoint, RouteSegment } from '../types/routeMap';
 import {
   fetchDetailedPath,
   pathCumulativeDistances,
