@@ -1,47 +1,55 @@
 @startuml sequence-photo
 
 title Диаграмма последовательности: обработка фотографий
-
+hide footbox
+skinparam shadowing false
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 90
+skinparam dpi 180
 
 actor "Пользователь" as User
-participant "Frontend\n(React)" as FE
-participant "Routes\nService" as Routes
+participant "Web client" as FE
+participant "Routes Service" as Routes
 database "PostgreSQL" as DB
-queue "NATS\nJetStream" as NATS
-participant "Photo\nWorker" as PW
-database "MinIO\n(S3)" as S3
+queue "NATS JetStream" as NATS
+participant "Photo Worker" as Worker
+database "MinIO" as S3
+
+== Пользовательский запрос ==
 
 User -> FE : Загружает фотографию
 activate FE
-FE -> FE : Извлекает GPS\nиз EXIF (exifr)
-FE -> Routes : POST /routes/{id}/points\n(base64 фото + координаты)
+note right of FE
+Frontend извлекает GPS
+из EXIF, если он есть
+end note
+
+FE -> Routes : Сохраняет точку и фото
 activate Routes
-Routes -> DB : INSERT точка маршрута\n(status = "pending")
-Routes -> NATS : Publish: photo.process\n{route_id, point_id, photo_data}
-Routes --> FE : 201 Created\n(point_id, status: pending)
+Routes -> DB : Сохраняет точку\nсо статусом pending
+Routes -> NATS : Публикует photo.process
+Routes --> FE : Точка создана
 deactivate Routes
 
-FE --> User : Отображает точку\nна карте (статус: загрузка)
+FE --> User : Показывает точку\nсо статусом "обработка"
 deactivate FE
 
-NATS -> PW : Consume: photo.process
-activate PW
-PW -> PW : Декодирование\nизображения
-PW -> PW : Масштабирование\n(max 1920px, Lanczos3)
-PW -> PW : Генерация миниатюры\n(300px)
-PW -> PW : Кодирование JPEG\n(quality=85%)
-PW -> S3 : PUT original.jpg
-PW -> S3 : PUT thumbnail.jpg
-S3 --> PW : URLs файлов
-PW -> DB : UPDATE точка:\nURLs + status = "done"
-PW -> NATS : ACK
-deactivate PW
+== Асинхронная обработка ==
 
-Routes -> FE : WebSocket:\nphoto_processed\n{point_id, urls}
-activate FE
-FE --> User : Обновляет фото\nна карте
-deactivate FE
+NATS -> Worker : Получает photo task
+activate Worker
+Worker -> Worker : Декодирует изображение
+Worker -> Worker : Строит resized original\nи thumbnail
+Worker -> S3 : Загружает файлы
+Worker -> DB : Обновляет URLs и статус = done
+Worker -> NATS : Публикует photos.completed
+deactivate Worker
+
+== Уведомление клиента ==
+
+NATS -> Routes : Событие photos.completed
+Routes -> FE : WebSocket photo_processed
+FE --> User : Обновляет фото у точки
 
 @enduml

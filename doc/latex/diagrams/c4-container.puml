@@ -1,70 +1,71 @@
 @startuml c4-container
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-hide stereotype
-title Диаграмма контейнеров системы Guide Helper
+title C4 Level 2. Контейнеры системы Guide Helper
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam ArrowColor #4B5563
+skinparam ArrowThickness 1.2
+skinparam dpi 180
+skinparam nodesep 100
+skinparam ranksep 120
 
-Person(user, "Пользователь", "Гид, путешественник")
-
-System_Boundary(system, "Guide Helper") {
-  Container(frontend, "Frontend", "React 19, TypeScript,\nLeaflet, PWA/Tauri", "SPA с интерактивными\nкартами, темами, PWA и\nдесктоп-оболочкой Tauri")
-
-  Container(auth, "Auth Service", "Rust, Axum", "Аутентификация,\nJWT, Argon2, роли\n(user/moderator/admin)")
-  Container(routes, "Routes Service", "Rust, Axum", "Управление маршрутами,\nREST API, WebSocket,\nAI-чат (OpenAI API),\nуведомления, категории")
-  Container(photoworker, "Photo Worker", "Rust", "Компрессия фото,\nгенерация миниатюр,\nAI-описание (OpenAI)")
-  Container(cache, "Cache Service", "Go, Gin", "Кэширование тайлов\nкарт в Redis")
-  Container(tiles, "Tiles Service", "Go, Gin", "Проксирование тайлов\nOpenStreetMap/Yandex")
-  Container(claudeproxy, "Claude Proxy", "Node.js, Express", "HTTP-прокси к\nClaude Code SDK\n(локальный AI-агент)")
-
-  ContainerDb(postgres, "PostgreSQL 16", "SQL", "auth_db, routes_db\n(маршруты, категории,\nчат, уведомления,\nзакладки)")
-  ContainerDb(redis, "Redis 7", "Key-Value", "Кэш тайлов карт")
-  ContainerQueue(nats, "NATS JetStream", "Message Broker", "Очередь обработки\nфотографий")
-  ContainerDb(minio, "MinIO", "S3 API", "Хранилище фотографий")
+skinparam rectangle {
+  RoundCorner 18
+  BorderColor #1F4E79
 }
 
-System_Ext(openai, "OpenAI API", "GPT-4o-mini\nдля AI-чата и\nAI-описаний")
-System_Ext(openmeteo, "Open-Meteo", "Высоты, погода")
-System_Ext(nominatim, "Nominatim", "Геокодирование")
-System_Ext(osm, "OpenStreetMap / Yandex", "Тайлы карт")
+skinparam rectangle<<Client>> {
+  BackgroundColor #2F855A
+  BorderColor #276749
+  FontColor white
+}
 
-Rel(user, frontend, "Использует", "HTTPS")
-Rel(frontend, auth, "Аутентификация", "REST API")
-Rel(frontend, routes, "CRUD маршрутов,\nAI-чат", "REST API / WebSocket / SSE")
-Rel(frontend, tiles, "Тайлы карт", "HTTPS")
-Rel(frontend, claudeproxy, "AI-агент запросы", "REST API")
+skinparam rectangle<<Core>> {
+  BackgroundColor #438DD5
+  BorderColor #2A6CAA
+  FontColor white
+}
 
-Rel(auth, postgres, "Читает/пишет", "SQL")
-Rel(routes, postgres, "Читает/пишет", "SQL")
-Rel(routes, nats, "Публикует задачи", "NATS")
-Rel(photoworker, nats, "Потребляет задачи", "NATS")
-Rel(photoworker, minio, "Загружает фото", "S3 API")
-Rel(photoworker, postgres, "Обновляет статус", "SQL")
-Rel(photoworker, openai, "AI-описание по фото", "HTTPS")
+skinparam rectangle<<Map>> {
+  BackgroundColor #4C51BF
+  BorderColor #3730A3
+  FontColor white
+}
 
-Rel(tiles, cache, "Кэширование", "HTTP")
-Rel(cache, redis, "Читает/пишет", "Redis Protocol")
-Rel(tiles, osm, "Проксирует", "HTTPS")
+skinparam rectangle<<Data>> {
+  BackgroundColor #BEE3F8
+  BorderColor #2B6CB0
+  FontColor #1F2937
+}
 
-Rel(routes, openmeteo, "Высоты, погода", "HTTPS")
-Rel(routes, nominatim, "Геокодирование", "HTTPS")
-Rel(routes, openai, "AI-чат (function calling)", "HTTPS")
+skinparam rectangle<<External>> {
+  BackgroundColor #D9E2F2
+  BorderColor #7A8CA5
+  FontColor #1F2937
+}
 
-' Left side: openai + openmeteo (слева от системы)
-Lay_L(auth, openai)
-Lay_L(postgres, openmeteo)
-Lay_D(openai, openmeteo)
+package "Guide Helper" {
+  rectangle "Клиентские приложения\n\nWeb PWA / Desktop UI\nAndroid companion app" as Clients <<Client>>
 
-' Right side: nominatim + osm (справа от системы, у tiles)
-Lay_R(tiles, nominatim)
-Lay_R(tiles, osm)
-Lay_D(nominatim, osm)
+  rectangle "Core services\n\nAuth Service\nRoutes Service\nPhoto Worker" as Core <<Core>>
 
-legend right
-  |<#08427B> <color:white>Человек</color> |
-  |<#438DD5> <color:white>Контейнер</color> |
-  |<#85BBF0> <color:black>Хранилище данных</color> |
-  |<#999999> Внешняя система |
-  |  Граница системы  |
-endlegend
+  rectangle "Map subsystem\n\nTiles Service\nCache Service" as Maps <<Map>>
+
+  rectangle "Data and messaging\n\nPostgreSQL\nNATS JetStream\nMinIO\nRedis" as Data <<Data>>
+
+  rectangle "External services\n\nNominatim\nAI providers\nWeather / Elevation APIs\nTile sources" as External <<External>>
+}
+
+Clients --> Core : auth / API / sync
+Clients --> Maps : maps
+
+Core --> Data : data / events / media
+Core --> External : geocoding / AI / weather
+
+Maps --> Data : tile cache
+Maps --> External : map tiles
 
 @enduml

@@ -1,0 +1,107 @@
+@startuml c4-routes-service
+
+title C4 Level 3. Компоненты контейнера Routes Service
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam ArrowColor #4B5563
+skinparam ArrowThickness 1.2
+skinparam dpi 180
+skinparam nodesep 100
+skinparam ranksep 120
+
+skinparam rectangle {
+  RoundCorner 18
+  BorderColor #1F4E79
+}
+
+skinparam rectangle<<Api>> {
+  BackgroundColor #1D4ED8
+  BorderColor #1E40AF
+  FontColor white
+}
+
+skinparam rectangle<<App>> {
+  BackgroundColor #0F766E
+  BorderColor #115E59
+  FontColor white
+}
+
+skinparam rectangle<<Repo>> {
+  BackgroundColor #7C3AED
+  BorderColor #5B21B6
+  FontColor white
+}
+
+skinparam rectangle<<Adapter>> {
+  BackgroundColor #DD6B20
+  BorderColor #B45309
+  FontColor white
+}
+
+skinparam rectangle<<External>> {
+  BackgroundColor #D9E2F2
+  BorderColor #7A8CA5
+  FontColor #1F2937
+}
+
+skinparam database {
+  BackgroundColor #BEE3F8
+  BorderColor #2B6CB0
+}
+
+skinparam queue {
+  BackgroundColor #F6E05E
+  BorderColor #B7791F
+}
+
+package "Routes Service" {
+  rectangle "Transport layer\n\nREST handlers\nWS / SSE handlers" as Transport <<Api>>
+
+  rectangle "Route application services\n\nRoutesUseCase\nCategoriesUseCase\nSettingsUseCase" as RouteApp <<App>>
+
+  rectangle "Social application services\n\nComments\nLikes\nRatings\nBookmarks\nNotifications" as SocialApp <<App>>
+
+  rectangle "Chat application service\n\nChatUseCase" as ChatApp <<App>>
+
+  rectangle "Persistence layer\n\nPostgres repositories" as Repo <<Repo>>
+
+  rectangle "Integration adapters\n\nAI adapter\nNominatim adapter\nPhoto task publisher\nPhoto completion subscriber" as Adapters <<Adapter>>
+}
+
+database "PostgreSQL" as Postgres
+queue "NATS JetStream" as NATS
+rectangle "Nominatim" as Nominatim <<External>>
+rectangle "AI providers /\nClaude Gateway" as AI <<External>>
+rectangle "MinIO / photo URLs" as MinIO <<External>>
+
+Transport -[hidden]right-> RouteApp
+RouteApp -[hidden]down-> SocialApp
+SocialApp -[hidden]down-> ChatApp
+RouteApp -[hidden]right-> Repo
+Repo -[hidden]down-> Adapters
+Postgres -[hidden]down-> NATS
+NATS -[hidden]down-> Nominatim
+Nominatim -[hidden]down-> AI
+AI -[hidden]down-> MinIO
+
+Transport --> RouteApp
+Transport --> SocialApp
+Transport --> ChatApp
+
+RouteApp --> Repo
+SocialApp --> Repo
+ChatApp --> Repo
+
+RouteApp --> Adapters
+ChatApp --> Adapters
+
+Repo --> Postgres
+Adapters --> NATS : photo events
+Adapters --> Nominatim : geocoding
+Adapters --> AI : AI calls
+Adapters --> MinIO : photo storage
+
+@enduml
