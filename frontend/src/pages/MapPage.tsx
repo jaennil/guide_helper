@@ -27,9 +27,11 @@ import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { AiDescriptionModal } from "../components/AiDescriptionModal";
 import { PointPopup } from "../components/RoutePointInspector";
 import { RouteInspectorPanel } from "../components/RouteInspectorPanel";
 import { RouteMapToolbar } from "../components/RouteMapToolbar";
+import { RouteOverlayLegend } from "../components/RouteOverlayLegend";
 import {
   ManualRoutes,
   RoutingControl,
@@ -1395,19 +1397,7 @@ export function MapPage() {
         style={{ display: "none" }}
       />
 
-      {overlayRoutes.length > 0 && (
-        <div className="overlay-legend">
-          {overlayRoutes.map((route) => (
-            <div key={route.id} className="overlay-legend-item">
-              <span
-                className="overlay-legend-color"
-                style={{ backgroundColor: route.color }}
-              />
-              <span className="overlay-legend-name">{route.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <RouteOverlayLegend routes={overlayRoutes} />
 
       {historicalMode && (
         <HistoricalTimelinePanel
@@ -1444,28 +1434,14 @@ export function MapPage() {
         />
       )}
 
-      {showAiModal && (
-        <div className="modal-overlay" onClick={() => setShowAiModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{t("ai.modalTitle")}</h2>
-            <div className="modal-form">
-              <p style={{ fontSize: "0.85em", color: "var(--text-secondary)", marginBottom: "8px" }}>{t("ai.hint")}</p>
-              <textarea
-                value={aiDescription}
-                onChange={(e) => setAiDescription(e.target.value)}
-                rows={8}
-                style={{ width: "100%", resize: "vertical", padding: "8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text-primary)", fontSize: "0.9em" }}
-              />
-              <div className="modal-actions">
-                <button onClick={() => setShowAiModal(false)} className="modal-cancel">{t("ai.cancel")}</button>
-                <button onClick={handleSaveAiDescription} disabled={aiSaving} className="modal-save">
-                  {aiSaving ? t("map.saving") : t("ai.save")}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AiDescriptionModal
+        isOpen={showAiModal}
+        value={aiDescription}
+        saving={aiSaving}
+        onChange={setAiDescription}
+        onClose={() => setShowAiModal(false)}
+        onSave={handleSaveAiDescription}
+      />
 
       {routePoints.length > 0 && !chatOpen && (
         <RouteInspectorPanel
