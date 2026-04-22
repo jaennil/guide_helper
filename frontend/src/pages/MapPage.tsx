@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
 import {
   MapContainer,
@@ -15,7 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { routesApi, type PhotoData, type Route as SavedRoute } from "../api/routes";
+import { routesApi, type Route as SavedRoute } from "../api/routes";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { GeoSearchControl } from "../components/GeoSearchControl";
@@ -23,6 +23,7 @@ import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
+import { useRoutePointEditing } from "../hooks/useRoutePointEditing";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -58,20 +59,14 @@ import {
   routeToOverlayRoute,
   toDatetimeLocalValue,
 } from "../utils/routeEditorData";
-import { importPhotosToRoutePoints } from "../utils/routePhotoImport";
 import { focusMapOnPoint, focusMapOnPoints } from "../utils/routeMapViewport";
 import {
-  DEFAULT_POINT_MARKER_COLOR,
   DEFAULT_POINT_MARKER_SIZE,
-  clampPhotoPreviewSize,
-  clampPointMarkerSize,
   createColoredMarkerIcon,
   createMarkerIcon,
   getPhotoSrc,
-  normalizePhotoPreviewShape,
-  normalizePointMarkerColor,
 } from "../utils/routePointStyles";
-import type { OverlayRoute, PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
+import type { OverlayRoute, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 import { getErrorMessage } from "../utils/errors";
 
 const HistoricalMapOverlay = React.lazy(() =>
@@ -782,144 +777,28 @@ export function MapPage() {
     pointIdRef.current = 0;
   };
 
-  const handleMapClick = (lat: number, lng: number) => {
-    const newPoint: RoutePoint = {
-      id: pointIdRef.current++,
-      position: [lat, lng],
-      markerColor: DEFAULT_POINT_MARKER_COLOR,
-      markerSize: DEFAULT_POINT_MARKER_SIZE,
-    };
-    setSelectedPointId(newPoint.id);
-    setChatPreviewPoints([]);
-    setRoutePoints((prev) => {
-      const newPoints = [...prev, newPoint];
-
-      if (prev.length > 0) {
-        const newSegment: RouteSegment = {
-          fromIndex: prev.length - 1,
-          toIndex: newPoints.length - 1,
-          mode: routeMode,
-          durationMinutes: undefined,
-        };
-        setRouteSegments((prevSegments) => [...prevSegments, newSegment]);
-      }
-
-      return newPoints;
-    });
-  };
-
-  const handlePhotoChange = React.useCallback((pointId: number, photo: PhotoData | undefined) => {
-    setRoutePoints((prev) =>
-      prev.map((point) =>
-        point.id === pointId
-          ? {
-              ...point,
-              photo,
-              previewSize: photo ? clampPhotoPreviewSize(point.previewSize) : point.previewSize,
-              previewShape: photo ? normalizePhotoPreviewShape(point.previewShape) : point.previewShape,
-            }
-          : point
-      )
-    );
-  }, []);
-
-  const handlePointNoteChange = React.useCallback((pointId: number, note: string) => {
-    setRoutePoints((prev) =>
-      prev.map((point) => (point.id === pointId ? { ...point, note } : point))
-    );
-  }, []);
-
-  const handlePointMarkerColorChange = React.useCallback((pointId: number, markerColor: string) => {
-    const normalizedColor = normalizePointMarkerColor(markerColor);
-    setRoutePoints((prev) =>
-      prev.map((point) =>
-        point.id === pointId ? { ...point, markerColor: normalizedColor } : point
-      )
-    );
-  }, []);
-
-  const handlePointMarkerSizeChange = React.useCallback((pointId: number, markerSize: number) => {
-    const normalizedSize = clampPointMarkerSize(markerSize);
-    setRoutePoints((prev) =>
-      prev.map((point) =>
-        point.id === pointId ? { ...point, markerSize: normalizedSize } : point
-      )
-    );
-  }, []);
-
-  const handlePointPreviewSizeChange = React.useCallback((pointId: number, previewSize: number) => {
-    const normalizedSize = clampPhotoPreviewSize(previewSize);
-    setRoutePoints((prev) =>
-      prev.map((point) =>
-        point.id === pointId ? { ...point, previewSize: normalizedSize } : point
-      )
-    );
-  }, []);
-
-  const handlePointPreviewShapeChange = React.useCallback((pointId: number, previewShape: PhotoPreviewShape) => {
-    const normalizedShape = normalizePhotoPreviewShape(previewShape);
-    setRoutePoints((prev) =>
-      prev.map((point) =>
-        point.id === pointId ? { ...point, previewShape: normalizedShape } : point
-      )
-    );
-  }, []);
-
-  const handleSegmentDurationChange = React.useCallback((targetSegment: RouteSegment, durationMinutes: number | undefined) => {
-    setRouteSegments((prev) =>
-      prev.map((segment) =>
-        segment.fromIndex === targetSegment.fromIndex && segment.toIndex === targetSegment.toIndex
-          ? { ...segment, durationMinutes }
-          : segment
-      )
-    );
-  }, []);
-
-  const handlePointDrag = (pointId: number, newLat: number, newLng: number) => {
-    console.log(`[drag] point ${pointId} moved to ${newLat.toFixed(6)}, ${newLng.toFixed(6)}`);
-    setRoutePoints((prev) =>
-      prev.map((p) =>
-        p.id === pointId ? { ...p, position: [newLat, newLng] as [number, number] } : p
-      )
-    );
-  };
-
-  const handleImportPhotos = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const result = await importPhotosToRoutePoints({
-      files: Array.from(files),
-      existingPointCount: routePoints.length,
-      nextPointId: pointIdRef.current,
-      routeMode,
-    });
-
-    if (result.newPoints.length === 0) {
-      console.log("[photo-import] no photos with GPS data found");
-      toast.error(t("map.noGpsPhotos"));
-      if (photoImportRef.current) photoImportRef.current.value = "";
-      return;
-    }
-
-    pointIdRef.current = result.nextPointId;
-    setSelectedPointId(result.newPoints[result.newPoints.length - 1]?.id ?? null);
-    setChatPreviewPoints([]);
-    setRoutePoints((prev) => [...prev, ...result.newPoints]);
-    setRouteSegments((prevSegments) => [...prevSegments, ...result.newSegments]);
-
-    let message = t("map.photosImported", { added: result.newPoints.length });
-    if (result.skipped > 0) {
-      message += "\n" + t("map.photosSkipped", { skipped: result.skipped });
-    }
-    toast.success(message);
-
-    console.log(
-      `[photo-import] import complete: ${result.newPoints.length} added, ${result.skipped} skipped`
-    );
-
-    if (photoImportRef.current) photoImportRef.current.value = "";
-  };
+  const {
+    handleImportPhotos,
+    handleMapClick,
+    handlePhotoChange,
+    handlePointDrag,
+    handlePointMarkerColorChange,
+    handlePointMarkerSizeChange,
+    handlePointNoteChange,
+    handlePointPreviewShapeChange,
+    handlePointPreviewSizeChange,
+    handleSegmentDurationChange,
+  } = useRoutePointEditing({
+    routeMode,
+    routePointsLength: routePoints.length,
+    setRoutePoints,
+    setRouteSegments,
+    setSelectedPointId,
+    setChatPreviewPoints,
+    pointIdRef,
+    photoImportRef,
+    t,
+  });
 
   const handleLogout = () => {
     logout();
