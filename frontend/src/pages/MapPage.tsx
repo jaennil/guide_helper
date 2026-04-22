@@ -49,6 +49,17 @@ import {
   normalizeRouteLineColor,
 } from "../utils/routeColors";
 import {
+  appendChatPointsToRoute,
+  buildChatPreviewPoints,
+  buildSegmentsForAppendedPoints,
+  buildRouteSavePayload,
+  fromDatetimeLocalValue,
+  hasAllChatPointsOnRoute,
+  routeToEditorState,
+  routeToOverlayRoute,
+  toDatetimeLocalValue,
+} from "../utils/routeEditorData";
+import {
   DEFAULT_PHOTO_PREVIEW_SHAPE,
   DEFAULT_PHOTO_PREVIEW_SIZE,
   DEFAULT_POINT_MARKER_COLOR,
@@ -61,7 +72,7 @@ import {
   normalizePhotoPreviewShape,
   normalizePointMarkerColor,
 } from "../utils/routePointStyles";
-import type { PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
+import type { OverlayRoute, PhotoPreviewShape, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 import { getErrorMessage } from "../utils/errors";
 
 const HistoricalMapOverlay = React.lazy(() =>
@@ -81,14 +92,6 @@ const TILE_PROVIDERS = [
   { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
 ];
 
-interface OverlayRoute {
-  id: string;
-  name: string;
-  color: string;
-  points: RoutePoint[];
-  segments: RouteSegment[];
-}
-
 type LoadedRouteInfo = SavedRoute;
 
 const ROUTE_COLORS = [
@@ -96,7 +99,6 @@ const ROUTE_COLORS = [
   '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
 ];
 
-const CHAT_POINT_MATCH_EPSILON = 0.00001;
 const CHAT_PREVIEW_ROUTE_COLOR = "#f59e0b";
 const MIN_HISTORICAL_YEAR = 1700;
 const HISTORICAL_SPEED_STEPS = [1, 5, 20] as const;
@@ -108,95 +110,6 @@ interface HistoricalEraDefinition {
   end: number;
   titleKey: string;
   descriptionKey: string;
-}
-
-function routePointsMatch(
-  left: Pick<RoutePoint, "position" | "name">,
-  right: Pick<RoutePoint, "position" | "name">,
-) {
-  const [leftLat, leftLng] = left.position;
-  const [rightLat, rightLng] = right.position;
-  const namesMatch = !left.name || !right.name || left.name === right.name;
-
-  return (
-    namesMatch &&
-    Math.abs(leftLat - rightLat) <= CHAT_POINT_MATCH_EPSILON &&
-    Math.abs(leftLng - rightLng) <= CHAT_POINT_MATCH_EPSILON
-  );
-}
-
-function overlappingRouteTailLength(
-  existingPoints: RoutePoint[],
-  incomingPoints: RoutePoint[],
-) {
-  const maxOverlap = Math.min(existingPoints.length, incomingPoints.length);
-
-  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-    const existingTail = existingPoints.slice(existingPoints.length - overlap);
-    const incomingHead = incomingPoints.slice(0, overlap);
-
-    if (
-      existingTail.every((point, index) =>
-        routePointsMatch(point, incomingHead[index])
-      )
-    ) {
-      return overlap;
-    }
-  }
-
-  return 0;
-}
-
-function buildSegmentsForAppendedPoints(
-  existingCount: number,
-  appendedCount: number,
-  routeMode: RouteMode,
-) {
-  const segments: RouteSegment[] = [];
-
-  if (existingCount > 0 && appendedCount > 0) {
-    segments.push({
-      fromIndex: existingCount - 1,
-      toIndex: existingCount,
-      mode: routeMode,
-      durationMinutes: undefined,
-    });
-  }
-
-  for (let index = 1; index < appendedCount; index += 1) {
-    segments.push({
-      fromIndex: existingCount + index - 1,
-      toIndex: existingCount + index,
-      mode: routeMode,
-      durationMinutes: undefined,
-    });
-  }
-
-  return segments;
-}
-
-function toDatetimeLocalValue(iso?: string) {
-  if (!iso) {
-    return "";
-  }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localDate.toISOString().slice(0, 16);
-}
-
-function fromDatetimeLocalValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const date = new Date(trimmed);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString();
 }
 
 function clampHistoricalYear(year: number, maxYear: number) {
@@ -635,75 +548,23 @@ export function MapPage() {
   const loadRoute = async (routeId: string) => {
     try {
       const route = await routesApi.getRoute(routeId);
+      const editorState = routeToEditorState(route);
       setLoadedRouteInfo(route);
-      setRouteName(route.name);
-      setSelectedCategoryIds(route.category_ids);
-      setSelectedSeasons(route.seasons);
-      setRouteLineColor(normalizeRouteLineColor(route.line_color));
-      setRouteStartedAt(toDatetimeLocalValue(route.started_at));
-      const loadedPoints: RoutePoint[] = route.points.map((p, index) => ({
-        id: index,
-        position: [p.lat, p.lng] as [number, number],
-        name: p.name,
-        note: p.note,
-        markerColor: p.marker_color,
-        markerSize: p.marker_size,
-        previewSize: p.preview_size,
-        previewShape: p.preview_shape as PhotoPreviewShape | undefined,
-        photo: p.photo,
-      }));
-      setRoutePoints(loadedPoints);
-      setSelectedPointId(loadedPoints[0]?.id ?? null);
+      setRouteName(editorState.routeName);
+      setSelectedCategoryIds(editorState.selectedCategoryIds);
+      setSelectedSeasons(editorState.selectedSeasons);
+      setRouteLineColor(editorState.routeLineColor);
+      setRouteStartedAt(editorState.routeStartedAt);
+      setRoutePoints(editorState.points);
+      setSelectedPointId(editorState.points[0]?.id ?? null);
       setChatPreviewPoints([]);
       setSaveError("");
-      pointIdRef.current = loadedPoints.length;
-
-      // Create segments for loaded points, restoring saved mode
-      const segments: RouteSegment[] = [];
-      for (let i = 0; i < loadedPoints.length - 1; i++) {
-        // segment_mode is stored on the destination point
-        const destPoint = route.points[i + 1];
-        segments.push({
-          fromIndex: i,
-          toIndex: i + 1,
-          mode: (destPoint.segment_mode as RouteMode) || "manual",
-          durationMinutes: destPoint.segment_duration_minutes,
-        });
-      }
-      setRouteSegments(segments);
+      pointIdRef.current = editorState.nextPointId;
+      setRouteSegments(editorState.segments);
     } catch (error) {
       console.error("Failed to load route:", error);
     }
   };
-
-  const buildPointsToSave = () =>
-    routePoints.map((p, index) => {
-      const segment = routeSegments.find((s) => s.toIndex === index);
-      const normalizedName = p.name?.trim();
-      const normalizedNote = p.note?.trim();
-      return {
-        lat: p.position[0],
-        lng: p.position[1],
-        name: normalizedName ? normalizedName : undefined,
-        note: normalizedNote ? normalizedNote : undefined,
-        marker_color: p.markerColor ? normalizePointMarkerColor(p.markerColor) : undefined,
-        marker_size: p.markerSize ? clampPointMarkerSize(p.markerSize) : undefined,
-        preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
-        preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
-        segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
-        segment_duration_minutes: segment?.durationMinutes,
-        photo: p.photo,
-      };
-    });
-
-  const buildRouteSavePayload = () => ({
-    name: routeName.trim(),
-    points: buildPointsToSave(),
-    category_ids: selectedCategoryIds,
-    seasons: selectedSeasons,
-    line_color: normalizeRouteLineColor(routeLineColor),
-    started_at: fromDatetimeLocalValue(routeStartedAt),
-  });
 
   const loadOverlayRoutes = async (ids: string[]) => {
     console.log("Loading overlay routes:", ids);
@@ -714,37 +575,7 @@ export function MapPage() {
     const loaded: OverlayRoute[] = [];
     results.forEach((result, idx) => {
       if (result.status === "fulfilled") {
-        const route = result.value;
-        const points: RoutePoint[] = route.points.map((p, i) => ({
-          id: i,
-          position: [p.lat, p.lng] as [number, number],
-          name: p.name,
-          note: p.note,
-          markerColor: p.marker_color,
-          markerSize: p.marker_size,
-          previewSize: p.preview_size,
-          previewShape: p.preview_shape as PhotoPreviewShape | undefined,
-          photo: p.photo,
-        }));
-        const segments: RouteSegment[] = [];
-        for (let i = 0; i < points.length - 1; i++) {
-          const destPoint = route.points[i + 1];
-          segments.push({
-            fromIndex: i,
-            toIndex: i + 1,
-            mode: (destPoint.segment_mode as RouteMode) || "manual",
-            durationMinutes: destPoint.segment_duration_minutes,
-          });
-        }
-        loaded.push({
-          id: route.id,
-          name: route.name,
-          color: route.line_color
-            ? normalizeRouteLineColor(route.line_color)
-            : ROUTE_COLORS[idx % ROUTE_COLORS.length],
-          points,
-          segments,
-        });
+        loaded.push(routeToOverlayRoute(result.value, ROUTE_COLORS[idx % ROUTE_COLORS.length]));
       } else {
         console.error(`Failed to load overlay route ${ids[idx]}:`, result.reason);
       }
@@ -804,7 +635,15 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      const payload = buildRouteSavePayload();
+      const payload = buildRouteSavePayload({
+        routeName,
+        routePoints,
+        routeSegments,
+        selectedCategoryIds,
+        selectedSeasons,
+        routeLineColor,
+        routeStartedAt,
+      });
       let savedRoute;
 
       if (loadedRouteInfo) {
@@ -848,7 +687,15 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      const payload = buildRouteSavePayload();
+      const payload = buildRouteSavePayload({
+        routeName,
+        routePoints,
+        routeSegments,
+        selectedCategoryIds,
+        selectedSeasons,
+        routeLineColor,
+        routeStartedAt,
+      });
       const savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
         ...payload,
         started_at: payload.started_at ?? null,
@@ -885,7 +732,15 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      const payload = buildRouteSavePayload();
+      const payload = buildRouteSavePayload({
+        routeName,
+        routePoints,
+        routeSegments,
+        selectedCategoryIds,
+        selectedSeasons,
+        routeLineColor,
+        routeStartedAt,
+      });
       const createdRoute = await routesApi.createRoute({
         ...payload,
         is_draft: true,
@@ -1212,79 +1067,25 @@ export function MapPage() {
     focusMapOnPoints([targetPoint]);
   };
 
-  const buildChatPreviewPoints = (points: ChatPoint[]): RoutePoint[] =>
-    points.map((point, index) => ({
-      id: -1 - index,
-      position: [point.lat, point.lng] as [number, number],
-      name: point.name,
-      markerColor: CHAT_PREVIEW_ROUTE_COLOR,
-      markerSize: DEFAULT_POINT_MARKER_SIZE,
-    }));
-
-  const appendChatPointsToRoute = (points: ChatPoint[]) => {
-    const incomingPoints: RoutePoint[] = points.map((point) => ({
-      id: pointIdRef.current++,
-      position: [point.lat, point.lng] as [number, number],
-      name: point.name,
-      markerColor: DEFAULT_POINT_MARKER_COLOR,
-      markerSize: DEFAULT_POINT_MARKER_SIZE,
-    }));
-
-    if (incomingPoints.length === 0) {
-      return { previewPoints: routePoints, appendedPoints: [] as RoutePoint[] };
-    }
-
-    const overlap = overlappingRouteTailLength(routePoints, incomingPoints);
-    const previewPoints = [...routePoints, ...incomingPoints.slice(overlap)];
-    const appendedPoints = incomingPoints.slice(overlap);
-
-    setRoutePoints((prev) => {
-      const prevOverlap = overlappingRouteTailLength(prev, incomingPoints);
-      const pointsToAppend = incomingPoints.slice(prevOverlap);
-      if (pointsToAppend.length === 0) {
-        return prev;
-      }
-
-      const newSegments = buildSegmentsForAppendedPoints(
-        prev.length,
-        pointsToAppend.length,
-        routeMode,
-      );
-      setRouteSegments((prevSegments) => [...prevSegments, ...newSegments]);
-
-      return [...prev, ...pointsToAppend];
-    });
-
-    return { previewPoints, appendedPoints };
-  };
-
   const handleChatPreviewPoints = (points: ChatPoint[]) => {
-    const previewPoints = buildChatPreviewPoints(points);
+    const previewPoints = buildChatPreviewPoints(points, CHAT_PREVIEW_ROUTE_COLOR);
 
     if (previewPoints.length === 0) {
       setChatPreviewPoints([]);
       return;
     }
 
-    const allPointsAlreadyOnRoute = previewPoints.every((target) =>
-      routePoints.some((routePoint) => routePointsMatch(routePoint, target))
-    );
-
-    setChatPreviewPoints(allPointsAlreadyOnRoute ? [] : previewPoints);
+    setChatPreviewPoints(hasAllChatPointsOnRoute(routePoints, previewPoints) ? [] : previewPoints);
   };
 
   const handleChatFocusPoints = (points: ChatPoint[]) => {
-    const focusTargets = buildChatPreviewPoints(points);
+    const focusTargets = buildChatPreviewPoints(points, CHAT_PREVIEW_ROUTE_COLOR);
 
     if (focusTargets.length === 0) {
       return;
     }
 
-    const allPointsAlreadyOnRoute = focusTargets.every((target) =>
-      routePoints.some((routePoint) => routePointsMatch(routePoint, target))
-    );
-
-    if (allPointsAlreadyOnRoute) {
+    if (hasAllChatPointsOnRoute(routePoints, focusTargets)) {
       focusMapOnPoints(routePoints.length >= 2 ? routePoints : focusTargets);
       return;
     }
@@ -1294,10 +1095,18 @@ export function MapPage() {
   };
 
   const handleChatApplyPoints = (points: ChatPoint[]) => {
-    const { appendedPoints } = appendChatPointsToRoute(points);
+    const result = appendChatPointsToRoute({
+      existingPoints: routePoints,
+      incomingChatPoints: points,
+      nextPointId: pointIdRef.current,
+      routeMode,
+    });
+    pointIdRef.current = result.nextPointId;
+    setRoutePoints(result.nextPoints);
+    setRouteSegments((prevSegments) => [...prevSegments, ...result.newSegments]);
     setChatPreviewPoints([]);
-    if (appendedPoints.length > 0) {
-      setSelectedPointId(appendedPoints[appendedPoints.length - 1].id);
+    if (result.appendedPoints.length > 0) {
+      setSelectedPointId(result.appendedPoints[result.appendedPoints.length - 1].id);
     }
   };
 

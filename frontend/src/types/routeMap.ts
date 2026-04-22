@@ -21,3 +21,11 @@ export interface RouteSegment {
   mode: RouteMode;
   durationMinutes?: number;
 }
+
+export interface OverlayRoute {
+  id: string;
+  name: string;
+  color: string;
+  points: RoutePoint[];
+  segments: RouteSegment[];
+}
