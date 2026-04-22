@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  useMapEvents,
-} from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -18,25 +12,18 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { routesApi, type Route as SavedRoute } from "../api/routes";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
-import { GeoSearchControl } from "../components/GeoSearchControl";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
-import { LeafletAttributionPrefix } from "../components/LeafletAttributionPrefix";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
 import { useRoutePointEditing } from "../hooks/useRoutePointEditing";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiDescriptionModal } from "../components/AiDescriptionModal";
-import { PointPopup } from "../components/RoutePointInspector";
 import { RouteInspectorPanel } from "../components/RouteInspectorPanel";
+import { RouteMapCanvas } from "../components/RouteMapCanvas";
 import { RouteMapToolbar } from "../components/RouteMapToolbar";
 import { RouteOverlayLegend } from "../components/RouteOverlayLegend";
-import {
-  ManualRoutes,
-  RoutingControl,
-  SegmentDurationMarkers,
-} from "../components/RouteSegmentLayers";
 import {
   HistoricalCompareIndicator,
   HistoricalTimelinePanel,
@@ -51,7 +38,6 @@ import {
 import {
   appendChatPointsToRoute,
   buildChatPreviewPoints,
-  buildSegmentsForAppendedPoints,
   buildRouteSavePayload,
   fromDatetimeLocalValue,
   hasAllChatPointsOnRoute,
@@ -60,21 +46,9 @@ import {
   toDatetimeLocalValue,
 } from "../utils/routeEditorData";
 import { focusMapOnPoint, focusMapOnPoints } from "../utils/routeMapViewport";
-import {
-  DEFAULT_POINT_MARKER_SIZE,
-  createColoredMarkerIcon,
-  createMarkerIcon,
-  getPhotoSrc,
-} from "../utils/routePointStyles";
 import type { OverlayRoute, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 import { getErrorMessage } from "../utils/errors";
 
-const HistoricalMapOverlay = React.lazy(() =>
-  import("../components/HistoricalMapOverlay").then((module) => ({ default: module.HistoricalMapOverlay })),
-);
-const RoutePlayback = React.lazy(() =>
-  import("../components/RoutePlayback").then((module) => ({ default: module.RoutePlayback })),
-);
 const ChatPanel = React.lazy(() =>
   import("../components/ChatPanel").then((module) => ({ default: module.ChatPanel })),
 );
@@ -108,51 +82,6 @@ interface HistoricalEraDefinition {
 
 function clampHistoricalYear(year: number, maxYear: number) {
   return Math.min(maxYear, Math.max(MIN_HISTORICAL_YEAR, Math.round(year)));
-}
-
-function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
-  const map = useMapEvents({});
-  mapRef.current = map;
-  return null;
-}
-
-/** Manages base tile layer imperatively via setUrl() to avoid remounting child components */
-function BaseTileLayer({ url, attribution }: { url: string; attribution: string }) {
-  const map = useMapEvents({});
-  const layerRef = useRef<L.TileLayer | null>(null);
-
-  useEffect(() => {
-    if (!layerRef.current) {
-      layerRef.current = L.tileLayer(url, { attribution, zIndex: 0 }).addTo(map);
-    } else {
-      layerRef.current.setUrl(url);
-    }
-  }, [url, attribution, map]);
-
-  useEffect(() => {
-    return () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-        layerRef.current = null;
-      }
-    };
-  }, [map]);
-
-  return null;
-}
-
-function MapClickHandler({
-  onMapClick,
-}: {
-  onMapClick: (lat: number, lng: number) => void;
-}) {
-  useMapEvents({
-    click: (e) => {
-      const { lat, lng } = e.latlng;
-      onMapClick(lat, lng);
-    },
-  });
-  return null;
 }
 
 export function MapPage() {
@@ -880,18 +809,6 @@ export function MapPage() {
   const selectedPoint =
     selectedPointIndex >= 0 ? routePoints[selectedPointIndex] : null;
 
-  const waypoints = routePoints.map((point) =>
-    L.latLng(point.position[0], point.position[1])
-  );
-  const chatPreviewWaypoints = chatPreviewPoints.map((point) =>
-    L.latLng(point.position[0], point.position[1])
-  );
-  const chatPreviewSegments = buildSegmentsForAppendedPoints(
-    0,
-    chatPreviewPoints.length,
-    routeMode,
-  );
-
   return (
     <div className="App">
       <RouteMapToolbar
@@ -1042,177 +959,33 @@ export function MapPage() {
           routeVersionsLoading={routeVersionsLoading}
         />
       )}
-      <MapContainer
-        center={[55.7518, 37.6178]}
-        zoom={15}
-        style={{ height: "100vh", width: "100%" }}
-      >
-        <LeafletAttributionPrefix />
-        <BaseTileLayer url={currentProvider.url} attribution={currentProvider.attribution} />
-        <MapRefCapture mapRef={mapRef} />
-        <MapClickHandler onMapClick={handleMapClick} />
-        <GeoSearchControl />
-        {historicalMode && (
-          <React.Suspense fallback={null}>
-            <HistoricalMapOverlay
-              year={historicalYear}
-              opacity={historicalOpacity}
-              comparePosition={historicalCompareMode ? historicalComparePosition : null}
-              onBusyChange={setHistoricalOverlayBusy}
-            />
-          </React.Suspense>
-        )}
-        <RoutingControl
-          waypoints={waypoints}
-          routeSegments={routeSegments}
-          color={routeLineColor}
-          engineId={routingEngine}
-          categoryNames={selectedCategoryNames}
-        />
-        <ManualRoutes
-          waypoints={waypoints}
-          routeSegments={routeSegments}
-          color={routeLineColor}
-          categoryNames={selectedCategoryNames}
-        />
-        <SegmentDurationMarkers
-          waypoints={waypoints}
-          routeSegments={routeSegments}
-          editable
-          onDurationChange={handleSegmentDurationChange}
-        />
-        {chatPreviewPoints.length >= 2 && (
-          <>
-            <RoutingControl
-              waypoints={chatPreviewWaypoints}
-              routeSegments={chatPreviewSegments}
-              color={CHAT_PREVIEW_ROUTE_COLOR}
-              engineId={routingEngine}
-              categoryNames={[]}
-            />
-            <ManualRoutes
-              waypoints={chatPreviewWaypoints}
-              routeSegments={chatPreviewSegments}
-              color={CHAT_PREVIEW_ROUTE_COLOR}
-              categoryNames={[]}
-            />
-          </>
-        )}
-        {chatPreviewPoints.map((point, index) => (
-          <Marker
-            key={`chat-preview-${index}-${point.position[0]}-${point.position[1]}`}
-            position={point.position}
-            icon={createColoredMarkerIcon(
-              CHAT_PREVIEW_ROUTE_COLOR,
-              undefined,
-              undefined,
-              undefined,
-              CHAT_PREVIEW_ROUTE_COLOR,
-              DEFAULT_POINT_MARKER_SIZE,
-            )}
-          >
-            <Popup>
-              <div className="point-popup">
-                <div className="point-popup-header">
-                  <strong>{point.name?.trim() || t("map.point", { index: index + 1 })}</strong>
-                </div>
-                <div className="point-popup-coords">
-                  {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-                  {point.position[1].toFixed(6)}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-        {routePoints.map((point, index) => (
-          <Marker
-            key={`${point.id}-${point.photo ? "photo" : "no-photo"}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
-            position={point.position}
-            icon={createMarkerIcon(point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
-            draggable={true}
-            eventHandlers={{
-              click: () => {
-                setSelectedPointId(point.id);
-              },
-              dragend: (e) => {
-                const { lat, lng } = e.target.getLatLng();
-                handlePointDrag(point.id, lat, lng);
-              },
-            }}
-          >
-            <Popup>
-              <PointPopup
-                point={point}
-                index={index}
-                onEdit={(pointId) => setSelectedPointId(pointId)}
-              />
-            </Popup>
-          </Marker>
-        ))}
-        {overlayRoutes.map((overlay) => {
-          const overlayWaypoints = overlay.points.map((p) =>
-            L.latLng(p.position[0], p.position[1])
-          );
-          return (
-            <React.Fragment key={overlay.id}>
-              <RoutingControl
-                waypoints={overlayWaypoints}
-                routeSegments={overlay.segments}
-                color={overlay.color}
-                engineId={routingEngine}
-                categoryNames={[]}
-              />
-              <ManualRoutes
-                waypoints={overlayWaypoints}
-                routeSegments={overlay.segments}
-                color={overlay.color}
-                categoryNames={[]}
-              />
-              <SegmentDurationMarkers
-                waypoints={overlayWaypoints}
-                routeSegments={overlay.segments}
-              />
-              {overlay.points.map((point, idx) => (
-                <Marker
-                  key={`overlay-${overlay.id}-${idx}-${point.previewSize ?? "default"}-${point.previewShape ?? "default"}-${point.markerColor ?? "default"}-${point.markerSize ?? "default"}`}
-                  position={point.position}
-                  icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
-                >
-                  <Popup>
-                    <div className="point-popup">
-                      <div className="point-popup-header">
-                        <strong>{overlay.name} — {t("map.point", { index: idx + 1 })}</strong>
-                      </div>
-                      {point.name && <div className="point-popup-name">{point.name}</div>}
-                      <div className="point-popup-coords">
-                        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-                        {point.position[1].toFixed(6)}
-                      </div>
-                      {point.note?.trim() && (
-                        <div className="point-popup-note-text">{point.note}</div>
-                      )}
-                      {getPhotoSrc(point.photo) && (
-                        <div className="point-popup-photo">
-                          <img src={point.photo?.original || getPhotoSrc(point.photo)} alt={`${overlay.name} point ${idx + 1}`} />
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </React.Fragment>
-          );
-        })}
-        {playbackActive && routePoints.length >= 2 && (
-          <React.Suspense fallback={null}>
-            <RoutePlayback
-              points={routePoints}
-              segments={routeSegments}
-              onClose={() => setPlaybackActive(false)}
-            />
-          </React.Suspense>
-        )}
-      </MapContainer>
+      <RouteMapCanvas
+        mapRef={mapRef}
+        tileUrl={currentProvider.url}
+        tileAttribution={currentProvider.attribution}
+        onMapClick={handleMapClick}
+        historicalMode={historicalMode}
+        historicalYear={historicalYear}
+        historicalOpacity={historicalOpacity}
+        historicalCompareMode={historicalCompareMode}
+        historicalComparePosition={historicalComparePosition}
+        onHistoricalOverlayBusyChange={setHistoricalOverlayBusy}
+        routePoints={routePoints}
+        routeSegments={routeSegments}
+        routeMode={routeMode}
+        routeLineColor={routeLineColor}
+        routingEngine={routingEngine}
+        selectedCategoryNames={selectedCategoryNames}
+        onSegmentDurationChange={handleSegmentDurationChange}
+        chatPreviewPoints={chatPreviewPoints}
+        chatPreviewColor={CHAT_PREVIEW_ROUTE_COLOR}
+        onSelectPoint={setSelectedPointId}
+        onPointDrag={handlePointDrag}
+        overlayRoutes={overlayRoutes}
+        playbackActive={playbackActive}
+        onClosePlayback={() => setPlaybackActive(false)}
+        t={t}
+      />
       {!playbackActive && routePoints.length >= 2 && (
         <RouteStatsPanel
           points={routeGeoPoints}
