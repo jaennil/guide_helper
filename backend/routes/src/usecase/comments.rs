@@ -149,6 +149,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: route_id,
+            version_number: 1,
         };
         let route_clone = route.clone();
 
@@ -275,6 +279,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: route_id,
+            version_number: 1,
         };
         let route_clone = route.clone();
 
@@ -337,6 +345,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: route_id,
+            version_number: 1,
         };
         let route_clone = route.clone();
 

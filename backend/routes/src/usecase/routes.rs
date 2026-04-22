@@ -94,8 +94,39 @@ where
         seasons: Vec<String>,
         line_color: Option<String>,
         started_at: Option<DateTime<Utc>>,
+        is_draft: bool,
+        source_route_id: Option<Uuid>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "creating new route");
+
+        let (resolved_source_route_id, version_group_id, version_number) =
+            if let Some(source_route_id) = source_route_id {
+                let source_route = self
+                    .route_repository
+                    .find_by_id(source_route_id)
+                    .await?
+                    .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
+
+                if source_route.user_id != user_id {
+                    tracing::warn!("unauthorized source route access attempt");
+                    return Err(UsecaseError::NotFound("Route".to_string()));
+                }
+
+                let version_group_id = source_route.version_group_id;
+                let version_number = self
+                    .route_repository
+                    .find_max_version_number(version_group_id)
+                    .await?
+                    + 1;
+
+                (
+                    Some(source_route.id),
+                    Some(version_group_id),
+                    version_number,
+                )
+            } else {
+                (None, None, 1)
+            };
 
         let route = Route::new(
             user_id,
@@ -105,6 +136,10 @@ where
             seasons,
             line_color,
             started_at,
+            is_draft,
+            resolved_source_route_id,
+            version_group_id,
+            version_number,
         );
         self.route_repository.create(&route).await?;
 
@@ -148,6 +183,35 @@ where
         Ok(routes)
     }
 
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, route_id = %route_id))]
+    pub async fn get_route_versions(
+        &self,
+        user_id: Uuid,
+        route_id: Uuid,
+    ) -> Result<Vec<Route>, UsecaseError> {
+        let route = self
+            .route_repository
+            .find_by_id(route_id)
+            .await?
+            .ok_or_else(|| UsecaseError::NotFound("Route".to_string()))?;
+
+        if route.user_id != user_id {
+            tracing::warn!("unauthorized route history access attempt");
+            return Err(UsecaseError::NotFound("Route".to_string()));
+        }
+
+        let routes = self
+            .route_repository
+            .find_by_version_group_and_user(user_id, route.version_group_id)
+            .await?;
+
+        for version in routes.iter().filter(|r| r.start_location.is_none()) {
+            self.spawn_geocoding(version.id, version.points.clone());
+        }
+
+        Ok(routes)
+    }
+
     #[tracing::instrument(skip(self, points), fields(user_id = %user_id, route_id = %route_id))]
     pub async fn update_route(
         &self,
@@ -159,6 +223,7 @@ where
         seasons: Option<Vec<String>>,
         line_color: Option<String>,
         started_at: Option<Option<DateTime<Utc>>>,
+        is_draft: Option<bool>,
     ) -> Result<Route, UsecaseError> {
         tracing::debug!(?category_ids, ?seasons, "updating route");
 
@@ -183,6 +248,7 @@ where
             line_color,
             started_at,
             None,
+            is_draft,
         );
         self.route_repository.update(&route).await?;
 
@@ -211,6 +277,12 @@ where
         if route.user_id != user_id {
             tracing::warn!("unauthorized share enable attempt");
             return Err(UsecaseError::NotFound("Route".to_string()));
+        }
+
+        if route.is_draft {
+            return Err(UsecaseError::Validation(
+                "Черновик нельзя опубликовать. Сначала переведи его в готовый маршрут.".to_string(),
+            ));
         }
 
         // Reuse existing token if already shared
@@ -344,10 +416,12 @@ where
     ) -> Result<String, UsecaseError> {
         tracing::info!("generating AI description for route");
 
-        let client = self.ollama_client.as_ref().ok_or_else(|| {
-            tracing::warn!("Ollama client not configured");
-            UsecaseError::Internal("AI description generation is not configured".to_string())
-        })?;
+        if self.anthropic_client.is_none() && self.ollama_client.is_none() {
+            tracing::warn!("AI clients are not configured");
+            return Err(UsecaseError::Internal(
+                "AI description generation is not configured".to_string(),
+            ));
+        }
 
         let route = self
             .route_repository
@@ -459,7 +533,7 @@ where
             return Err(UsecaseError::NotFound("Route".to_string()));
         }
 
-        route.update(None, None, None, None, None, None, Some(description));
+        route.update(None, None, None, None, None, None, Some(description), None);
         self.route_repository.update(&route).await?;
 
         tracing::info!(%route_id, "route description saved");
@@ -488,6 +562,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: route_id,
+            version_number: 1,
         }
     }
 
@@ -521,6 +599,8 @@ mod tests {
                 vec![],
                 vec![],
                 Some("#3388ff".to_string()),
+                None,
+                false,
                 None,
             )
             .await;
@@ -587,6 +667,70 @@ mod tests {
 
         let usecase = RoutesUseCase::new(mock_repo);
         let result = usecase.get_route(user_id, route_id).await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_route_versions_success() {
+        let mut mock_repo = MockRouteRepository::new();
+        let user_id = Uuid::new_v4();
+        let route_id = Uuid::new_v4();
+        let version_group_id = Uuid::new_v4();
+
+        let mut route = make_route(user_id, route_id);
+        route.version_group_id = version_group_id;
+
+        let mut newer_version = make_route(user_id, Uuid::new_v4());
+        newer_version.version_group_id = version_group_id;
+        newer_version.version_number = 2;
+        newer_version.is_draft = true;
+
+        let route_clone = route.clone();
+        let newer_version_clone = newer_version.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(route_id))
+            .times(1)
+            .returning(move |_| Ok(Some(route_clone.clone())));
+
+        mock_repo
+            .expect_find_by_version_group_and_user()
+            .with(
+                mockall::predicate::eq(user_id),
+                mockall::predicate::eq(version_group_id),
+            )
+            .times(1)
+            .returning(move |_, _| Ok(vec![newer_version_clone.clone()]));
+
+        let usecase = RoutesUseCase::new(mock_repo);
+        let result = usecase.get_route_versions(user_id, route_id).await;
+
+        assert!(result.is_ok());
+        let versions = result.unwrap();
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].version_number, 2);
+        assert!(versions[0].is_draft);
+    }
+
+    #[tokio::test]
+    async fn test_get_route_versions_wrong_user() {
+        let mut mock_repo = MockRouteRepository::new();
+        let user_id = Uuid::new_v4();
+        let other_user_id = Uuid::new_v4();
+        let route_id = Uuid::new_v4();
+        let route = make_route(other_user_id, route_id);
+        let route_clone = route.clone();
+
+        mock_repo
+            .expect_find_by_id()
+            .with(mockall::predicate::eq(route_id))
+            .times(1)
+            .returning(move |_| Ok(Some(route_clone.clone())));
+
+        let usecase = RoutesUseCase::new(mock_repo);
+        let result = usecase.get_route_versions(user_id, route_id).await;
 
         assert!(result.is_err());
     }

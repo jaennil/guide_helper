@@ -42,9 +42,13 @@ impl RouteRepository for PostgresRouteRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO routes (id, user_id, name, points, created_at, updated_at, started_at, seasons, line_color, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            "#
+            INSERT INTO routes (
+                id, user_id, name, points, created_at, updated_at, started_at,
+                seasons, line_color, description, is_draft, source_route_id,
+                version_group_id, version_number
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            "#,
         )
         .bind(route.id)
         .bind(route.user_id)
@@ -56,6 +60,10 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(&route.seasons)
         .bind(&route.line_color)
         .bind(&route.description)
+        .bind(route.is_draft)
+        .bind(route.source_route_id)
+        .bind(route.version_group_id)
+        .bind(route.version_number)
         .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -90,7 +98,8 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.started_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description,
+                   r.is_draft, r.source_route_id, r.version_group_id, r.version_number
             FROM routes r
             WHERE r.id = $1
             "#
@@ -111,7 +120,8 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.started_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description,
+                   r.is_draft, r.source_route_id, r.version_group_id, r.version_number
             FROM routes r
             WHERE r.user_id = $1
             ORDER BY r.created_at DESC
@@ -124,6 +134,52 @@ impl RouteRepository for PostgresRouteRepository {
 
         tracing::debug!(user_id = %user_id, count = routes.len(), "found routes");
         Ok(routes)
+    }
+
+    #[tracing::instrument(skip(self), fields(user_id = %user_id, version_group_id = %version_group_id))]
+    async fn find_by_version_group_and_user(
+        &self,
+        user_id: Uuid,
+        version_group_id: Uuid,
+    ) -> Result<Vec<Route>, RepositoryError> {
+        let routes = sqlx::query_as::<_, Route>(
+            r#"
+            SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.started_at, r.share_token,
+                   COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description,
+                   r.is_draft, r.source_route_id, r.version_group_id, r.version_number
+            FROM routes r
+            WHERE r.user_id = $1 AND r.version_group_id = $2
+            ORDER BY r.version_number DESC, r.updated_at DESC
+            "#
+        )
+        .bind(user_id)
+        .bind(version_group_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(routes)
+    }
+
+    #[tracing::instrument(skip(self), fields(version_group_id = %version_group_id))]
+    async fn find_max_version_number(
+        &self,
+        version_group_id: Uuid,
+    ) -> Result<i32, RepositoryError> {
+        let max_version = sqlx::query_scalar::<_, Option<i32>>(
+            r#"
+            SELECT MAX(version_number)
+            FROM routes
+            WHERE version_group_id = $1
+            "#,
+        )
+        .bind(version_group_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+
+        Ok(max_version.unwrap_or(0))
     }
 
     #[tracing::instrument(skip(self, route), fields(route_id = %route.id))]
@@ -139,7 +195,7 @@ impl RouteRepository for PostgresRouteRepository {
         let result = sqlx::query(
             r#"
             UPDATE routes
-            SET name = $2, points = $3, updated_at = $4, started_at = $5, seasons = $6, line_color = $7, description = $8
+            SET name = $2, points = $3, updated_at = $4, started_at = $5, seasons = $6, line_color = $7, description = $8, is_draft = $9
             WHERE id = $1
             "#,
         )
@@ -151,6 +207,7 @@ impl RouteRepository for PostgresRouteRepository {
         .bind(&route.seasons)
         .bind(&route.line_color)
         .bind(&route.description)
+        .bind(route.is_draft)
         .execute(&mut *tx)
         .await
         .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
@@ -220,9 +277,10 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT r.id, r.user_id, r.name, r.points, r.created_at, r.updated_at, r.started_at, r.share_token,
                    COALESCE(ARRAY(SELECT category_id FROM route_categories WHERE route_id = r.id), ARRAY[]::uuid[]) AS category_ids,
-                   r.start_location, r.end_location, r.seasons, r.line_color, r.description
+                   r.start_location, r.end_location, r.seasons, r.line_color, r.description,
+                   r.is_draft, r.source_route_id, r.version_group_id, r.version_number
             FROM routes r
-            WHERE r.share_token = $1
+            WHERE r.share_token = $1 AND r.is_draft = FALSE
             "#
         )
         .bind(token)
@@ -282,6 +340,7 @@ impl RouteRepository for PostgresRouteRepository {
             LEFT JOIN (SELECT route_id, COUNT(*) AS likes_count FROM route_likes GROUP BY route_id) l ON l.route_id = r.id
             LEFT JOIN (SELECT route_id, AVG(rating::float8) AS avg_rating, COUNT(*) AS ratings_count FROM route_ratings GROUP BY route_id) rt ON rt.route_id = r.id
             WHERE r.share_token IS NOT NULL
+              AND r.is_draft = FALSE
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
               AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
               AND ($3::text IS NULL OR $3 = ANY(r.seasons))
@@ -318,6 +377,7 @@ impl RouteRepository for PostgresRouteRepository {
             r#"
             SELECT COUNT(*) FROM routes r
             WHERE r.share_token IS NOT NULL
+              AND r.is_draft = FALSE
               AND ($1::text IS NULL OR r.name ILIKE '%' || $1 || '%')
               AND ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM route_categories WHERE route_id = r.id AND category_id = $2))
               AND ($3::text IS NULL OR $3 = ANY(r.seasons))

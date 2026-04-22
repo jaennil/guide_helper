@@ -108,6 +108,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: Uuid::new_v4(),
+            version_number: 1,
         };
 
         let task = PhotoProcessTask::from_route(&route).unwrap();
@@ -144,6 +148,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: Uuid::new_v4(),
+            version_number: 1,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());
@@ -182,6 +190,10 @@ mod tests {
             seasons: vec![],
             line_color: None,
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: Uuid::new_v4(),
+            version_number: 1,
         };
 
         assert!(PhotoProcessTask::from_route(&route).is_none());

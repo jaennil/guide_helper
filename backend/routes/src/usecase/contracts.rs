@@ -17,6 +17,13 @@ pub trait RouteRepository: Send + Sync {
     async fn create(&self, route: &Route) -> Result<(), RepositoryError>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Route>, RepositoryError>;
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<Route>, RepositoryError>;
+    async fn find_by_version_group_and_user(
+        &self,
+        user_id: Uuid,
+        version_group_id: Uuid,
+    ) -> Result<Vec<Route>, RepositoryError>;
+    async fn find_max_version_number(&self, version_group_id: Uuid)
+    -> Result<i32, RepositoryError>;
     async fn update(&self, route: &Route) -> Result<(), RepositoryError>;
     async fn delete(&self, id: Uuid) -> Result<(), RepositoryError>;
     async fn set_share_token(&self, id: Uuid, token: Option<Uuid>) -> Result<(), RepositoryError>;

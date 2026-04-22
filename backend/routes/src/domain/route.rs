@@ -87,6 +87,10 @@ pub struct Route {
     pub seasons: Vec<String>,
     pub line_color: Option<String>,
     pub description: Option<String>,
+    pub is_draft: bool,
+    pub source_route_id: Option<Uuid>,
+    pub version_group_id: Uuid,
+    pub version_number: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -123,10 +127,15 @@ impl Route {
         seasons: Vec<String>,
         line_color: Option<String>,
         started_at: Option<DateTime<Utc>>,
+        is_draft: bool,
+        source_route_id: Option<Uuid>,
+        version_group_id: Option<Uuid>,
+        version_number: i32,
     ) -> Self {
         let now = Utc::now();
+        let id = Uuid::new_v4();
         Self {
-            id: Uuid::new_v4(),
+            id,
             user_id,
             name,
             points,
@@ -140,6 +149,10 @@ impl Route {
             seasons,
             line_color,
             description: None,
+            is_draft,
+            source_route_id,
+            version_group_id: version_group_id.unwrap_or(id),
+            version_number,
         }
     }
 
@@ -152,6 +165,7 @@ impl Route {
         line_color: Option<String>,
         started_at: Option<Option<DateTime<Utc>>>,
         description: Option<String>,
+        is_draft: Option<bool>,
     ) {
         if let Some(n) = name {
             self.name = n;
@@ -173,6 +187,9 @@ impl Route {
         }
         if description.is_some() {
             self.description = description;
+        }
+        if let Some(is_draft) = is_draft {
+            self.is_draft = is_draft;
         }
         self.updated_at = Utc::now();
     }
@@ -226,6 +243,10 @@ mod tests {
             vec![],
             Some("#3388ff".to_string()),
             None,
+            false,
+            None,
+            None,
+            1,
         );
 
         assert_eq!(route.user_id, user_id);
@@ -234,6 +255,9 @@ mod tests {
         assert_eq!(route.created_at, route.updated_at);
         assert!(route.category_ids.is_empty());
         assert_eq!(route.line_color.as_deref(), Some("#3388ff"));
+        assert!(!route.is_draft);
+        assert_eq!(route.version_group_id, route.id);
+        assert_eq!(route.version_number, 1);
     }
 
     #[test]
@@ -260,6 +284,10 @@ mod tests {
             vec![],
             Some("#3388ff".to_string()),
             None,
+            false,
+            None,
+            None,
+            1,
         );
         let original_updated_at = route.updated_at;
 
@@ -301,12 +329,14 @@ mod tests {
             Some("#ef4444".to_string()),
             Some(Some(Utc::now())),
             None,
+            Some(true),
         );
 
         assert_eq!(route.name, "Updated");
         assert_eq!(route.points.len(), 2);
         assert_eq!(route.line_color.as_deref(), Some("#ef4444"));
         assert!(route.started_at.is_some());
+        assert!(route.is_draft);
         assert!(route.updated_at > original_updated_at);
     }
 

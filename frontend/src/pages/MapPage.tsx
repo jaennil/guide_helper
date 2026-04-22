@@ -18,7 +18,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { routesApi, type PhotoData } from "../api/routes";
+import { routesApi, type PhotoData, type Route as SavedRoute } from "../api/routes";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { MapMenuButton } from "../components/MapMenuButton";
@@ -98,6 +98,8 @@ interface OverlayRoute {
   points: RoutePoint[];
   segments: RouteSegment[];
 }
+
+type LoadedRouteInfo = SavedRoute;
 
 const ROUTE_COLORS = [
   '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
@@ -983,10 +985,15 @@ const RouteInspector = React.memo(function RouteInspector({
   onPreviewShapeChange,
   onFocusPoint,
   onSaveRoute,
+  onPublishDraft,
+  onCreateVersion,
+  onOpenVersion,
   saveLoading,
   saveError,
   canSaveCurrentRoute,
   loadedRouteInfo,
+  routeVersions,
+  routeVersionsLoading,
 }: {
   routeName: string;
   onRouteNameChange: (value: string) => void;
@@ -1013,12 +1020,24 @@ const RouteInspector = React.memo(function RouteInspector({
   onPreviewShapeChange: (pointId: number, previewShape: PhotoPreviewShape) => void;
   onFocusPoint: (pointId: number) => void;
   onSaveRoute: () => void;
+  onPublishDraft: () => void;
+  onCreateVersion: () => void;
+  onOpenVersion: (routeId: string) => void;
   saveLoading: boolean;
   saveError: string;
   canSaveCurrentRoute: boolean;
-  loadedRouteInfo: { id: string; user_id: string; name: string } | null;
+  loadedRouteInfo: LoadedRouteInfo | null;
+  routeVersions: SavedRoute[];
+  routeVersionsLoading: boolean;
 }) {
   const { t } = useLanguage();
+  const routeStatusLabel = loadedRouteInfo
+    ? loadedRouteInfo.is_draft
+      ? t("map.routeStatusDraft")
+      : loadedRouteInfo.share_token
+        ? t("map.routeStatusPublic")
+        : t("map.routeStatusPrivate")
+    : null;
 
   return (
     <aside className="route-inspector">
@@ -1027,21 +1046,55 @@ const RouteInspector = React.memo(function RouteInspector({
           <span className="route-inspector-eyebrow">{t("map.routeInspectorTitle")}</span>
           <h3>{routeName.trim() || t("map.routeDraft")}</h3>
           <p>{t("map.routeInspectorSubtitle", { count: routePoints.length })}</p>
+          {loadedRouteInfo && routeStatusLabel ? (
+            <div className="route-inspector-status-row">
+              <span className={`route-inspector-status-badge${loadedRouteInfo.is_draft ? " draft" : loadedRouteInfo.share_token ? " public" : " private"}`}>
+                {routeStatusLabel}
+              </span>
+              <span className="route-inspector-status-meta">
+                {t("profile.routeVersionNumber", { version: loadedRouteInfo.version_number })}
+              </span>
+            </div>
+          ) : null}
         </div>
-        {canSaveCurrentRoute && (
-          <button
-            type="button"
-            className="route-inspector-save-btn"
-            onClick={onSaveRoute}
-            disabled={saveLoading}
-          >
-            {saveLoading
-              ? t("map.saving")
-              : loadedRouteInfo
-                ? t("map.saveChanges")
-                : t("map.saveRoute")}
-          </button>
-        )}
+        <div className="route-inspector-header-actions">
+          {canSaveCurrentRoute && (
+            <button
+              type="button"
+              className="route-inspector-save-btn"
+              onClick={onSaveRoute}
+              disabled={saveLoading}
+            >
+              {saveLoading
+                ? t("map.saving")
+                : loadedRouteInfo?.is_draft
+                  ? t("map.updateDraft")
+                  : loadedRouteInfo
+                    ? t("map.saveChanges")
+                    : t("map.saveRoute")}
+            </button>
+          )}
+          {canSaveCurrentRoute && loadedRouteInfo?.is_draft && (
+            <button
+              type="button"
+              className="route-inspector-quick-action"
+              onClick={onPublishDraft}
+              disabled={saveLoading}
+            >
+              {t("map.publishDraft")}
+            </button>
+          )}
+          {canSaveCurrentRoute && loadedRouteInfo && !loadedRouteInfo.is_draft && (
+            <button
+              type="button"
+              className="route-inspector-quick-action"
+              onClick={onCreateVersion}
+              disabled={saveLoading}
+            >
+              {t("map.createVersion")}
+            </button>
+          )}
+        </div>
       </div>
       <div className="route-inspector-body">
         <section className="route-inspector-section">
@@ -1132,6 +1185,38 @@ const RouteInspector = React.memo(function RouteInspector({
           />
           <div className="route-inspector-hint">{t("map.routeStartedAtHint")}</div>
         </section>
+        {loadedRouteInfo && (
+          <section className="route-inspector-section">
+            <div className="route-inspector-section-header">
+              <h4>{t("profile.routeVersionsShow", { count: routeVersions.length || 1 })}</h4>
+            </div>
+            {routeVersionsLoading ? (
+              <div className="route-inspector-empty">{t("common.loading")}</div>
+            ) : (
+              <div className="route-version-list">
+                {routeVersions.map((routeVersion) => (
+                  <button
+                    key={routeVersion.id}
+                    type="button"
+                    className={`route-version-list-item${routeVersion.id === loadedRouteInfo.id ? " active" : ""}`}
+                    onClick={() => onOpenVersion(routeVersion.id)}
+                  >
+                    <span className="route-version-list-title">
+                      {t("profile.routeVersionNumber", { version: routeVersion.version_number })}
+                    </span>
+                    <span className="route-version-list-meta">
+                      {routeVersion.is_draft
+                        ? t("profile.routeStatusDraft")
+                        : routeVersion.share_token
+                          ? t("profile.sharedStatusPublic")
+                          : t("profile.sharedStatusPrivate")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
         <section className="route-inspector-section">
           <div className="route-inspector-section-header">
             <h4>{t("map.pointsListTitle")}</h4>
@@ -1216,7 +1301,9 @@ export function MapPage() {
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
-  const [loadedRouteInfo, setLoadedRouteInfo] = useState<{ id: string; user_id: string; name: string } | null>(null);
+  const [loadedRouteInfo, setLoadedRouteInfo] = useState<LoadedRouteInfo | null>(null);
+  const [routeVersions, setRouteVersions] = useState<SavedRoute[]>([]);
+  const [routeVersionsLoading, setRouteVersionsLoading] = useState(false);
   const [historicalMode, setHistoricalMode] = useState(false);
   const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear());
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
@@ -1525,6 +1612,44 @@ export function MapPage() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const routeId = loadedRouteInfo?.id;
+
+    if (!routeId) {
+      setRouteVersions([]);
+      setRouteVersionsLoading(false);
+      return;
+    }
+
+    const resolvedRouteId: string = routeId;
+    let cancelled = false;
+
+    async function loadRouteVersions() {
+      setRouteVersionsLoading(true);
+      try {
+        const versions = await routesApi.getRouteVersions(resolvedRouteId);
+        if (!cancelled) {
+          setRouteVersions(versions);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load route versions:", error);
+          setRouteVersions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setRouteVersionsLoading(false);
+        }
+      }
+    }
+
+    void loadRouteVersions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadedRouteInfo?.id]);
+
   // Real-time photo processing notifications via WebSocket
   const hasPendingPhotos = routePoints.some(p => p.photo?.status === 'pending');
 
@@ -1545,7 +1670,7 @@ export function MapPage() {
   const loadRoute = async (routeId: string) => {
     try {
       const route = await routesApi.getRoute(routeId);
-      setLoadedRouteInfo({ id: route.id, user_id: route.user_id, name: route.name });
+      setLoadedRouteInfo(route);
       setRouteName(route.name);
       setSelectedCategoryIds(route.category_ids);
       setSelectedSeasons(route.seasons);
@@ -1585,6 +1710,35 @@ export function MapPage() {
       console.error("Failed to load route:", error);
     }
   };
+
+  const buildPointsToSave = () =>
+    routePoints.map((p, index) => {
+      const segment = routeSegments.find((s) => s.toIndex === index);
+      const normalizedName = p.name?.trim();
+      const normalizedNote = p.note?.trim();
+      return {
+        lat: p.position[0],
+        lng: p.position[1],
+        name: normalizedName ? normalizedName : undefined,
+        note: normalizedNote ? normalizedNote : undefined,
+        marker_color: p.markerColor ? normalizePointMarkerColor(p.markerColor) : undefined,
+        marker_size: p.markerSize ? clampPointMarkerSize(p.markerSize) : undefined,
+        preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
+        preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
+        segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
+        segment_duration_minutes: segment?.durationMinutes,
+        photo: p.photo,
+      };
+    });
+
+  const buildRouteSavePayload = () => ({
+    name: routeName.trim(),
+    points: buildPointsToSave(),
+    category_ids: selectedCategoryIds,
+    seasons: selectedSeasons,
+    line_color: normalizeRouteLineColor(routeLineColor),
+    started_at: fromDatetimeLocalValue(routeStartedAt),
+  });
 
   const loadOverlayRoutes = async (ids: string[]) => {
     console.log("Loading overlay routes:", ids);
@@ -1685,55 +1839,99 @@ export function MapPage() {
     setSaveError("");
 
     try {
-      // Save points with segment mode info and photos
-      const pointsToSave = routePoints.map((p, index) => {
-        // Find segment that ends at this point
-        const segment = routeSegments.find(s => s.toIndex === index);
-        const normalizedName = p.name?.trim();
-        const normalizedNote = p.note?.trim();
-        return {
-          lat: p.position[0],
-          lng: p.position[1],
-          name: normalizedName ? normalizedName : undefined,
-          note: normalizedNote ? normalizedNote : undefined,
-          marker_color: p.markerColor ? normalizePointMarkerColor(p.markerColor) : undefined,
-          marker_size: p.markerSize ? clampPointMarkerSize(p.markerSize) : undefined,
-          preview_size: p.photo ? clampPhotoPreviewSize(p.previewSize) : undefined,
-          preview_shape: p.photo ? normalizePhotoPreviewShape(p.previewShape) : undefined,
-          segment_mode: segment?.mode as 'auto' | 'manual' | undefined,
-          segment_duration_minutes: segment?.durationMinutes,
-          photo: p.photo,
-        };
-      });
-
-      const normalizedLineColor = normalizeRouteLineColor(routeLineColor);
-      const normalizedStartedAt = fromDatetimeLocalValue(routeStartedAt);
+      const payload = buildRouteSavePayload();
       let savedRoute;
 
       if (loadedRouteInfo) {
         savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
-          name: targetRouteName.trim(),
-          points: pointsToSave,
-          category_ids: selectedCategoryIds,
-          seasons: selectedSeasons,
-          line_color: normalizedLineColor,
-          started_at: normalizedStartedAt ?? null,
+          ...payload,
+          started_at: payload.started_at ?? null,
         });
       } else {
         savedRoute = await routesApi.createRoute({
-          name: targetRouteName.trim(),
-          points: pointsToSave,
-          category_ids: selectedCategoryIds,
-          seasons: selectedSeasons,
-          line_color: normalizedLineColor,
-          started_at: normalizedStartedAt,
+          ...payload,
         });
       }
       setRouteName(savedRoute.name);
       setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
       setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
-      setLoadedRouteInfo({ id: savedRoute.id, user_id: savedRoute.user_id, name: savedRoute.name });
+      setLoadedRouteInfo(savedRoute);
       toast.success(t("map.routeSaved"));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, t("map.saveFailed")));
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handlePublishDraft = async () => {
+    if (!loadedRouteInfo?.is_draft) {
+      return;
+    }
+
+    if (!routeName.trim()) {
+      setSaveError(t("map.pleaseEnterRouteName"));
+      return;
+    }
+
+    if (routePoints.length < 2) {
+      setSaveError(t("map.routeMinPoints"));
+      return;
+    }
+
+    setSaveLoading(true);
+    setSaveError("");
+
+    try {
+      const payload = buildRouteSavePayload();
+      const savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
+        ...payload,
+        started_at: payload.started_at ?? null,
+        is_draft: false,
+      });
+      setLoadedRouteInfo(savedRoute);
+      setRouteName(savedRoute.name);
+      setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
+      setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
+      toast.success(t("map.draftPublished"));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, t("map.saveFailed")));
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleCreateVersion = async () => {
+    if (!loadedRouteInfo || loadedRouteInfo.is_draft) {
+      return;
+    }
+
+    if (!routeName.trim()) {
+      setSaveError(t("map.pleaseEnterRouteName"));
+      return;
+    }
+
+    if (routePoints.length < 2) {
+      setSaveError(t("map.routeMinPoints"));
+      return;
+    }
+
+    setSaveLoading(true);
+    setSaveError("");
+
+    try {
+      const payload = buildRouteSavePayload();
+      const createdRoute = await routesApi.createRoute({
+        ...payload,
+        is_draft: true,
+        source_route_id: loadedRouteInfo.id,
+      });
+      setLoadedRouteInfo(createdRoute);
+      setRouteName(createdRoute.name);
+      setRouteLineColor(normalizeRouteLineColor(createdRoute.line_color));
+      setRouteStartedAt(toDatetimeLocalValue(createdRoute.started_at));
+      toast.success(t("map.versionCreated"));
+      window.history.replaceState({}, "", `/map?route=${createdRoute.id}`);
     } catch (err) {
       setSaveError(getErrorMessage(err, t("map.saveFailed")));
     } finally {
@@ -2611,10 +2809,15 @@ export function MapPage() {
           onPreviewShapeChange={handlePointPreviewShapeChange}
           onFocusPoint={focusMapOnPoint}
           onSaveRoute={handleSaveRoute}
+          onPublishDraft={handlePublishDraft}
+          onCreateVersion={handleCreateVersion}
+          onOpenVersion={loadRoute}
           saveLoading={saveLoading}
           saveError={saveError}
           canSaveCurrentRoute={canSaveCurrentRoute}
           loadedRouteInfo={loadedRouteInfo}
+          routeVersions={routeVersions}
+          routeVersionsLoading={routeVersionsLoading}
         />
       )}
       <MapContainer

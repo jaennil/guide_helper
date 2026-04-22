@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +37,62 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function getCategoryColor(name: string): string {
   return CATEGORY_COLORS[name.toLowerCase()] ?? '#4CAF50';
+}
+
+interface RouteGroup {
+  versionGroupId: string;
+  current: Route;
+  versions: Route[];
+}
+
+function sortRoutesForVersionGroup(routes: Route[]) {
+  return [...routes].sort((left, right) => {
+    if (right.version_number !== left.version_number) {
+      return right.version_number - left.version_number;
+    }
+    return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
+  });
+}
+
+function buildRouteGroups(routes: Route[]): RouteGroup[] {
+  const groups = new Map<string, Route[]>();
+
+  routes.forEach((route) => {
+    const key = route.version_group_id || route.id;
+    const current = groups.get(key) ?? [];
+    current.push(route);
+    groups.set(key, current);
+  });
+
+  return [...groups.entries()]
+    .map(([versionGroupId, groupRoutes]) => {
+      const versions = sortRoutesForVersionGroup(groupRoutes);
+      return {
+        versionGroupId,
+        current: versions[0],
+        versions,
+      };
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.current.updated_at).getTime() - new Date(left.current.updated_at).getTime(),
+    );
+}
+
+function getRouteStatusLabel(route: Route, t: ReturnType<typeof useLanguage>['t']) {
+  if (route.is_draft) {
+    return t('profile.routeStatusDraft');
+  }
+
+  return route.share_token ? t('profile.sharedStatusPublic') : t('profile.sharedStatusPrivate');
+}
+
+function getRouteStatusClass(route: Route) {
+  if (route.is_draft) {
+    return 'draft';
+  }
+
+  return route.share_token ? 'shared' : 'private';
 }
 
 
@@ -133,6 +189,7 @@ export default function ProfilePage() {
   const [confirmDeleteRouteId, setConfirmDeleteRouteId] = useState<string | null>(null);
   const [renamingRouteId, setRenamingRouteId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [expandedVersionGroups, setExpandedVersionGroups] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -301,6 +358,48 @@ export default function ProfilePage() {
     setConfirmDeleteRouteId(routeId);
   };
 
+  const toggleVersionGroup = (versionGroupId: string) => {
+    setExpandedVersionGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(versionGroupId)) {
+        next.delete(versionGroupId);
+      } else {
+        next.add(versionGroupId);
+      }
+      return next;
+    });
+  };
+
+  const handlePublishDraft = async (route: Route) => {
+    try {
+      const updated = await routesApi.updateRoute(route.id, { is_draft: false });
+      setRoutes((current) => current.map((item) => (item.id === route.id ? updated : item)));
+      toast.success(t('profile.routeDraftPublished'));
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.routeDraftPublishFailed')));
+    }
+  };
+
+  const handleCreateRouteVersion = async (route: Route) => {
+    try {
+      const created = await routesApi.createRoute({
+        name: route.name,
+        points: route.points,
+        category_ids: route.category_ids,
+        seasons: route.seasons,
+        line_color: route.line_color,
+        started_at: route.started_at,
+        is_draft: true,
+        source_route_id: route.id,
+      });
+      setRoutes((current) => [created, ...current]);
+      toast.success(t('profile.routeVersionCreated'));
+      navigate(`/map?route=${created.id}`);
+    } catch (err) {
+      setRoutesError(getErrorMessage(err, t('profile.routeVersionCreateFailed')));
+    }
+  };
+
   const handleConfirmDeleteRoute = async () => {
     if (!confirmDeleteRouteId) return;
     const routeId = confirmDeleteRouteId;
@@ -373,6 +472,8 @@ export default function ProfilePage() {
       day: 'numeric',
     });
   };
+
+  const routeGroups = useMemo(() => buildRouteGroups(routes), [routes]);
 
   return (
     <>
@@ -534,7 +635,7 @@ export default function ProfilePage() {
               <div className="routes-header">
                 <div className="routes-header-copy">
                   <h2>{t('profile.mySavedRoutes')}</h2>
-                  <p>{t('explore.results', { count: routes.length })}</p>
+                  <p>{t('explore.results', { count: routeGroups.length })}</p>
                 </div>
                 <div className="routes-actions">
                   {selectedRouteIds.size > 0 && (
@@ -574,14 +675,16 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {routes.length > 0 && (
+              {routeGroups.length > 0 && (
                 <div className="routes-list">
-                  {routes.map((route) => {
+                  {routeGroups.map((group) => {
+                    const route = group.current;
+                    const isExpanded = expandedVersionGroups.has(group.versionGroupId);
                     const firstCatName = (route.category_ids?.[0] && categoryMap[route.category_ids[0]]) || '';
                     const accentColor = getCategoryColor(firstCatName);
                     return (
                       <div
-                        key={route.id}
+                        key={group.versionGroupId}
                         className={`route-card ${selectedRouteIds.has(route.id) ? 'selected' : ''}`}
                         style={{ '--card-accent': accentColor } as React.CSSProperties}
                       >
@@ -612,8 +715,11 @@ export default function ProfilePage() {
                               {(route.seasons?.length ?? 0) > 0 && route.seasons.map((season) => (
                                 <span key={season} className={`route-tag season-tag season-${season}`}>{t(asTranslationKey(`seasons.${season}`))}</span>
                               ))}
-                              <span className={`route-tag route-visibility-badge ${route.share_token ? 'shared' : 'private'}`}>
-                                {route.share_token ? t('profile.sharedStatusPublic') : t('profile.sharedStatusPrivate')}
+                              <span className={`route-tag route-visibility-badge ${getRouteStatusClass(route)}`}>
+                                {getRouteStatusLabel(route, t)}
+                              </span>
+                              <span className="route-tag route-version-badge">
+                                {t('profile.routeVersionLabel', { current: route.version_number, total: group.versions.length })}
                               </span>
                             </div>
                             {(route.start_location || route.end_location) && (
@@ -639,6 +745,20 @@ export default function ProfilePage() {
                               )}
                             </div>
                             <div className="route-card-date">{t('profile.created')} {formatDate(route.created_at)}</div>
+                            {group.versions.length > 1 && (
+                              <button
+                                type="button"
+                                className="route-version-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleVersionGroup(group.versionGroupId);
+                                }}
+                              >
+                                {isExpanded
+                                  ? t('profile.routeVersionsHide')
+                                  : t('profile.routeVersionsShow', { count: group.versions.length })}
+                              </button>
+                            )}
                           </div>
                           <RouteMapPreview
                             points={route.points}
@@ -652,9 +772,16 @@ export default function ProfilePage() {
                               onClick={(e) => { e.stopPropagation(); navigate(`/map?route=${route.id}`); }}
                               className="btn-secondary"
                             >
-                              {t('profile.view')}
+                              {route.is_draft ? t('profile.routeContinueDraft') : t('profile.view')}
                             </button>
-                            {route.share_token ? (
+                            {route.is_draft ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void handlePublishDraft(route); }}
+                                className="btn-secondary"
+                              >
+                                {t('profile.routePublishDraft')}
+                              </button>
+                            ) : route.share_token ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleCopyLink(route.share_token!); }}
                                 className="btn-secondary"
@@ -688,6 +815,12 @@ export default function ProfilePage() {
                                 </button>
                               )}
                               <button
+                                onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); void handleCreateRouteVersion(route); }}
+                                className="btn-secondary"
+                              >
+                                {t('profile.routeCreateVersion')}
+                              </button>
+                              <button
                                 onClick={(e) => { e.stopPropagation(); closeRouteActionMenu(e.currentTarget); exportAsGpx(route.name, route.points); }}
                                 className="btn-secondary"
                               >
@@ -708,6 +841,58 @@ export default function ProfilePage() {
                             </div>
                           </details>
                         </div>
+                        {isExpanded && group.versions.length > 1 && (
+                          <div className="route-version-history">
+                            {group.versions.map((version) => (
+                              <div key={version.id} className="route-version-item">
+                                <div className="route-version-item-main">
+                                  <div className="route-version-item-title">
+                                    {version.name}
+                                  </div>
+                                  <div className="route-version-item-meta">
+                                    {getRouteStatusLabel(version, t)} • {t('profile.routeVersionNumber', { version: version.version_number })} • {formatDate(version.updated_at)}
+                                  </div>
+                                </div>
+                                <div className="route-version-item-actions">
+                                  <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/map?route=${version.id}`);
+                                    }}
+                                  >
+                                    {version.is_draft ? t('profile.routeContinueDraft') : t('profile.view')}
+                                  </button>
+                                  {!version.is_draft && (
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void handleCreateRouteVersion(version);
+                                      }}
+                                    >
+                                      {t('profile.routeCreateVersion')}
+                                    </button>
+                                  )}
+                                  {version.is_draft && (
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void handlePublishDraft(version);
+                                      }}
+                                    >
+                                      {t('profile.routePublishDraft')}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -53,6 +53,10 @@ export interface Route {
   seasons: string[];
   line_color?: string;
   description?: string;
+  is_draft: boolean;
+  source_route_id?: string;
+  version_group_id: string;
+  version_number: number;
 }
 
 export interface Comment {
@@ -131,6 +135,8 @@ export interface CreateRouteRequest {
   seasons: string[];
   line_color?: string;
   started_at?: string;
+  is_draft?: boolean;
+  source_route_id?: string;
 }
 
 export interface UpdateRouteRequest {
@@ -140,6 +146,7 @@ export interface UpdateRouteRequest {
   seasons?: string[];
   line_color?: string;
   started_at?: string | null;
+  is_draft?: boolean;
 }
 
 const getAuthHeader = () => {
@@ -182,6 +189,13 @@ export const routesApi = {
       }
       throw error;
     }
+  },
+
+  async getRouteVersions(id: string): Promise<Route[]> {
+    const response = await axios.get(`${ROUTES_URL}/${id}/versions`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
   },
 
   async createRoute(data: CreateRouteRequest): Promise<Route> {

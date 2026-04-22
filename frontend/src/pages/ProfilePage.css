@@ -478,6 +478,69 @@
   color: var(--text-secondary);
 }
 
+.route-visibility-badge.draft {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+}
+
+.route-version-badge {
+  background: rgba(var(--color-brand-rgb), 0.12);
+  color: var(--color-brand);
+}
+
+.route-version-toggle {
+  margin-top: 0.55rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-brand);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-version-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1.25rem 1rem;
+  border-top: 1px dashed var(--border-light);
+  background: color-mix(in srgb, var(--bg-page) 84%, transparent);
+}
+
+.route-version-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-primary);
+}
+
+.route-version-item-main {
+  min-width: 0;
+}
+
+.route-version-item-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.route-version-item-meta {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.route-version-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .route-card-actions-primary {
   display: flex;
   flex-wrap: wrap;
@@ -572,6 +635,11 @@
 
   .route-card-actions-primary .btn-secondary {
     flex: 1;
+  }
+
+  .route-version-item {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .route-card-more {

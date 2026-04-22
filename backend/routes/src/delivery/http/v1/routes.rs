@@ -41,6 +41,11 @@ pub struct RouteResponse {
     pub line_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    pub is_draft: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_route_id: Option<Uuid>,
+    pub version_group_id: Uuid,
+    pub version_number: i32,
 }
 
 #[derive(Deserialize, Validate)]
@@ -57,6 +62,10 @@ pub struct CreateRouteRequest {
     pub line_color: Option<String>,
     #[serde(default)]
     pub started_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub is_draft: bool,
+    #[serde(default)]
+    pub source_route_id: Option<Uuid>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -69,6 +78,8 @@ pub struct UpdateRouteRequest {
     #[serde(default)]
     pub started_at: Option<Option<DateTime<Utc>>>,
     pub line_color: Option<String>,
+    #[serde(default)]
+    pub is_draft: Option<bool>,
 }
 
 fn route_to_response(r: DomainRoute) -> RouteResponse {
@@ -87,6 +98,10 @@ fn route_to_response(r: DomainRoute) -> RouteResponse {
         seasons: r.seasons,
         line_color: r.line_color,
         description: r.description,
+        is_draft: r.is_draft,
+        source_route_id: r.source_route_id,
+        version_group_id: r.version_group_id,
+        version_number: r.version_number,
     }
 }
 
@@ -121,6 +136,21 @@ pub async fn get_route(
     Ok((StatusCode::OK, Json(route_to_response(route))))
 }
 
+#[tracing::instrument(skip(state), fields(user_id = %user.user_id))]
+pub async fn get_route_versions(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(route_id): Path<Uuid>,
+) -> Result<impl IntoResponse, UsecaseError> {
+    let routes = state
+        .routes_usecase
+        .get_route_versions(user.user_id, route_id)
+        .await?;
+
+    let response: Vec<RouteResponse> = routes.into_iter().map(route_to_response).collect();
+    Ok((StatusCode::OK, Json(response)))
+}
+
 #[tracing::instrument(skip(state, payload), fields(user_id = %user.user_id))]
 pub async fn create_route(
     State(state): State<Arc<AppState>>,
@@ -144,6 +174,8 @@ pub async fn create_route(
             payload.seasons,
             payload.line_color,
             payload.started_at,
+            payload.is_draft,
+            payload.source_route_id,
         )
         .await?;
 
@@ -177,6 +209,7 @@ pub async fn update_route(
             payload.seasons,
             payload.line_color,
             payload.started_at,
+            payload.is_draft,
         )
         .await?;
 
@@ -263,7 +296,17 @@ pub async fn import_route_from_geojson(
 
     let route = state
         .routes_usecase
-        .create_route(user.user_id, name, points, vec![], vec![], None, None)
+        .create_route(
+            user.user_id,
+            name,
+            points,
+            vec![],
+            vec![],
+            None,
+            None,
+            false,
+            None,
+        )
         .await?;
 
     tracing::info!(route_id = %route.id, "route imported successfully from GeoJSON");
@@ -512,6 +555,8 @@ mod tests {
             seasons: vec![],
             line_color: None,
             started_at: None,
+            is_draft: false,
+            source_route_id: None,
         };
 
         assert!(request.validate().is_ok());
@@ -538,6 +583,8 @@ mod tests {
             seasons: vec![],
             line_color: None,
             started_at: None,
+            is_draft: false,
+            source_route_id: None,
         };
 
         assert!(request.validate().is_err());
@@ -552,6 +599,8 @@ mod tests {
             seasons: vec![],
             line_color: None,
             started_at: None,
+            is_draft: false,
+            source_route_id: None,
         };
 
         assert!(request.validate().is_err());
@@ -586,6 +635,10 @@ mod tests {
             seasons: vec![],
             line_color: Some("#3388ff".to_string()),
             description: None,
+            is_draft: false,
+            source_route_id: None,
+            version_group_id: Uuid::new_v4(),
+            version_number: 1,
         };
 
         let json = serde_json::to_string(&response).unwrap();
