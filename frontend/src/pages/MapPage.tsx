@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import toast from "react-hot-toast";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -9,12 +8,12 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { routesApi, type Route as SavedRoute } from "../api/routes";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { CommentSection } from "../components/CommentSection";
 import { LikeRatingBar } from "../components/LikeRatingBar";
 import { usePhotoNotifications } from "../hooks/usePhotoNotifications";
+import { useRoutePersistence } from "../hooks/useRoutePersistence";
 import { useRoutePointEditing } from "../hooks/useRoutePointEditing";
 import { exportAsGpx, exportAsKml } from "../utils/exportRoute";
 import { WeatherPanel } from "../components/WeatherPanel";
@@ -33,21 +32,15 @@ import { ROUTING_ENGINES, DEFAULT_ENGINE, type RoutingEngineId } from "../utils/
 import { setRoutingEngine as setPathEngine } from "../utils/routePath";
 import {
   DEFAULT_ROUTE_LINE_COLOR,
-  normalizeRouteLineColor,
 } from "../utils/routeColors";
 import {
   appendChatPointsToRoute,
   buildChatPreviewPoints,
-  buildRouteSavePayload,
   fromDatetimeLocalValue,
   hasAllChatPointsOnRoute,
-  routeToEditorState,
-  routeToOverlayRoute,
-  toDatetimeLocalValue,
 } from "../utils/routeEditorData";
 import { focusMapOnPoint, focusMapOnPoints } from "../utils/routeMapViewport";
-import type { OverlayRoute, RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
-import { getErrorMessage } from "../utils/errors";
+import type { RouteMode, RoutePoint, RouteSegment } from "../types/routeMap";
 
 const ChatPanel = React.lazy(() =>
   import("../components/ChatPanel").then((module) => ({ default: module.ChatPanel })),
@@ -59,8 +52,6 @@ const TILE_PROVIDERS = [
   { id: "2gis", name: "2GIS", url: "https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1", attribution: "&copy; 2GIS" },
   { id: "opentopomap", name: "OpenTopoMap", url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", attribution: "&copy; OpenTopoMap" },
 ];
-
-type LoadedRouteInfo = SavedRoute;
 
 const ROUTE_COLORS = [
   '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
@@ -101,12 +92,6 @@ export function MapPage() {
   const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
   const [routeLineColor, setRouteLineColor] = useState(DEFAULT_ROUTE_LINE_COLOR);
   const [routeStartedAt, setRouteStartedAt] = useState("");
-  const [saveError, setSaveError] = useState("");
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [overlayRoutes, setOverlayRoutes] = useState<OverlayRoute[]>([]);
-  const [loadedRouteInfo, setLoadedRouteInfo] = useState<LoadedRouteInfo | null>(null);
-  const [routeVersions, setRouteVersions] = useState<SavedRoute[]>([]);
-  const [routeVersionsLoading, setRouteVersionsLoading] = useState(false);
   const [historicalMode, setHistoricalMode] = useState(false);
   const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear());
   const [historicalOpacity, setHistoricalOpacity] = useState(0.7);
@@ -119,11 +104,6 @@ export function MapPage() {
   const [playbackActive, setPlaybackActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPanelMounted, setChatPanelMounted] = useState(false);
-  const [showConfirmClear, setShowConfirmClear] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
-  const [aiDescription, setAiDescription] = useState("");
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiSaving, setAiSaving] = useState(false);
   const [selectedPointId, setSelectedPointId] = useState<number | null>(null);
   const [chatPreviewPoints, setChatPreviewPoints] = useState<RoutePoint[]>([]);
   const pointIdRef = useRef(0);
@@ -307,6 +287,52 @@ export function MapPage() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const {
+    aiDescription,
+    aiGenerating,
+    aiSaving,
+    cancelClearRoute,
+    confirmClearRoute,
+    handleClearRoute,
+    handleCreateVersion,
+    handleGenerateAiDescription,
+    handlePublishDraft,
+    handleSaveAiDescription,
+    handleSaveRoute,
+    loadOverlayRoutes,
+    loadRoute,
+    loadedRouteInfo,
+    overlayRoutes,
+    routeVersions,
+    routeVersionsLoading,
+    saveError,
+    saveLoading,
+    setAiDescription,
+    setShowAiModal,
+    showAiModal,
+    showConfirmClear,
+  } = useRoutePersistence({
+    routeName,
+    routePoints,
+    routeSegments,
+    selectedCategoryIds,
+    selectedSeasons,
+    routeLineColor,
+    routeStartedAt,
+    chatPreviewPoints,
+    pointIdRef,
+    overlayColors: ROUTE_COLORS,
+    t,
+    setRouteName,
+    setSelectedCategoryIds,
+    setSelectedSeasons,
+    setRouteLineColor,
+    setRouteStartedAt,
+    setRoutePoints,
+    setRouteSegments,
+    setSelectedPointId,
+    setChatPreviewPoints,
+  });
   const normalizedRouteStartedAt = routeStartedAt ? fromDatetimeLocalValue(routeStartedAt) : undefined;
   const routeGeoPoints = useMemo(
     () => routePoints.map((point) => ({ lat: point.position[0], lng: point.position[1] })),
@@ -411,45 +437,7 @@ export function MapPage() {
         loadOverlayRoutes(ids);
       }
     }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const routeId = loadedRouteInfo?.id;
-
-    if (!routeId) {
-      setRouteVersions([]);
-      setRouteVersionsLoading(false);
-      return;
-    }
-
-    const resolvedRouteId: string = routeId;
-    let cancelled = false;
-
-    async function loadRouteVersions() {
-      setRouteVersionsLoading(true);
-      try {
-        const versions = await routesApi.getRouteVersions(resolvedRouteId);
-        if (!cancelled) {
-          setRouteVersions(versions);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load route versions:", error);
-          setRouteVersions([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setRouteVersionsLoading(false);
-        }
-      }
-    }
-
-    void loadRouteVersions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loadedRouteInfo?.id]);
+  }, [loadOverlayRoutes, loadRoute, searchParams]);
 
   // Real-time photo processing notifications via WebSocket
   const hasPendingPhotos = routePoints.some(p => p.photo?.status === 'pending');
@@ -467,244 +455,6 @@ export function MapPage() {
       }));
     },
   });
-
-  const loadRoute = async (routeId: string) => {
-    try {
-      const route = await routesApi.getRoute(routeId);
-      const editorState = routeToEditorState(route);
-      setLoadedRouteInfo(route);
-      setRouteName(editorState.routeName);
-      setSelectedCategoryIds(editorState.selectedCategoryIds);
-      setSelectedSeasons(editorState.selectedSeasons);
-      setRouteLineColor(editorState.routeLineColor);
-      setRouteStartedAt(editorState.routeStartedAt);
-      setRoutePoints(editorState.points);
-      setSelectedPointId(editorState.points[0]?.id ?? null);
-      setChatPreviewPoints([]);
-      setSaveError("");
-      pointIdRef.current = editorState.nextPointId;
-      setRouteSegments(editorState.segments);
-    } catch (error) {
-      console.error("Failed to load route:", error);
-    }
-  };
-
-  const loadOverlayRoutes = async (ids: string[]) => {
-    console.log("Loading overlay routes:", ids);
-    const results = await Promise.allSettled(
-      ids.map((id) => routesApi.getRoute(id))
-    );
-
-    const loaded: OverlayRoute[] = [];
-    results.forEach((result, idx) => {
-      if (result.status === "fulfilled") {
-        loaded.push(routeToOverlayRoute(result.value, ROUTE_COLORS[idx % ROUTE_COLORS.length]));
-      } else {
-        console.error(`Failed to load overlay route ${ids[idx]}:`, result.reason);
-      }
-    });
-
-    console.log("Loaded overlay routes:", loaded.length);
-    setOverlayRoutes(loaded);
-  };
-
-  const handleGenerateAiDescription = async () => {
-    if (!loadedRouteInfo) return;
-    setAiGenerating(true);
-    try {
-      const result = await routesApi.generateDescription(loadedRouteInfo.id);
-      setAiDescription(result.description);
-      setShowAiModal(true);
-      console.log("AI description generated for route:", loadedRouteInfo.id);
-    } catch (err) {
-      const msg = getErrorMessage(err, t("ai.unavailable"));
-      toast.error(msg);
-      console.error("Failed to generate AI description:", err);
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
-  const handleSaveAiDescription = async () => {
-    if (!loadedRouteInfo) return;
-    setAiSaving(true);
-    try {
-      await routesApi.saveDescription(loadedRouteInfo.id, aiDescription);
-      setShowAiModal(false);
-      toast.success(t("map.routeSaved"));
-      console.log("AI description saved for route:", loadedRouteInfo.id);
-    } catch (err) {
-      toast.error(t("map.saveFailed"));
-      console.error("Failed to save AI description:", err);
-    } finally {
-      setAiSaving(false);
-    }
-  };
-
-  const handleSaveRoute = async () => {
-    const targetRouteName = routeName;
-
-    if (!targetRouteName.trim()) {
-      setSaveError(t("map.pleaseEnterRouteName"));
-      return;
-    }
-
-    if (routePoints.length < 2) {
-      setSaveError(t("map.routeMinPoints"));
-      return;
-    }
-
-    setSaveLoading(true);
-    setSaveError("");
-
-    try {
-      const payload = buildRouteSavePayload({
-        routeName,
-        routePoints,
-        routeSegments,
-        selectedCategoryIds,
-        selectedSeasons,
-        routeLineColor,
-        routeStartedAt,
-      });
-      let savedRoute;
-
-      if (loadedRouteInfo) {
-        savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
-          ...payload,
-          started_at: payload.started_at ?? null,
-        });
-      } else {
-        savedRoute = await routesApi.createRoute({
-          ...payload,
-        });
-      }
-      setRouteName(savedRoute.name);
-      setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
-      setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
-      setLoadedRouteInfo(savedRoute);
-      toast.success(t("map.routeSaved"));
-    } catch (err) {
-      setSaveError(getErrorMessage(err, t("map.saveFailed")));
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
-  const handlePublishDraft = async () => {
-    if (!loadedRouteInfo?.is_draft) {
-      return;
-    }
-
-    if (!routeName.trim()) {
-      setSaveError(t("map.pleaseEnterRouteName"));
-      return;
-    }
-
-    if (routePoints.length < 2) {
-      setSaveError(t("map.routeMinPoints"));
-      return;
-    }
-
-    setSaveLoading(true);
-    setSaveError("");
-
-    try {
-      const payload = buildRouteSavePayload({
-        routeName,
-        routePoints,
-        routeSegments,
-        selectedCategoryIds,
-        selectedSeasons,
-        routeLineColor,
-        routeStartedAt,
-      });
-      const savedRoute = await routesApi.updateRoute(loadedRouteInfo.id, {
-        ...payload,
-        started_at: payload.started_at ?? null,
-        is_draft: false,
-      });
-      setLoadedRouteInfo(savedRoute);
-      setRouteName(savedRoute.name);
-      setRouteLineColor(normalizeRouteLineColor(savedRoute.line_color));
-      setRouteStartedAt(toDatetimeLocalValue(savedRoute.started_at));
-      toast.success(t("map.draftPublished"));
-    } catch (err) {
-      setSaveError(getErrorMessage(err, t("map.saveFailed")));
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
-  const handleCreateVersion = async () => {
-    if (!loadedRouteInfo || loadedRouteInfo.is_draft) {
-      return;
-    }
-
-    if (!routeName.trim()) {
-      setSaveError(t("map.pleaseEnterRouteName"));
-      return;
-    }
-
-    if (routePoints.length < 2) {
-      setSaveError(t("map.routeMinPoints"));
-      return;
-    }
-
-    setSaveLoading(true);
-    setSaveError("");
-
-    try {
-      const payload = buildRouteSavePayload({
-        routeName,
-        routePoints,
-        routeSegments,
-        selectedCategoryIds,
-        selectedSeasons,
-        routeLineColor,
-        routeStartedAt,
-      });
-      const createdRoute = await routesApi.createRoute({
-        ...payload,
-        is_draft: true,
-        source_route_id: loadedRouteInfo.id,
-      });
-      setLoadedRouteInfo(createdRoute);
-      setRouteName(createdRoute.name);
-      setRouteLineColor(normalizeRouteLineColor(createdRoute.line_color));
-      setRouteStartedAt(toDatetimeLocalValue(createdRoute.started_at));
-      toast.success(t("map.versionCreated"));
-      window.history.replaceState({}, "", `/map?route=${createdRoute.id}`);
-    } catch (err) {
-      setSaveError(getErrorMessage(err, t("map.saveFailed")));
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
-  const handleClearRoute = () => {
-    if (routePoints.length > 0 || overlayRoutes.length > 0 || chatPreviewPoints.length > 0) {
-      setShowConfirmClear(true);
-      return;
-    }
-    doClearRoute();
-  };
-
-  const doClearRoute = () => {
-    setRoutePoints([]);
-    setRouteSegments([]);
-    setOverlayRoutes([]);
-    setLoadedRouteInfo(null);
-    setRouteName("");
-    setSelectedCategoryIds([]);
-    setSelectedSeasons([]);
-    setRouteLineColor(DEFAULT_ROUTE_LINE_COLOR);
-    setRouteStartedAt("");
-    setSaveError("");
-    setSelectedPointId(null);
-    setChatPreviewPoints([]);
-    pointIdRef.current = 0;
-  };
 
   const {
     handleImportPhotos,
@@ -1033,8 +783,8 @@ export function MapPage() {
           message={t("map.clearAllPoints")}
           confirmLabel={t("map.clear")}
           cancelLabel={t("map.cancel")}
-          onConfirm={() => { setShowConfirmClear(false); doClearRoute(); }}
-          onCancel={() => setShowConfirmClear(false)}
+          onConfirm={confirmClearRoute}
+          onCancel={cancelClearRoute}
         />
       )}
     </div>
