@@ -190,6 +190,8 @@ export interface SaveRouteResult {
 export interface StopSessionResult {
   state: "stopped" | "cleared";
   sampleCount: number;
+  autoSavedLocally: boolean;
+  autoSaveError?: string;
 }
 
 export function useTrackingSession() {
@@ -454,6 +456,7 @@ export function useTrackingSession() {
       return {
         state: currentSession.samples.length >= 2 ? "stopped" : "cleared",
         sampleCount: currentSession.samples.length,
+        autoSavedLocally: Boolean(currentSession.lastQueuedUploadId),
       };
     }
 
@@ -471,6 +474,7 @@ export function useTrackingSession() {
       return {
         state: "cleared",
         sampleCount: latestSession.samples.length,
+        autoSavedLocally: false,
       };
     }
 
@@ -483,10 +487,27 @@ export function useTrackingSession() {
       routePoints: buildRoutePointsFromSamples(latestSession.samples),
     });
 
-    return {
-      state: "stopped",
-      sampleCount: latestSession.samples.length,
-    };
+    try {
+      await queueRouteForUpload();
+      return {
+        state: "stopped",
+        sampleCount: latestSession.samples.length,
+        autoSavedLocally: true,
+      };
+    } catch (autoSaveError) {
+      const message = errorMessage(
+        autoSaveError,
+        "Маршрут завершён, но локальное сохранение не удалось.",
+      );
+      setError(message);
+      return {
+        state: "stopped",
+        sampleCount: latestSession.samples.length,
+        autoSavedLocally: false,
+        autoSaveError: message,
+      };
+    }
+
   }
 
   async function resetSession() {

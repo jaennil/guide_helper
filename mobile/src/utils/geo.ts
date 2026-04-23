@@ -12,7 +12,8 @@ const EARTH_RADIUS_KM = 6371;
 const MAX_ACCEPTED_ACCURACY_METERS = 100;
 const MIN_SAMPLE_DISTANCE_METERS = 4;
 const MIN_SAMPLE_INTERVAL_MS = 3000;
-const MAX_REASONABLE_SPEED_MPS = 50;
+const MAX_REASONABLE_SAMPLE_SPEED_MPS = 25;
+const MAX_TRUSTED_REPORTED_SPEED_MPS = 20;
 const MIN_STALE_FIRST_SAMPLE_JUMP_METERS = 1000;
 export const DEFAULT_ROUTE_LINE_COLOR = "#3388ff";
 export const DEFAULT_POINT_MARKER_COLOR = "#3388ff";
@@ -97,6 +98,10 @@ function sameSample(left: TrackSample, right: TrackSample) {
   );
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function shouldAcceptIncomingSample(previous: TrackSample | undefined, incoming: TrackSample) {
   if (
     typeof incoming.accuracy === "number" &&
@@ -123,7 +128,7 @@ function shouldAcceptIncomingSample(previous: TrackSample | undefined, incoming:
     return false;
   }
 
-  if (distanceMeters / (deltaMs / 1000) > MAX_REASONABLE_SPEED_MPS) {
+  if (distanceMeters / (deltaMs / 1000) > MAX_REASONABLE_SAMPLE_SPEED_MPS) {
     return false;
   }
 
@@ -153,7 +158,7 @@ function shouldReplaceStaleFirstSample(samples: TrackSample[], incoming: TrackSa
     return false;
   }
 
-  return distanceMeters / (deltaMs / 1000) > MAX_REASONABLE_SPEED_MPS;
+  return distanceMeters / (deltaMs / 1000) > MAX_REASONABLE_SAMPLE_SPEED_MPS;
 }
 
 export function mergeTrackSamples(
@@ -207,11 +212,24 @@ export function calculateTrackingMetrics(session: TrackingSession): TrackingMetr
       current.latitude,
       current.longitude,
     );
-    distanceKm += deltaKm;
-
-    const derivedSpeedKmh = deltaMs > 0 ? deltaKm / (deltaMs / 3_600_000) : 0;
-    const reportedSpeedKmh = typeof current.speedMps === "number" ? current.speedMps * 3.6 : 0;
+    const derivedSpeedMps = deltaMs > 0 ? (deltaKm * 1000) / (deltaMs / 1000) : 0;
+    const derivedSpeedKmh =
+      derivedSpeedMps > 0 && derivedSpeedMps <= MAX_REASONABLE_SAMPLE_SPEED_MPS
+        ? derivedSpeedMps * 3.6
+        : 0;
+    const reportedSpeedKmh =
+      isFiniteNumber(current.speedMps) &&
+      current.speedMps >= 0 &&
+      current.speedMps <= MAX_TRUSTED_REPORTED_SPEED_MPS &&
+      (!isFiniteNumber(current.accuracy) || current.accuracy <= MAX_ACCEPTED_ACCURACY_METERS)
+        ? current.speedMps * 3.6
+        : 0;
     const peakForSample = Math.max(derivedSpeedKmh, reportedSpeedKmh);
+
+    if (derivedSpeedKmh > 0) {
+      distanceKm += deltaKm;
+    }
+
     maxSpeedKmh = Math.max(maxSpeedKmh, peakForSample);
     currentSpeedKmh = peakForSample;
   }
