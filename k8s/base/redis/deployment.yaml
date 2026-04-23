@@ -28,20 +28,26 @@ spec:
         ports:
         - containerPort: 6379
           name: redis
+        startupProbe:
+          tcpSocket:
+            port: 6379
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 24
         livenessProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
+          tcpSocket:
+            port: 6379
           initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
+          tcpSocket:
+            port: 6379
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
         resources:
           requests:
             memory: "64Mi"
