@@ -74,7 +74,7 @@ package "Routes Service" {
 database "PostgreSQL" as Postgres
 queue "NATS JetStream" as NATS
 rectangle "Nominatim" as Nominatim <<External>>
-rectangle "AI providers /\nClaude Gateway" as AI <<External>>
+rectangle "AI providers /\nclaude-code-api" as AI <<External>>
 rectangle "MinIO / photo URLs" as MinIO <<External>>
 
 Transport -[hidden]right-> RouteApp

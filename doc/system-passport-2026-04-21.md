@@ -88,7 +88,7 @@ flowchart LR
 
     ROUTES --> GEO[Nominatim Geocoding]
     ROUTES --> AI[AI Provider Layer]
-    AI --> CLAUDE[Claude / Claude Gateway]
+    AI --> CLAUDE[claude-code-api]
     AI --> OPENAI[OpenAI-compatible]
     AI --> OLLAMA[Ollama]
     AI --> ANTHROPIC[Anthropic]
@@ -114,7 +114,7 @@ flowchart LR
 | Tiles | Go | прокси картографических тайлов |
 | Frontend | React, Vite, PWA, Tauri | основной пользовательский интерфейс системы |
 | Mobile | React Native, Expo, Android | запись маршрута и полевой сбор данных |
-| Claude Gateway | Python/FastAPI | OpenAI-compatible доступ к Claude Code |
+| claude-code-api | Python/FastAPI | OpenAI-compatible доступ к Claude Code |
 
 ## 8. Роли в системе
 
