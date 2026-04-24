@@ -117,7 +117,7 @@ curl -X POST http://localhost:3005/api/v1/auth/register \
 1. **Secrets не в git**: Файлы `k8s/overlays/production/secrets/*.txt` в .gitignore
 2. **Обновление образов**: GitHub Actions автоматически обновляет image tags
 3. **ArgoCD auto-sync**: Включен автоматический sync с GitHub
-4. **Replicas**: Production использует 3 реплики для каждого сервиса
+4. **Replicas**: Количество реплик задаётся deployment-манифестами и может отличаться по сервисам
 5. **Ingress**: Настроен для `guide-helper.local`, измените на реальный домен в production
 
 ## AI provider switch
@@ -130,7 +130,7 @@ curl -X POST http://localhost:3005/api/v1/auth/register \
 - `off`
 
 Статический fallback задаётся через `AI_PROVIDER` в `k8s/base/routes/configmap.yaml`.
-Сейчас production fallback настроен на `ollama`, чтобы чат не зависел от внешнего OpenAI API.
+Сейчас production fallback настроен на `claude`, а `CLAUDE_BASE_URL` указывает на внешний `claude-code-api` endpoint.
 
 Для динамического переключения используется Unleash feature flag `ai-provider`.
 Рекомендуемый вариант настройки:
