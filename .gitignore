@@ -6,9 +6,11 @@
 code
 .vscode/
 .idea/
+.claude/
 .VSCodeCounter/
 .codex
 .codex-tmp/
+.venv/
 
 # Build artifacts
 **/target/
