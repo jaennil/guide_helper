@@ -64,7 +64,6 @@ Guide Helper решает задачу создания и публикации 
 | `mobile` | Android companion app на React Native/Expo |
 | `k8s` | Kustomize, ArgoCD, production overlay |
 | `claude-code-api` | OpenAI-compatible gateway к Claude Code |
-| `claude-proxy` | дополнительный прокси-контур для Claude |
 | `doc/latex` | текст ВКР |
 | `doc/presentation` | презентация к защите |
 | `doc/demo` | материалы демонстрации |
@@ -397,4 +396,3 @@ Guide Helper это информационная система для марш�
 - список “20 вопросов комиссии и ответы”;
 - фиксированный demo script;
 - один файл “что не входит в scope”.
-
