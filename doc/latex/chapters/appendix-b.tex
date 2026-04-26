@@ -76,9 +76,13 @@
 \textbf{№} & \textbf{Действие} & \textbf{Ожидаемый результат} & \textbf{Статус} \\
 \hline
 \endfirsthead
-\multicolumn{4}{r}{\small\textit{Продолжение таблицы~\ref{tab:test-auth}}} \\
+\multicolumn{4}{r}{\small Продолжение таблицы~\ref{tab:test-auth}} \\
 \hline
 \endhead
+\longtablecontinued{4}{tab:test-auth}
+\endfoot
+\longtableended{4}{tab:test-auth}
+\endlastfoot
 А-01 & Регистрация с валидными данными (email, пароль $\geq$ 8~симв.) & Ответ 201, создана учётная запись & Выполнен \\
 \hline
 А-02 & Регистрация с существующим email & Ответ 409 Conflict & Выполнен \\
@@ -109,9 +113,13 @@
 \textbf{№} & \textbf{Действие} & \textbf{Ожидаемый результат} & \textbf{Статус} \\
 \hline
 \endfirsthead
-\multicolumn{4}{r}{\small\textit{Продолжение таблицы~\ref{tab:test-routes}}} \\
+\multicolumn{4}{r}{\small Продолжение таблицы~\ref{tab:test-routes}} \\
 \hline
 \endhead
+\longtablecontinued{4}{tab:test-routes}
+\endfoot
+\longtableended{4}{tab:test-routes}
+\endlastfoot
 М-01 & Создание маршрута с 3 точками & Ответ 201, маршрут создан, возвращён UUID & Выполнен \\
 \hline
 М-02 & Получение маршрута по UUID & Ответ 200, полные данные маршрута & Выполнен \\
@@ -146,9 +154,13 @@
 \textbf{№} & \textbf{Действие} & \textbf{Ожидаемый результат} & \textbf{Статус} \\
 \hline
 \endfirsthead
-\multicolumn{4}{r}{\small\textit{Продолжение таблицы~\ref{tab:test-photos}}} \\
+\multicolumn{4}{r}{\small Продолжение таблицы~\ref{tab:test-photos}} \\
 \hline
 \endhead
+\longtablecontinued{4}{tab:test-photos}
+\endfoot
+\longtableended{4}{tab:test-photos}
+\endlastfoot
 Ф-01 & Загрузка JPEG-фото (< 5~МБ) с GPS в EXIF & Статус «обрабатывается», уведомление по WebSocket & Выполнен \\
 \hline
 Ф-02 & Завершение обработки~--- оригинал в MinIO & URL оригинала в ответе API & Выполнен \\
@@ -177,9 +189,13 @@
 \textbf{№} & \textbf{Действие} & \textbf{Ожидаемый результат} & \textbf{Статус} \\
 \hline
 \endfirsthead
-\multicolumn{4}{r}{\small\textit{Продолжение таблицы~\ref{tab:test-ai}}} \\
+\multicolumn{4}{r}{\small Продолжение таблицы~\ref{tab:test-ai}} \\
 \hline
 \endhead
+\longtablecontinued{4}{tab:test-ai}
+\endfoot
+\longtableended{4}{tab:test-ai}
+\endlastfoot
 И-01 & Отправка текстового сообщения ассистенту & Получен ответ, создан диалог & Выполнен \\
 \hline
 И-02 & Запрос геокодирования («найди Эльбрус») & Ассистент вызвал инструмент, вернул координаты & Выполнен \\

@@ -10,6 +10,7 @@
   {\setmainfont{Nimbus Roman}} % fallback для Linux-сборки без MS Fonts
 \setsansfont{Liberation Sans}
 \setmonofont{Liberation Mono}
+\DeclareTextFontCommand{\texttt}{\normalfont}
 
 % --- Язык ---
 \usepackage[russian]{babel}
@@ -75,6 +76,10 @@
 \renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
 \setlength{\cftbeforechapskip}{0pt}
 \setcounter{tocdepth}{1} % только главы и секции (1, 1.1), без 1.1.1
+\makeatletter
+\renewcommand{\l@subsection}[2]{}
+\renewcommand{\l@subsubsection}[2]{}
+\makeatother
 
 % --- Рисунки и таблицы ---
 \usepackage[table]{xcolor}
@@ -104,6 +109,14 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{multirow}
+\newcommand{\longtablecontinued}[2]{%
+  \hline
+  \multicolumn{#1}{r}{\small Продолжение таблицы~\ref{#2} на следующей странице} \\
+}
+\newcommand{\longtableended}[2]{%
+  \hline
+  \multicolumn{#1}{l}{\small Окончание таблицы~\ref{#2}} \\
+}
 
 % --- Листинги кода ---
 \usepackage{listings}
@@ -130,7 +143,7 @@
   inputencoding=utf8,
   extendedchars=true,
   keywordstyle=\bfseries,
-  commentstyle=\itshape,
+  commentstyle=\normalfont,
   captionpos=t,
   showstringspaces=false,
   showtabs=false,
@@ -155,6 +168,7 @@
   urlcolor=blue,
   hidelinks
 }
+\urlstyle{same}
 
 % --- Библиография (ГОСТ 7.1) ---
 \usepackage[
@@ -165,6 +179,16 @@
   autolang=other
 ]{biblatex}
 \addbibresource{references.bib}
+\renewcommand*{\mkbibemph}[1]{#1}
+\renewcommand*{\mkbibnamefamily}[1]{#1}
+\renewcommand*{\mkbibnamegiven}[1]{#1}
+\renewcommand*{\mkbibnameprefix}[1]{#1}
+\renewcommand*{\mkbibnamesuffix}[1]{#1}
+\renewcommand*{\mkgostheading}[1]{#1}
+\renewcommand*{\mkbibhdnamefamily}[1]{#1}
+\renewcommand*{\mkbibhdnamegiven}[1]{#1}
+\renewcommand*{\mkbibhdnameprefix}[1]{#1}
+\renewcommand*{\mkbibhdnamesuffix}[1]{#1}
 
 % --- Приложения ---
 \usepackage[title]{appendix}
