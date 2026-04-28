@@ -30,7 +30,7 @@ images:
   newTag: main-2fe5fc3
 - name: frontend
   newName: ghcr.io/jaennil/guide-helper-frontend
-  newTag: main-2bfc765
+  newTag: main-53fc219
 - name: photo-worker
   newName: ghcr.io/jaennil/guide-helper-photo-worker
   newTag: main-2fe5fc3
