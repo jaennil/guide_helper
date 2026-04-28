@@ -205,7 +205,7 @@ export function SharedMapPage() {
   }
 
   return (
-    <div className="App">
+    <div className="App shared-route-page">
       <div className="map-header shared-map-shell">
         <section className="shared-route-panel">
           <div className="shared-route-panel-top">

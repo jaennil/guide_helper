@@ -1648,6 +1648,10 @@ body {
     gap: 12px;
 }
 
+.shared-route-page .shared-map-shell {
+    align-items: flex-start;
+}
+
 .shared-route-panel,
 .shared-route-controls-card {
     background: var(--glass-bg);
@@ -1754,8 +1758,40 @@ body {
 
 .shared-route-toolbar .btn-secondary,
 .shared-route-toolbar .btn-primary,
-.shared-route-toolbar .theme-toggle-btn {
+.shared-route-toolbar .theme-toggle-btn,
+.shared-route-nav .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.shared-route-toolbar .btn-secondary:hover,
+.shared-route-toolbar .btn-primary:hover,
+.shared-route-toolbar .theme-toggle-btn:hover,
+.shared-route-nav .btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-dark);
+    transform: translateY(-1px);
+}
+
+.shared-route-toolbar .btn-primary {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: #fff;
 }
 
 .shared-route-toolbar .theme-toggle-btn {
@@ -1768,6 +1804,10 @@ body {
     border-color: rgba(245, 158, 11, 0.45);
     background: rgba(245, 158, 11, 0.14);
     color: #f59e0b;
+}
+
+.shared-route-page .weather-panel {
+    top: 232px;
 }
 
 .shared-state-screen {
