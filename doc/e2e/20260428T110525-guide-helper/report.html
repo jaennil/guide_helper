@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>E2E-аудит Guide Helper</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 12mm 16mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      color: #111827;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      line-height: 1.38;
+      margin: 0;
+    }
+    h1, h2, h3 {
+      color: #0f172a;
+      page-break-after: avoid;
+    }
+    h1 {
+      font-size: 22pt;
+      margin: 0 0 12mm;
+      text-align: center;
+    }
+    h2 {
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 16pt;
+      margin: 8mm 0 4mm;
+      padding-bottom: 1.5mm;
+    }
+    h3 {
+      font-size: 13.5pt;
+      margin: 7mm 0 3mm;
+    }
+    p, li {
+      text-align: justify;
+    }
+    a {
+      color: #1d4ed8;
+      text-decoration: none;
+    }
+    code {
+      background: #f1f5f9;
+      border-radius: 3px;
+      font-family: "Courier New", monospace;
+      font-size: 10pt;
+      padding: 0.5mm 1mm;
+    }
+    pre {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3mm;
+      white-space: pre-wrap;
+    }
+    table {
+      border-collapse: collapse;
+      font-size: 9.2pt;
+      margin: 4mm 0 7mm;
+      page-break-inside: auto;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #94a3b8;
+      padding: 1.4mm 1.8mm;
+      vertical-align: top;
+    }
+    th {
+      background: #e2e8f0;
+      font-weight: 700;
+      text-align: left;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+    figure {
+      break-inside: avoid;
+      margin: 5mm 0 9mm;
+      page-break-inside: avoid;
+    }
+    figure img {
+      border: 1px solid #cbd5e1;
+      display: block;
+      max-height: 178mm;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    figcaption {
+      color: #475569;
+      font-size: 10pt;
+      margin-top: 1.5mm;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<h1>E2E-аудит Guide Helper</h1>
+<p>Дата запуска: 28.04.2026, 14:06:23</p>
+<p>Стенд: https://guidehelper.dubrovskih.ru</p>
+<p>Тестовый пользователь: e2e-20260428T110525@guide-helper.local</p>
+<p>Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.</p>
+<h2>Методика</h2>
+<p>Проверка выполнена в два слоя:</p>
+<ul>
+<li>API-слой создаёт отдельного тестового пользователя, маршрут, комментарий, лайк, рейтинг, закладку, публикацию маршрута, импорт GeoJSON и проверяет административные API.</li>
+<li>UI-слой открывает реальные страницы production-like стенда в headless Chromium, проверяет ключевые DOM-состояния, фиксирует runtime/network ошибки и сохраняет скриншоты.</li>
+</ul>
+<p>Команда повторного запуска:</p>
+<pre><code>GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit.mjs</code></pre>
+<h2>Итог</h2>
+<table>
+<thead><tr><th>Статус</th><th>Количество</th></tr></thead>
+<tbody>
+<tr><td>PASS</td><td>39</td></tr>
+<tr><td>FAIL</td><td>0</td></tr>
+<tr><td>SKIP</td><td>0</td></tr>
+</tbody>
+</table>
+<p>Критических блокирующих ошибок в проверенных сценариях не обнаружено.</p>
+<h2>Проверенные сценарии</h2>
+<table>
+<thead><tr><th>Область</th><th>Проверка</th><th>Статус</th><th>Детали</th></tr></thead>
+<tbody>
+<tr><td>Auth</td><td>регистрация нового пользователя</td><td>PASS</td><td>e2e-20260428T110525@guide-helper.local</td></tr>
+<tr><td>Auth</td><td>вход зарегистрированного пользователя</td><td>PASS</td><td>получены access/refresh token</td></tr>
+<tr><td>Profile</td><td>обновление профиля</td><td>PASS</td><td>E2E пользователь 20260428T110525</td></tr>
+<tr><td>Profile</td><td>смена пароля и повторный вход</td><td>PASS</td><td>новый пароль принят</td></tr>
+<tr><td>Catalog</td><td>получение категорий</td><td>PASS</td><td>5 categories</td></tr>
+<tr><td>Routes</td><td>создание маршрута с точками, заметками и кастомизацией</td><td>PASS</td><td>44bb4706-f952-4dbe-8999-e31521ba083b</td></tr>
+<tr><td>Routes</td><td>обновление маршрута</td><td>PASS</td><td>E2E маршрут 20260428T110525 обновлён</td></tr>
+<tr><td>Routes</td><td>импорт GeoJSON</td><td>PASS</td><td>4 points</td></tr>
+<tr><td>Share</td><td>публикация маршрута</td><td>PASS</td><td>11ef0ae2-5092-4a16-92c6-73b1c9e69ac1</td></tr>
+<tr><td>Share</td><td>публичное получение маршрута</td><td>PASS</td><td>E2E маршрут 20260428T110525 обновлён</td></tr>
+<tr><td>Social</td><td>создание комментария</td><td>PASS</td><td>ad55d728-bd7d-4678-8154-89522ddc77d1</td></tr>
+<tr><td>Social</td><td>лайк, рейтинг и закладка</td><td>PASS</td><td>like=true, rating=5, bookmark=true</td></tr>
+<tr><td>PWA</td><td>manifest и service worker доступны</td><td>PASS</td><td>manifest=200, sw=200</td></tr>
+<tr><td>AI</td><td>панель и API отмечены как внешний риск</td><td>PASS</td><td>UI проверяется, генерация вынесена в риск</td></tr>
+<tr><td>Admin</td><td>вход администратора</td><td>PASS</td><td>admin token получен</td></tr>
+<tr><td>Admin</td><td>статистика и списки</td><td>PASS</td><td>users=57, routes=181, comments=167</td></tr>
+<tr><td>Admin</td><td>CRUD категории</td><td>PASS</td><td>caf826cb-6ced-4b1e-882e-391c4a933a9a</td></tr>
+<tr><td>Admin</td><td>пороги сложности читаются и сохраняются</td><td>PASS</td><td>сохранены текущие значения без изменения</td></tr>
+<tr><td>UI</td><td>экран входа</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>редактор маршрута на карте</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>popup точки маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>меню инструментов карты</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>AI-чат открывается</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>каталог маршрутов</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>публичная страница маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>QR-код публичного маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>embed-страница маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>профиль пользователя</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>безопасность профиля</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>мои маршруты</td><td>PASS</td><td></td></tr>
+<tr><td>UI</td><td>закладки</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>дашборд администратора</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>пользователи</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>маршруты</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>комментарии</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>категории</td><td>PASS</td><td></td></tr>
+<tr><td>UI Admin</td><td>настройки</td><td>PASS</td><td></td></tr>
+<tr><td>Cleanup</td><td>удаление импортированного маршрута</td><td>PASS</td><td>1010e74d-e52a-497a-b01b-0a8cb519099f</td></tr>
+<tr><td>Cleanup</td><td>удаление основного e2e-маршрута</td><td>PASS</td><td>44bb4706-f952-4dbe-8999-e31521ba083b</td></tr>
+</tbody>
+</table>
+<h2>Скриншоты</h2>
+<p>Сводный лист всех снимков: <a href="contact-sheet.png">contact-sheet.png</a>.</p>
+<h3>1. Экран входа</h3>
+<p>Форма авторизации отображается без ошибок.</p>
+<figure><img src="screenshots/01-login.png" alt="Экран входа"><figcaption>Экран входа</figcaption></figure>
+<h3>2. Редактор маршрута</h3>
+<p>Маршрут пользователя открыт на карте.</p>
+<figure><img src="screenshots/02-map-route-editor.png" alt="Редактор маршрута"><figcaption>Редактор маршрута</figcaption></figure>
+<h3>3. Popup точки</h3>
+<p>Карточка точки открывается по клику по маркеру.</p>
+<figure><img src="screenshots/03-map-point-popup.png" alt="Popup точки"><figcaption>Popup точки</figcaption></figure>
+<h3>4. Меню инструментов</h3>
+<p>Доступны импорт, экспорт, AI-описание, исторический режим и очистка.</p>
+<figure><img src="screenshots/04-map-tools-menu.png" alt="Меню инструментов"><figcaption>Меню инструментов</figcaption></figure>
+<h3>5. AI-ассистент</h3>
+<p>Панель ассистента открывается рядом с картой.</p>
+<figure><img src="screenshots/05-ai-chat-panel.png" alt="AI-ассистент"><figcaption>AI-ассистент</figcaption></figure>
+<h3>6. Каталог маршрутов</h3>
+<p>Публичный каталог загружает карточки маршрутов и фильтры.</p>
+<figure><img src="screenshots/06-explore-catalog.png" alt="Каталог маршрутов"><figcaption>Каталог маршрутов</figcaption></figure>
+<h3>7. Публичный маршрут</h3>
+<p>Маршрут доступен по share token.</p>
+<figure><img src="screenshots/07-shared-route.png" alt="Публичный маршрут"><figcaption>Публичный маршрут</figcaption></figure>
+<h3>8. QR-код маршрута</h3>
+<p>Модальное окно QR-кода открывается с публичной ссылки.</p>
+<figure><img src="screenshots/08-shared-qr.png" alt="QR-код маршрута"><figcaption>QR-код маршрута</figcaption></figure>
+<h3>9. Embed-карта</h3>
+<p>Встраиваемая карта маршрута доступна отдельно.</p>
+<figure><img src="screenshots/09-embed-route.png" alt="Embed-карта"><figcaption>Embed-карта</figcaption></figure>
+<h3>10. Профиль</h3>
+<p>Профиль показывает данные пользователя.</p>
+<figure><img src="screenshots/10-profile.png" alt="Профиль"><figcaption>Профиль</figcaption></figure>
+<h3>11. Безопасность профиля</h3>
+<p>Форма смены пароля доступна.</p>
+<figure><img src="screenshots/11-profile-security.png" alt="Безопасность профиля"><figcaption>Безопасность профиля</figcaption></figure>
+<h3>12. Мои маршруты</h3>
+<p>Созданный маршрут виден в профиле.</p>
+<figure><img src="screenshots/12-profile-routes.png" alt="Мои маршруты"><figcaption>Мои маршруты</figcaption></figure>
+<h3>13. Закладки</h3>
+<p>Страница закладок открывается после bookmark API.</p>
+<figure><img src="screenshots/13-bookmarks.png" alt="Закладки"><figcaption>Закладки</figcaption></figure>
+<h3>14. Админка: дашборд</h3>
+<p>Статистика пользователей, маршрутов и комментариев отображается.</p>
+<figure><img src="screenshots/14-admin-dashboard.png" alt="Админка: дашборд"><figcaption>Админка: дашборд</figcaption></figure>
+<h3>15. Админка: пользователи</h3>
+<p>Таблица пользователей открывается.</p>
+<figure><img src="screenshots/15-admin-users.png" alt="Админка: пользователи"><figcaption>Админка: пользователи</figcaption></figure>
+<h3>16. Админка: маршруты</h3>
+<p>Таблица маршрутов открывается.</p>
+<figure><img src="screenshots/16-admin-routes.png" alt="Админка: маршруты"><figcaption>Админка: маршруты</figcaption></figure>
+<h3>17. Админка: комментарии</h3>
+<p>Таблица комментариев открывается.</p>
+<figure><img src="screenshots/17-admin-comments.png" alt="Админка: комментарии"><figcaption>Админка: комментарии</figcaption></figure>
+<h3>18. Админка: категории</h3>
+<p>CRUD-интерфейс категорий доступен.</p>
+<figure><img src="screenshots/18-admin-categories.png" alt="Админка: категории"><figcaption>Админка: категории</figcaption></figure>
+<h3>19. Админка: настройки</h3>
+<p>Пороги сложности отображаются.</p>
+<figure><img src="screenshots/19-admin-settings.png" alt="Админка: настройки"><figcaption>Админка: настройки</figcaption></figure>
+<h2>Console / Network Diagnostics</h2>
+<p>В проверенных UI-сценариях не зафиксировано значимых console/runtime/XHR/document ошибок.</p>
+<h2>Ограничения проверки</h2>
+<ul>
+<li>Проверка запускалась по production-like стенду, поэтому destructive-операции ограничены тестовыми сущностями с префиксом E2E.</li>
+<li>AI-генерация не считается deterministic e2e-проверкой, потому что зависит от внешнего провайдера, токенов, лимитов и времени ответа.</li>
+<li>Мобильная запись GPS не покрыта этим web-аудитом: её корректнее проверять отдельным Android field-test сценарием на устройстве.</li>
+<li>Визуальная проверка скриншотов подтверждает отсутствие явных ошибок на момент запуска, но не заменяет нагрузочное тестирование и ручной UX-аудит.</li>
+</ul>
+<h2>Тестовые данные</h2>
+<ul>
+<li>Основной маршрут: 44bb4706-f952-4dbe-8999-e31521ba083b (удалён cleanup-шагом)</li>
+<li>Share token: 11ef0ae2-5092-4a16-92c6-73b1c9e69ac1</li>
+<li>Комментарий: ad55d728-bd7d-4678-8154-89522ddc77d1</li>
+<li>Импортированный маршрут: 1010e74d-e52a-497a-b01b-0a8cb519099f (удалён cleanup-шагом)</li>
+</ul>
+<h2>Примечания</h2>
+<ul>
+<li>AI-генерация и chat API зависят от внешнего Claude/OpenAI-compatible провайдера; в e2e-аудите проверяется UI-панель, но генерация не считается стабильным deterministic тестом.</li>
+</ul>
+</body>
+</html>
