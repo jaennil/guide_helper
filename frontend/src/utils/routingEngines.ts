@@ -3,14 +3,15 @@ export type RoutingEngineId = 'osrm-foot' | 'osrm-car' | 'graphhopper' | 'valhal
 export interface RoutingEngine {
   id: RoutingEngineId;
   label: string;
+  labelKey: string;
   type: 'foot' | 'car';
 }
 
 export const ROUTING_ENGINES: RoutingEngine[] = [
-  { id: 'graphhopper', label: '🚶 Walking', type: 'foot' },
-  { id: 'osrm-foot', label: '🚶 Walking (OSRM)', type: 'foot' },
-  { id: 'valhalla', label: '🚶 Walking (Valhalla)', type: 'foot' },
-  { id: 'osrm-car', label: '🚗 Driving', type: 'car' },
+  { id: 'graphhopper', label: '🚶 Walking', labelKey: 'routing.walking', type: 'foot' },
+  { id: 'osrm-foot', label: '🚶 Walking (OSRM)', labelKey: 'routing.walkingOsrm', type: 'foot' },
+  { id: 'valhalla', label: '🚶 Walking (Valhalla)', labelKey: 'routing.walkingValhalla', type: 'foot' },
+  { id: 'osrm-car', label: '🚗 Driving', labelKey: 'routing.driving', type: 'car' },
 ];
 
 export const DEFAULT_ENGINE: RoutingEngineId = 'graphhopper';

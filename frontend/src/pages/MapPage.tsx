@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { asTranslationKey } from "../i18n";
 import { categoriesApi, type Category } from "../api/categories";
 import { RouteStatsPanel } from "../components/RouteStatsPanel";
 import { CommentSection } from "../components/CommentSection";
@@ -560,12 +561,15 @@ export function MapPage() {
     selectedPointIndex >= 0 ? routePoints[selectedPointIndex] : null;
 
   return (
-    <div className="App">
+    <div className="App route-editor-page">
       <RouteMapToolbar
         routeMode={routeMode}
         onRouteModeChange={setRouteMode}
         routingEngine={routingEngine}
-        routingEngineOptions={ROUTING_ENGINES.map((engine) => ({ value: engine.id, label: engine.label }))}
+        routingEngineOptions={ROUTING_ENGINES.map((engine) => ({
+          value: engine.id,
+          label: t(asTranslationKey(engine.labelKey)),
+        }))}
         onRoutingEngineChange={handleEngineChange}
         tileProvider={tileProvider}
         tileProviderOptions={TILE_PROVIDERS.map((provider) => ({ value: provider.id, label: provider.name }))}
