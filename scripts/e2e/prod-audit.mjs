@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 
-const BASE_URL = process.env.GH_E2E_BASE_URL ?? "https://guidehelper.dubrovskih.ru";
+const DEFAULT_BASE_URL = "https://guidehelper.dubrovskih.ru";
+const PAGE_BASE_URL = process.env.GH_E2E_PAGE_BASE_URL ?? process.env.GH_E2E_BASE_URL ?? DEFAULT_BASE_URL;
+const API_BASE_URL = process.env.GH_E2E_API_BASE_URL ?? process.env.GH_E2E_BASE_URL ?? DEFAULT_BASE_URL;
 const ADMIN_EMAIL = process.env.GH_E2E_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.GH_E2E_ADMIN_PASSWORD;
 const CHROMIUM = process.env.GH_E2E_CHROMIUM ?? "/usr/bin/chromium";
@@ -54,7 +56,7 @@ async function api(pathname, options = {}) {
       ...(options.token ? authHeader(options.token) : {}),
       ...(options.headers ?? {}),
     };
-    const response = await fetch(`${BASE_URL}${pathname}`, {
+    const response = await fetch(`${API_BASE_URL}${pathname}`, {
       method: options.method ?? "GET",
       headers,
       body:
@@ -214,7 +216,7 @@ async function navigate(cdp, sessionId, url, waitMs = 2500) {
 }
 
 async function setAuthState(cdp, sessionId, token, refreshToken) {
-  await navigate(cdp, sessionId, `${BASE_URL}/login`, 1000);
+  await navigate(cdp, sessionId, `${PAGE_BASE_URL}/login`, 1000);
   await evaluate(cdp, sessionId, `
     (() => {
       localStorage.setItem('access_token', ${JSON.stringify(token)});
@@ -464,8 +466,8 @@ async function runApiAudit(state) {
   });
 
   await step("PWA", "manifest и service worker доступны", async () => {
-    const manifest = await fetch(`${BASE_URL}/manifest.webmanifest`);
-    const sw = await fetch(`${BASE_URL}/sw.js`);
+    const manifest = await fetch(`${PAGE_BASE_URL}/manifest.webmanifest`);
+    const sw = await fetch(`${PAGE_BASE_URL}/sw.js`);
     if (!manifest.ok || !sw.ok) throw new Error(`manifest=${manifest.status}, sw=${sw.status}`);
     return `manifest=${manifest.status}, sw=${sw.status}`;
   });
@@ -542,14 +544,14 @@ async function runUiAudit(state) {
     await setAuthState(cdp, userPage, state.userToken, state.userRefresh);
 
     await step("UI", "экран входа", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/login`, 2000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/login`, 2000);
       await assertText(cdp, userPage, ["Вход"]);
       await screenshot(cdp, userPage, "01-login.png", "Экран входа", "Форма авторизации отображается без ошибок.");
     });
 
     await step("UI", "редактор маршрута на карте", async () => {
       await setAuthState(cdp, userPage, state.userToken, state.userRefresh);
-      await navigate(cdp, userPage, `${BASE_URL}/map?route=${state.route.id}`, 5000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/map?route=${state.route.id}`, 5000);
       await assertText(cdp, userPage, [state.route.name]);
       await screenshot(cdp, userPage, "02-map-route-editor.png", "Редактор маршрута", "Маршрут пользователя открыт на карте.");
     });
@@ -566,20 +568,20 @@ async function runUiAudit(state) {
     });
 
     await step("UI", "AI-чат открывается", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/map?route=${state.route.id}`, 3500);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/map?route=${state.route.id}`, 3500);
       await clickByText(cdp, userPage, ["AI Чат", "AI Chat"]);
       await assertText(cdp, userPage, ["AI Ассистент"]);
       await screenshot(cdp, userPage, "05-ai-chat-panel.png", "AI-ассистент", "Панель ассистента открывается рядом с картой.");
     });
 
     await step("UI", "каталог маршрутов", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/explore`, 4000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/explore`, 4000);
       await assertText(cdp, userPage, ["Каталог маршрутов"]);
       await screenshot(cdp, userPage, "06-explore-catalog.png", "Каталог маршрутов", "Публичный каталог загружает карточки маршрутов и фильтры.");
     });
 
     await step("UI", "публичная страница маршрута", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/shared/${state.shareToken}`, 5000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/shared/${state.shareToken}`, 5000);
       await assertText(cdp, userPage, [state.route.name]);
       await screenshot(cdp, userPage, "07-shared-route.png", "Публичный маршрут", "Маршрут доступен по share token.");
     });
@@ -591,12 +593,12 @@ async function runUiAudit(state) {
     });
 
     await step("UI", "embed-страница маршрута", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/embed/${state.shareToken}`, 4000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/embed/${state.shareToken}`, 4000);
       await screenshot(cdp, userPage, "09-embed-route.png", "Embed-карта", "Встраиваемая карта маршрута доступна отдельно.");
     });
 
     await step("UI", "профиль пользователя", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/profile`, 3000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/profile`, 3000);
       await assertText(cdp, userPage, ["Профиль"]);
       const emailVisible = await evaluate(cdp, userPage, `
         [...document.querySelectorAll('input, textarea')].some((node) => node.value === ${JSON.stringify(testEmail)})
@@ -618,7 +620,7 @@ async function runUiAudit(state) {
     });
 
     await step("UI", "закладки", async () => {
-      await navigate(cdp, userPage, `${BASE_URL}/bookmarks`, 3000);
+      await navigate(cdp, userPage, `${PAGE_BASE_URL}/bookmarks`, 3000);
       await screenshot(cdp, userPage, "13-bookmarks.png", "Закладки", "Страница закладок открывается после bookmark API.");
     });
 
@@ -626,7 +628,7 @@ async function runUiAudit(state) {
       const adminPage = await createPage(cdp);
       await setAuthState(cdp, adminPage, state.adminToken, state.adminRefresh);
       await step("UI Admin", "дашборд администратора", async () => {
-        await navigate(cdp, adminPage, `${BASE_URL}/admin`, 3500);
+        await navigate(cdp, adminPage, `${PAGE_BASE_URL}/admin`, 3500);
         await assertText(cdp, adminPage, ["Панель администратора"]);
         await screenshot(cdp, adminPage, "14-admin-dashboard.png", "Админка: дашборд", "Статистика пользователей, маршрутов и комментариев отображается.");
       });
@@ -716,7 +718,9 @@ async function writeReport(state) {
 
 Дата запуска: ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}
 
-Стенд: ${BASE_URL}
+Стенд: ${PAGE_BASE_URL}
+
+API: ${API_BASE_URL}
 
 Тестовый пользователь: ${testEmail}
 
