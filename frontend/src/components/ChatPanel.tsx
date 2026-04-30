@@ -466,6 +466,18 @@ export function ChatPanel({
       </div>
 
       <div className="chat-messages" role="log" aria-live="polite" aria-label="Messages">
+        {messages.length === 0 && !loading && !error && (
+          <div className="chat-empty-state">
+            <div className="chat-empty-kicker">{t('chat.emptyKicker')}</div>
+            <h4>{t('chat.emptyTitle')}</h4>
+            <p>{t('chat.emptyDescription')}</p>
+            <div className="chat-empty-examples">
+              <span>{t('chat.emptyExampleFind')}</span>
+              <span>{t('chat.emptyExampleRoute')}</span>
+              <span>{t('chat.emptyExampleDescribe')}</span>
+            </div>
+          </div>
+        )}
         {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
