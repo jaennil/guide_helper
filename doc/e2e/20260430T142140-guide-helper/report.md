@@ -1,12 +1,12 @@
 # E2E-аудит Guide Helper
 
-Дата запуска: 30.04.2026, 16:15:13
+Дата запуска: 30.04.2026, 17:22:45
 
 Стенд: https://guidehelper.dubrovskih.ru
 
 API: https://guidehelper.dubrovskih.ru
 
-Тестовый пользователь: e2e-20260430T131408@guide-helper.local
+Тестовый пользователь: e2e-20260430T142140@guide-helper.local
 
 Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.
 
@@ -37,23 +37,23 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 
 | Область | Проверка | Статус | Детали |
 |---|---|---|---|
-| Auth | регистрация нового пользователя | PASS | e2e-20260430T131408@guide-helper.local |
+| Auth | регистрация нового пользователя | PASS | e2e-20260430T142140@guide-helper.local |
 | Auth | вход зарегистрированного пользователя | PASS | получены access/refresh token |
-| Profile | обновление профиля | PASS | E2E пользователь 20260430T131408 |
+| Profile | обновление профиля | PASS | E2E пользователь 20260430T142140 |
 | Profile | смена пароля и повторный вход | PASS | новый пароль принят |
 | Catalog | получение категорий | PASS | 5 categories |
-| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 785f0554-88d5-4251-b84e-ce908c10a314 |
-| Routes | обновление маршрута | PASS | E2E маршрут 20260430T131408 обновлён |
+| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 05ce0863-9410-454f-bbeb-a5d3fb282662 |
+| Routes | обновление маршрута | PASS | E2E маршрут 20260430T142140 обновлён |
 | Routes | импорт GeoJSON | PASS | 4 points |
-| Share | публикация маршрута | PASS | c62f1556-ce69-45a2-b8ca-6acf5c5346a5 |
-| Share | публичное получение маршрута | PASS | E2E маршрут 20260430T131408 обновлён |
-| Social | создание комментария | PASS | b7873bc4-31f6-4c35-99b9-8ecb31cb8a86 |
+| Share | публикация маршрута | PASS | 8e9f7900-1270-4556-8b8f-0e11703dc9f2 |
+| Share | публичное получение маршрута | PASS | E2E маршрут 20260430T142140 обновлён |
+| Social | создание комментария | PASS | 2fe165bf-f8a6-41d3-b79a-c5984cffc2c1 |
 | Social | лайк, рейтинг и закладка | PASS | like=true, rating=5, bookmark=true |
 | PWA | manifest и service worker доступны | PASS | manifest=200, sw=200 |
 | AI | панель и API отмечены как внешний риск | PASS | UI проверяется, генерация вынесена в риск |
 | Admin | вход администратора | PASS | admin token получен |
-| Admin | статистика и списки | PASS | users=63, routes=181, comments=167 |
-| Admin | CRUD категории | PASS | f0ed31bd-b2ee-4408-ad9f-8f09e4a2fad5 |
+| Admin | статистика и списки | PASS | users=64, routes=181, comments=167 |
+| Admin | CRUD категории | PASS | e59aacbe-e526-44ce-bc3a-824db4f24dff |
 | Admin | пороги сложности читаются и сохраняются | PASS | сохранены текущие значения без изменения |
 | UI | экран входа | PASS |  |
 | UI | редактор маршрута на карте | PASS |  |
@@ -74,8 +74,8 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 | UI Admin | комментарии | PASS |  |
 | UI Admin | категории | PASS |  |
 | UI Admin | настройки | PASS |  |
-| Cleanup | удаление импортированного маршрута | PASS | 79d8ae9e-f1d7-4795-8159-69a357736d52 |
-| Cleanup | удаление основного e2e-маршрута | PASS | 785f0554-88d5-4251-b84e-ce908c10a314 |
+| Cleanup | удаление импортированного маршрута | PASS | c13a0646-afee-4455-a355-b01afa351a20 |
+| Cleanup | удаление основного e2e-маршрута | PASS | 05ce0863-9410-454f-bbeb-a5d3fb282662 |
 
 ## Скриншоты
 
@@ -210,10 +210,10 @@ CRUD-интерфейс категорий доступен.
 
 ## Тестовые данные
 
-- Основной маршрут: 785f0554-88d5-4251-b84e-ce908c10a314 (удалён cleanup-шагом)
-- Share token: c62f1556-ce69-45a2-b8ca-6acf5c5346a5
-- Комментарий: b7873bc4-31f6-4c35-99b9-8ecb31cb8a86
-- Импортированный маршрут: 79d8ae9e-f1d7-4795-8159-69a357736d52 (удалён cleanup-шагом)
+- Основной маршрут: 05ce0863-9410-454f-bbeb-a5d3fb282662 (удалён cleanup-шагом)
+- Share token: 8e9f7900-1270-4556-8b8f-0e11703dc9f2
+- Комментарий: 2fe165bf-f8a6-41d3-b79a-c5984cffc2c1
+- Импортированный маршрут: c13a0646-afee-4455-a355-b01afa351a20 (удалён cleanup-шагом)
 
 ## Примечания
 
