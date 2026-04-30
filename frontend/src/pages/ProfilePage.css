@@ -196,28 +196,30 @@
   color: var(--text-primary);
 }
 
+.profile-tab form,
 .security-tab form {
-  max-width: 620px;
-}
-
-.profile-tab form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.15rem 1.25rem;
   max-width: none;
 }
 
-.profile-tab .form-group {
+.profile-tab .form-group,
+.security-tab .form-group {
   margin-bottom: 0;
 }
 
 .profile-tab .error-message,
 .profile-tab .success-message,
-.profile-tab .btn-primary {
+.profile-tab .btn-primary,
+.security-tab .error-message,
+.security-tab .success-message,
+.security-tab .btn-primary {
   grid-column: 1 / -1;
 }
 
-.profile-tab .btn-primary {
+.profile-tab .btn-primary,
+.security-tab .btn-primary {
   width: fit-content;
 }
 
@@ -463,7 +465,8 @@
     flex-direction: column;
   }
 
-  .profile-tab form {
+  .profile-tab form,
+  .security-tab form {
     grid-template-columns: 1fr;
   }
 
