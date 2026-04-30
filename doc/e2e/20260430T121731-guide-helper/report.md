@@ -1,10 +1,12 @@
 # E2E-аудит Guide Helper
 
-Дата запуска: 28.04.2026, 19:35:43
+Дата запуска: 30.04.2026, 15:18:35
 
 Стенд: https://guidehelper.dubrovskih.ru
 
-Тестовый пользователь: e2e-20260428T163440@guide-helper.local
+API: https://guidehelper.dubrovskih.ru
+
+Тестовый пользователь: e2e-20260430T121731@guide-helper.local
 
 Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.
 
@@ -35,23 +37,23 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 
 | Область | Проверка | Статус | Детали |
 |---|---|---|---|
-| Auth | регистрация нового пользователя | PASS | e2e-20260428T163440@guide-helper.local |
+| Auth | регистрация нового пользователя | PASS | e2e-20260430T121731@guide-helper.local |
 | Auth | вход зарегистрированного пользователя | PASS | получены access/refresh token |
-| Profile | обновление профиля | PASS | E2E пользователь 20260428T163440 |
+| Profile | обновление профиля | PASS | E2E пользователь 20260430T121731 |
 | Profile | смена пароля и повторный вход | PASS | новый пароль принят |
 | Catalog | получение категорий | PASS | 5 categories |
-| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 7f1fe647-d91f-4ea6-bee3-d6471f95b5bb |
-| Routes | обновление маршрута | PASS | E2E маршрут 20260428T163440 обновлён |
+| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 26061511-1389-4c55-98ce-5042df4fb9c5 |
+| Routes | обновление маршрута | PASS | E2E маршрут 20260430T121731 обновлён |
 | Routes | импорт GeoJSON | PASS | 4 points |
-| Share | публикация маршрута | PASS | a7fd81df-844e-4047-94b1-b12fc0fbcee0 |
-| Share | публичное получение маршрута | PASS | E2E маршрут 20260428T163440 обновлён |
-| Social | создание комментария | PASS | a94da2ac-d133-4d6c-bd20-7983e1197be2 |
+| Share | публикация маршрута | PASS | 92efe266-9339-44b3-81fc-e330150e70e1 |
+| Share | публичное получение маршрута | PASS | E2E маршрут 20260430T121731 обновлён |
+| Social | создание комментария | PASS | 3a08db62-926d-4f8d-b00d-77ef7e59fb01 |
 | Social | лайк, рейтинг и закладка | PASS | like=true, rating=5, bookmark=true |
 | PWA | manifest и service worker доступны | PASS | manifest=200, sw=200 |
 | AI | панель и API отмечены как внешний риск | PASS | UI проверяется, генерация вынесена в риск |
 | Admin | вход администратора | PASS | admin token получен |
-| Admin | статистика и списки | PASS | users=59, routes=181, comments=167 |
-| Admin | CRUD категории | PASS | 76ba26e2-6f34-48af-a198-edb68ce0bd7b |
+| Admin | статистика и списки | PASS | users=62, routes=181, comments=167 |
+| Admin | CRUD категории | PASS | 80ebdf1b-f2ce-46c1-a429-5f370bdd2dc1 |
 | Admin | пороги сложности читаются и сохраняются | PASS | сохранены текущие значения без изменения |
 | UI | экран входа | PASS |  |
 | UI | редактор маршрута на карте | PASS |  |
@@ -72,8 +74,8 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 | UI Admin | комментарии | PASS |  |
 | UI Admin | категории | PASS |  |
 | UI Admin | настройки | PASS |  |
-| Cleanup | удаление импортированного маршрута | PASS | 7f86dc8b-7c08-410c-ace4-9805b172f617 |
-| Cleanup | удаление основного e2e-маршрута | PASS | 7f1fe647-d91f-4ea6-bee3-d6471f95b5bb |
+| Cleanup | удаление импортированного маршрута | PASS | 44b1f2a1-a0f7-46bc-b132-09a16891a6d6 |
+| Cleanup | удаление основного e2e-маршрута | PASS | 26061511-1389-4c55-98ce-5042df4fb9c5 |
 
 ## Скриншоты
 
@@ -196,7 +198,10 @@ CRUD-интерфейс категорий доступен.
 
 ## Console / Network Diagnostics
 
-В проверенных UI-сценариях не зафиксировано значимых console/runtime/XHR/document ошибок.
+- chromium-stderr: [1162601:1162680:0430/151738.055226:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
+- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
+- chromium-stderr: [1162601:1162680:0430/151801.346966:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: QUOTA_EXCEEDED
 
 ## Ограничения проверки
 
@@ -207,11 +212,12 @@ CRUD-интерфейс категорий доступен.
 
 ## Тестовые данные
 
-- Основной маршрут: 7f1fe647-d91f-4ea6-bee3-d6471f95b5bb (удалён cleanup-шагом)
-- Share token: a7fd81df-844e-4047-94b1-b12fc0fbcee0
-- Комментарий: a94da2ac-d133-4d6c-bd20-7983e1197be2
-- Импортированный маршрут: 7f86dc8b-7c08-410c-ace4-9805b172f617 (удалён cleanup-шагом)
+- Основной маршрут: 26061511-1389-4c55-98ce-5042df4fb9c5 (удалён cleanup-шагом)
+- Share token: 92efe266-9339-44b3-81fc-e330150e70e1
+- Комментарий: 3a08db62-926d-4f8d-b00d-77ef7e59fb01
+- Импортированный маршрут: 44b1f2a1-a0f7-46bc-b132-09a16891a6d6 (удалён cleanup-шагом)
 
 ## Примечания
 
 - AI-генерация и chat API зависят от внешнего Claude/OpenAI-compatible провайдера; в e2e-аудите проверяется UI-панель, но генерация не считается стабильным deterministic тестом.
+
