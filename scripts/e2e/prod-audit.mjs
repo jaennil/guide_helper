@@ -167,8 +167,8 @@ async function createPage(cdp) {
   await cdp.send("Runtime.enable", {}, sessionId);
   await cdp.send("Network.enable", {}, sessionId);
   await cdp.send("Emulation.setDeviceMetricsOverride", {
-    width: 1440,
-    height: 950,
+    width: 1920,
+    height: 1080,
     deviceScaleFactor: 1,
     mobile: false,
   }, sessionId);
