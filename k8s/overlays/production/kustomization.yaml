@@ -20,6 +20,14 @@ patches:
         - name: ghcr-secret
   target:
     kind: Deployment
+- patch: |-
+    - op: add
+      path: /spec/template/spec/nodeSelector
+      value:
+        kubernetes.io/arch: amd64
+  target:
+    kind: Deployment
+    name: frontend
 
 images:
 - name: auth
