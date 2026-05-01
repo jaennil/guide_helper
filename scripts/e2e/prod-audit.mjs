@@ -465,6 +465,68 @@ async function runApiAudit(state) {
     return "like=true, rating=5, bookmark=true";
   });
 
+  await step("Social", "демо-набор закладок", async () => {
+    const categoryIds = state.categories.slice(0, 3).map((category) => category.id).filter(Boolean);
+    const demoRoutes = [
+      {
+        name: `E2E прогулка по Замоскворечью ${runStamp}`,
+        line_color: "#3b82f6",
+        seasons: ["spring", "summer"],
+        category_ids: categoryIds[0] ? [categoryIds[0]] : [],
+        points: [
+          { lat: 55.7403, lng: 37.6256, name: "Третьяковская галерея" },
+          { lat: 55.7454, lng: 37.6251, name: "Кадашёвская слобода" },
+          { lat: 55.7469, lng: 37.6372, name: "Парк Зарядье" },
+        ],
+      },
+      {
+        name: `E2E исторический центр ${runStamp}`,
+        line_color: "#f59e0b",
+        seasons: ["autumn"],
+        category_ids: categoryIds[1] ? [categoryIds[1]] : [],
+        points: [
+          { lat: 55.7572, lng: 37.6156, name: "Манежная площадь" },
+          { lat: 55.7602, lng: 37.6186, name: "Большой театр" },
+          { lat: 55.7608, lng: 37.6246, name: "Кузнецкий мост" },
+        ],
+      },
+      {
+        name: `E2E зелёный маршрут ${runStamp}`,
+        line_color: "#22c55e",
+        seasons: ["summer"],
+        category_ids: categoryIds[2] ? [categoryIds[2]] : [],
+        points: [
+          { lat: 55.7299, lng: 37.6012, name: "Парк Горького" },
+          { lat: 55.7245, lng: 37.6018, name: "Нескучный сад" },
+          { lat: 55.7156, lng: 37.5877, name: "Воробьёвы горы" },
+        ],
+      },
+    ];
+
+    state.extraBookmarkedRouteIds = [];
+
+    for (const demoRoute of demoRoutes) {
+      const route = await api("/api/v1/routes", {
+        method: "POST",
+        token: state.userToken,
+        body: demoRoute,
+      });
+      state.extraBookmarkedRouteIds.push(route.id);
+      await api(`/api/v1/routes/${route.id}/share`, {
+        method: "POST",
+        token: state.userToken,
+        body: {},
+      });
+      await api(`/api/v1/routes/${route.id}/bookmark`, {
+        method: "POST",
+        token: state.userToken,
+        body: {},
+      });
+    }
+
+    return `${state.extraBookmarkedRouteIds.length + 1} routes in bookmarks`;
+  });
+
   await step("PWA", "manifest и service worker доступны", async () => {
     const manifest = await fetch(`${PAGE_BASE_URL}/manifest.webmanifest`);
     const sw = await fetch(`${PAGE_BASE_URL}/sw.js`);
@@ -687,6 +749,13 @@ async function runUiAudit(state) {
 }
 
 async function cleanup(state) {
+  await step("Cleanup", "удаление демо-закладок", async () => {
+    if (!state.extraBookmarkedRouteIds?.length) return "nothing to clean";
+    for (const routeId of state.extraBookmarkedRouteIds) {
+      await api(`/api/v1/routes/${routeId}`, { method: "DELETE", token: state.userToken });
+    }
+    return `${state.extraBookmarkedRouteIds.length} routes`;
+  });
   await step("Cleanup", "удаление импортированного маршрута", async () => {
     if (!state.importedRouteId) return "nothing to clean";
     await api(`/api/v1/routes/${state.importedRouteId}`, { method: "DELETE", token: state.userToken });
