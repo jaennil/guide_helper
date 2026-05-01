@@ -100,10 +100,10 @@
 </head>
 <body>
 <h1>E2E-аудит Guide Helper</h1>
-<p>Дата запуска: 30.04.2026, 19:34:09</p>
+<p>Дата запуска: 01.05.2026, 13:39:44</p>
 <p>Стенд: https://guidehelper.dubrovskih.ru</p>
 <p>API: https://guidehelper.dubrovskih.ru</p>
-<p>Тестовый пользователь: e2e-20260430T163306@guide-helper.local</p>
+<p>Тестовый пользователь: e2e-20260501T103844@guide-helper.local</p>
 <p>Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.</p>
 <h2>Методика</h2>
 <p>Проверка выполнена в два слоя:</p>
@@ -117,7 +117,7 @@
 <table>
 <thead><tr><th>Статус</th><th>Количество</th></tr></thead>
 <tbody>
-<tr><td>PASS</td><td>39</td></tr>
+<tr><td>PASS</td><td>41</td></tr>
 <tr><td>FAIL</td><td>0</td></tr>
 <tr><td>SKIP</td><td>0</td></tr>
 </tbody>
@@ -127,23 +127,24 @@
 <table>
 <thead><tr><th>Область</th><th>Проверка</th><th>Статус</th><th>Детали</th></tr></thead>
 <tbody>
-<tr><td>Auth</td><td>регистрация нового пользователя</td><td>PASS</td><td>e2e-20260430T163306@guide-helper.local</td></tr>
+<tr><td>Auth</td><td>регистрация нового пользователя</td><td>PASS</td><td>e2e-20260501T103844@guide-helper.local</td></tr>
 <tr><td>Auth</td><td>вход зарегистрированного пользователя</td><td>PASS</td><td>получены access/refresh token</td></tr>
-<tr><td>Profile</td><td>обновление профиля</td><td>PASS</td><td>E2E пользователь 20260430T163306</td></tr>
+<tr><td>Profile</td><td>обновление профиля</td><td>PASS</td><td>E2E пользователь 20260501T103844</td></tr>
 <tr><td>Profile</td><td>смена пароля и повторный вход</td><td>PASS</td><td>новый пароль принят</td></tr>
 <tr><td>Catalog</td><td>получение категорий</td><td>PASS</td><td>5 categories</td></tr>
-<tr><td>Routes</td><td>создание маршрута с точками, заметками и кастомизацией</td><td>PASS</td><td>d2bce44d-d337-4206-8ab5-4b54f9e89dc9</td></tr>
-<tr><td>Routes</td><td>обновление маршрута</td><td>PASS</td><td>E2E маршрут 20260430T163306 обновлён</td></tr>
+<tr><td>Routes</td><td>создание маршрута с точками, заметками и кастомизацией</td><td>PASS</td><td>2898fdb1-749a-41e8-a572-3fc33769241d</td></tr>
+<tr><td>Routes</td><td>обновление маршрута</td><td>PASS</td><td>E2E маршрут 20260501T103844 обновлён</td></tr>
 <tr><td>Routes</td><td>импорт GeoJSON</td><td>PASS</td><td>4 points</td></tr>
-<tr><td>Share</td><td>публикация маршрута</td><td>PASS</td><td>7449bb78-a9dd-4d89-9ebf-1771dd973594</td></tr>
-<tr><td>Share</td><td>публичное получение маршрута</td><td>PASS</td><td>E2E маршрут 20260430T163306 обновлён</td></tr>
-<tr><td>Social</td><td>создание комментария</td><td>PASS</td><td>6d716a36-79e1-49ed-9c35-988706c2eb7a</td></tr>
+<tr><td>Share</td><td>публикация маршрута</td><td>PASS</td><td>597aef49-16b7-466c-82cf-c36c7b36c1fc</td></tr>
+<tr><td>Share</td><td>публичное получение маршрута</td><td>PASS</td><td>E2E маршрут 20260501T103844 обновлён</td></tr>
+<tr><td>Social</td><td>создание комментария</td><td>PASS</td><td>7fdcc5bd-e96f-4233-9ec7-b916fa840841</td></tr>
 <tr><td>Social</td><td>лайк, рейтинг и закладка</td><td>PASS</td><td>like=true, rating=5, bookmark=true</td></tr>
+<tr><td>Social</td><td>демо-набор закладок</td><td>PASS</td><td>4 routes in bookmarks</td></tr>
 <tr><td>PWA</td><td>manifest и service worker доступны</td><td>PASS</td><td>manifest=200, sw=200</td></tr>
 <tr><td>AI</td><td>панель и API отмечены как внешний риск</td><td>PASS</td><td>UI проверяется, генерация вынесена в риск</td></tr>
 <tr><td>Admin</td><td>вход администратора</td><td>PASS</td><td>admin token получен</td></tr>
-<tr><td>Admin</td><td>статистика и списки</td><td>PASS</td><td>users=68, routes=183, comments=168</td></tr>
-<tr><td>Admin</td><td>CRUD категории</td><td>PASS</td><td>2ac08c88-8904-4e91-87d2-d8a88a069c05</td></tr>
+<tr><td>Admin</td><td>статистика и списки</td><td>PASS</td><td>users=70, routes=186, comments=168</td></tr>
+<tr><td>Admin</td><td>CRUD категории</td><td>PASS</td><td>7e60b4a8-250f-41b9-b762-14a5c826224c</td></tr>
 <tr><td>Admin</td><td>пороги сложности читаются и сохраняются</td><td>PASS</td><td>сохранены текущие значения без изменения</td></tr>
 <tr><td>UI</td><td>экран входа</td><td>PASS</td><td></td></tr>
 <tr><td>UI</td><td>редактор маршрута на карте</td><td>PASS</td><td></td></tr>
@@ -164,8 +165,9 @@
 <tr><td>UI Admin</td><td>комментарии</td><td>PASS</td><td></td></tr>
 <tr><td>UI Admin</td><td>категории</td><td>PASS</td><td></td></tr>
 <tr><td>UI Admin</td><td>настройки</td><td>PASS</td><td></td></tr>
-<tr><td>Cleanup</td><td>удаление импортированного маршрута</td><td>PASS</td><td>e7e0b7e8-d477-4a21-a865-23c7d44e0fb1</td></tr>
-<tr><td>Cleanup</td><td>удаление основного e2e-маршрута</td><td>PASS</td><td>d2bce44d-d337-4206-8ab5-4b54f9e89dc9</td></tr>
+<tr><td>Cleanup</td><td>удаление демо-закладок</td><td>PASS</td><td>3 routes</td></tr>
+<tr><td>Cleanup</td><td>удаление импортированного маршрута</td><td>PASS</td><td>e749df4e-6555-4b4d-add9-08dbd31497c8</td></tr>
+<tr><td>Cleanup</td><td>удаление основного e2e-маршрута</td><td>PASS</td><td>2898fdb1-749a-41e8-a572-3fc33769241d</td></tr>
 </tbody>
 </table>
 <h2>Скриншоты</h2>
@@ -228,10 +230,7 @@
 <p>Пороги сложности отображаются.</p>
 <figure><img src="screenshots/19-admin-settings.png" alt="Админка: настройки"><figcaption>Админка: настройки</figcaption></figure>
 <h2>Console / Network Diagnostics</h2>
-<ul>
-<li>console-warning: [routing] GraphHopper API key not set, falling back to OSRM</li>
-<li>console-warning: [routing] GraphHopper API key not set, falling back to OSRM</li>
-</ul>
+<p>В проверенных UI-сценариях не зафиксировано значимых console/runtime/XHR/document ошибок.</p>
 <h2>Ограничения проверки</h2>
 <ul>
 <li>Проверка запускалась по production-like стенду, поэтому destructive-операции ограничены тестовыми сущностями с префиксом E2E.</li>
@@ -241,10 +240,10 @@
 </ul>
 <h2>Тестовые данные</h2>
 <ul>
-<li>Основной маршрут: d2bce44d-d337-4206-8ab5-4b54f9e89dc9 (удалён cleanup-шагом)</li>
-<li>Share token: 7449bb78-a9dd-4d89-9ebf-1771dd973594</li>
-<li>Комментарий: 6d716a36-79e1-49ed-9c35-988706c2eb7a</li>
-<li>Импортированный маршрут: e7e0b7e8-d477-4a21-a865-23c7d44e0fb1 (удалён cleanup-шагом)</li>
+<li>Основной маршрут: 2898fdb1-749a-41e8-a572-3fc33769241d (удалён cleanup-шагом)</li>
+<li>Share token: 597aef49-16b7-466c-82cf-c36c7b36c1fc</li>
+<li>Комментарий: 7fdcc5bd-e96f-4233-9ec7-b916fa840841</li>
+<li>Импортированный маршрут: e749df4e-6555-4b4d-add9-08dbd31497c8 (удалён cleanup-шагом)</li>
 </ul>
 <h2>Примечания</h2>
 <ul>

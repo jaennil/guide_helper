@@ -1,12 +1,12 @@
 # E2E-аудит Guide Helper
 
-Дата запуска: 30.04.2026, 19:34:09
+Дата запуска: 01.05.2026, 13:39:44
 
 Стенд: https://guidehelper.dubrovskih.ru
 
 API: https://guidehelper.dubrovskih.ru
 
-Тестовый пользователь: e2e-20260430T163306@guide-helper.local
+Тестовый пользователь: e2e-20260501T103844@guide-helper.local
 
 Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.
 
@@ -27,7 +27,7 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 
 | Статус | Количество |
 |---|---:|
-| PASS | 39 |
+| PASS | 41 |
 | FAIL | 0 |
 | SKIP | 0 |
 
@@ -37,23 +37,24 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 
 | Область | Проверка | Статус | Детали |
 |---|---|---|---|
-| Auth | регистрация нового пользователя | PASS | e2e-20260430T163306@guide-helper.local |
+| Auth | регистрация нового пользователя | PASS | e2e-20260501T103844@guide-helper.local |
 | Auth | вход зарегистрированного пользователя | PASS | получены access/refresh token |
-| Profile | обновление профиля | PASS | E2E пользователь 20260430T163306 |
+| Profile | обновление профиля | PASS | E2E пользователь 20260501T103844 |
 | Profile | смена пароля и повторный вход | PASS | новый пароль принят |
 | Catalog | получение категорий | PASS | 5 categories |
-| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | d2bce44d-d337-4206-8ab5-4b54f9e89dc9 |
-| Routes | обновление маршрута | PASS | E2E маршрут 20260430T163306 обновлён |
+| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 2898fdb1-749a-41e8-a572-3fc33769241d |
+| Routes | обновление маршрута | PASS | E2E маршрут 20260501T103844 обновлён |
 | Routes | импорт GeoJSON | PASS | 4 points |
-| Share | публикация маршрута | PASS | 7449bb78-a9dd-4d89-9ebf-1771dd973594 |
-| Share | публичное получение маршрута | PASS | E2E маршрут 20260430T163306 обновлён |
-| Social | создание комментария | PASS | 6d716a36-79e1-49ed-9c35-988706c2eb7a |
+| Share | публикация маршрута | PASS | 597aef49-16b7-466c-82cf-c36c7b36c1fc |
+| Share | публичное получение маршрута | PASS | E2E маршрут 20260501T103844 обновлён |
+| Social | создание комментария | PASS | 7fdcc5bd-e96f-4233-9ec7-b916fa840841 |
 | Social | лайк, рейтинг и закладка | PASS | like=true, rating=5, bookmark=true |
+| Social | демо-набор закладок | PASS | 4 routes in bookmarks |
 | PWA | manifest и service worker доступны | PASS | manifest=200, sw=200 |
 | AI | панель и API отмечены как внешний риск | PASS | UI проверяется, генерация вынесена в риск |
 | Admin | вход администратора | PASS | admin token получен |
-| Admin | статистика и списки | PASS | users=68, routes=183, comments=168 |
-| Admin | CRUD категории | PASS | 2ac08c88-8904-4e91-87d2-d8a88a069c05 |
+| Admin | статистика и списки | PASS | users=70, routes=186, comments=168 |
+| Admin | CRUD категории | PASS | 7e60b4a8-250f-41b9-b762-14a5c826224c |
 | Admin | пороги сложности читаются и сохраняются | PASS | сохранены текущие значения без изменения |
 | UI | экран входа | PASS |  |
 | UI | редактор маршрута на карте | PASS |  |
@@ -74,8 +75,9 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 | UI Admin | комментарии | PASS |  |
 | UI Admin | категории | PASS |  |
 | UI Admin | настройки | PASS |  |
-| Cleanup | удаление импортированного маршрута | PASS | e7e0b7e8-d477-4a21-a865-23c7d44e0fb1 |
-| Cleanup | удаление основного e2e-маршрута | PASS | d2bce44d-d337-4206-8ab5-4b54f9e89dc9 |
+| Cleanup | удаление демо-закладок | PASS | 3 routes |
+| Cleanup | удаление импортированного маршрута | PASS | e749df4e-6555-4b4d-add9-08dbd31497c8 |
+| Cleanup | удаление основного e2e-маршрута | PASS | 2898fdb1-749a-41e8-a572-3fc33769241d |
 
 ## Скриншоты
 
@@ -198,8 +200,7 @@ CRUD-интерфейс категорий доступен.
 
 ## Console / Network Diagnostics
 
-- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
-- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
+В проверенных UI-сценариях не зафиксировано значимых console/runtime/XHR/document ошибок.
 
 ## Ограничения проверки
 
@@ -210,10 +211,10 @@ CRUD-интерфейс категорий доступен.
 
 ## Тестовые данные
 
-- Основной маршрут: d2bce44d-d337-4206-8ab5-4b54f9e89dc9 (удалён cleanup-шагом)
-- Share token: 7449bb78-a9dd-4d89-9ebf-1771dd973594
-- Комментарий: 6d716a36-79e1-49ed-9c35-988706c2eb7a
-- Импортированный маршрут: e7e0b7e8-d477-4a21-a865-23c7d44e0fb1 (удалён cleanup-шагом)
+- Основной маршрут: 2898fdb1-749a-41e8-a572-3fc33769241d (удалён cleanup-шагом)
+- Share token: 597aef49-16b7-466c-82cf-c36c7b36c1fc
+- Комментарий: 7fdcc5bd-e96f-4233-9ec7-b916fa840841
+- Импортированный маршрут: e749df4e-6555-4b4d-add9-08dbd31497c8 (удалён cleanup-шагом)
 
 ## Примечания
 
