@@ -1,12 +1,12 @@
 # E2E-аудит Guide Helper
 
-Дата запуска: 01.05.2026, 13:39:44
+Дата запуска: 02.05.2026, 14:01:15
 
 Стенд: https://guidehelper.dubrovskih.ru
 
 API: https://guidehelper.dubrovskih.ru
 
-Тестовый пользователь: e2e-20260501T103844@guide-helper.local
+Тестовый пользователь: e2e-20260502T105957@guide-helper.local
 
 Проверка выполнена автоматизированным smoke/e2e-аудитом через HTTP API и headless Chromium. Цель проверки — подтвердить основные пользовательские сценарии, состояние экранов и отсутствие явных runtime/network ошибок в интерфейсе.
 
@@ -37,24 +37,24 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 
 | Область | Проверка | Статус | Детали |
 |---|---|---|---|
-| Auth | регистрация нового пользователя | PASS | e2e-20260501T103844@guide-helper.local |
+| Auth | регистрация нового пользователя | PASS | e2e-20260502T105957@guide-helper.local |
 | Auth | вход зарегистрированного пользователя | PASS | получены access/refresh token |
-| Profile | обновление профиля | PASS | E2E пользователь 20260501T103844 |
+| Profile | обновление профиля | PASS | E2E пользователь 20260502T105957 |
 | Profile | смена пароля и повторный вход | PASS | новый пароль принят |
 | Catalog | получение категорий | PASS | 5 categories |
-| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 2898fdb1-749a-41e8-a572-3fc33769241d |
-| Routes | обновление маршрута | PASS | E2E маршрут 20260501T103844 обновлён |
+| Routes | создание маршрута с точками, заметками и кастомизацией | PASS | 92ce09c3-f1ce-402b-b0a9-6a6b203ad5c4 |
+| Routes | обновление маршрута | PASS | E2E маршрут 20260502T105957 обновлён |
 | Routes | импорт GeoJSON | PASS | 4 points |
-| Share | публикация маршрута | PASS | 597aef49-16b7-466c-82cf-c36c7b36c1fc |
-| Share | публичное получение маршрута | PASS | E2E маршрут 20260501T103844 обновлён |
-| Social | создание комментария | PASS | 7fdcc5bd-e96f-4233-9ec7-b916fa840841 |
+| Share | публикация маршрута | PASS | 1fff2dde-a5eb-462d-9a46-8cc0ad8eff85 |
+| Share | публичное получение маршрута | PASS | E2E маршрут 20260502T105957 обновлён |
+| Social | создание комментария | PASS | 181ce735-6d1a-4097-969f-74b047824e4d |
 | Social | лайк, рейтинг и закладка | PASS | like=true, rating=5, bookmark=true |
 | Social | демо-набор закладок | PASS | 4 routes in bookmarks |
 | PWA | manifest и service worker доступны | PASS | manifest=200, sw=200 |
 | AI | панель и API отмечены как внешний риск | PASS | UI проверяется, генерация вынесена в риск |
 | Admin | вход администратора | PASS | admin token получен |
-| Admin | статистика и списки | PASS | users=70, routes=186, comments=168 |
-| Admin | CRUD категории | PASS | 7e60b4a8-250f-41b9-b762-14a5c826224c |
+| Admin | статистика и списки | PASS | users=71, routes=186, comments=168 |
+| Admin | CRUD категории | PASS | 654096e8-42f0-46bd-a30d-b9e575c7fb52 |
 | Admin | пороги сложности читаются и сохраняются | PASS | сохранены текущие значения без изменения |
 | UI | экран входа | PASS |  |
 | UI | редактор маршрута на карте | PASS |  |
@@ -76,8 +76,8 @@ GH_E2E_ADMIN_EMAIL='...' GH_E2E_ADMIN_PASSWORD='...' node scripts/e2e/prod-audit
 | UI Admin | категории | PASS |  |
 | UI Admin | настройки | PASS |  |
 | Cleanup | удаление демо-закладок | PASS | 3 routes |
-| Cleanup | удаление импортированного маршрута | PASS | e749df4e-6555-4b4d-add9-08dbd31497c8 |
-| Cleanup | удаление основного e2e-маршрута | PASS | 2898fdb1-749a-41e8-a572-3fc33769241d |
+| Cleanup | удаление импортированного маршрута | PASS | aeddfe19-a2f6-4d14-b0f2-7154757d352a |
+| Cleanup | удаление основного e2e-маршрута | PASS | 92ce09c3-f1ce-402b-b0a9-6a6b203ad5c4 |
 
 ## Скриншоты
 
@@ -200,7 +200,8 @@ CRUD-интерфейс категорий доступен.
 
 ## Console / Network Diagnostics
 
-В проверенных UI-сценариях не зафиксировано значимых console/runtime/XHR/document ошибок.
+- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
+- console-warning: [routing] GraphHopper API key not set, falling back to OSRM
 
 ## Ограничения проверки
 
@@ -211,10 +212,10 @@ CRUD-интерфейс категорий доступен.
 
 ## Тестовые данные
 
-- Основной маршрут: 2898fdb1-749a-41e8-a572-3fc33769241d (удалён cleanup-шагом)
-- Share token: 597aef49-16b7-466c-82cf-c36c7b36c1fc
-- Комментарий: 7fdcc5bd-e96f-4233-9ec7-b916fa840841
-- Импортированный маршрут: e749df4e-6555-4b4d-add9-08dbd31497c8 (удалён cleanup-шагом)
+- Основной маршрут: 92ce09c3-f1ce-402b-b0a9-6a6b203ad5c4 (удалён cleanup-шагом)
+- Share token: 1fff2dde-a5eb-462d-9a46-8cc0ad8eff85
+- Комментарий: 181ce735-6d1a-4097-969f-74b047824e4d
+- Импортированный маршрут: aeddfe19-a2f6-4d14-b0f2-7154757d352a (удалён cleanup-шагом)
 
 ## Примечания
 
