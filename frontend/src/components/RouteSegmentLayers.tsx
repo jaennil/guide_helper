@@ -45,6 +45,50 @@ const SEGMENT_DURATION_ANCHOR_ICON = L.divIcon({
   iconAnchor: [0, 0],
 });
 
+function buildAutoSegmentKey(
+  segment: RouteSegment,
+  waypoints: L.LatLng[],
+  engineId: RoutingEngineId,
+) {
+  const fromPoint = waypoints[segment.fromIndex];
+  const toPoint = waypoints[segment.toIndex];
+  if (!fromPoint || !toPoint) {
+    return null;
+  }
+
+  return [
+    segment.fromIndex,
+    segment.toIndex,
+    engineId,
+    fromPoint.lat.toFixed(6),
+    fromPoint.lng.toFixed(6),
+    toPoint.lat.toFixed(6),
+    toPoint.lng.toFixed(6),
+  ].join(":");
+}
+
+function updatePolylinePresentation(
+  polyline: L.Polyline,
+  segment: RouteSegment,
+  coords: [number, number][],
+  color: string,
+  categoryNames: string[],
+) {
+  polyline.setStyle({ color, opacity: 0.7, weight: 4 });
+  const tooltipText = buildSegmentTooltipText(segment, coords, categoryNames);
+  const tooltip = polyline.getTooltip();
+  if (tooltip) {
+    tooltip.setContent(tooltipText);
+  } else {
+    polyline.bindTooltip(tooltipText, {
+      sticky: true,
+      direction: "top",
+      offset: [0, -4],
+      className: "route-segment-tooltip",
+    });
+  }
+}
+
 function SegmentDurationBubble({
   segment,
   editable,
@@ -127,12 +171,16 @@ export const RoutingControl = React.memo(function RoutingControl({
 }) {
   const map = useMapEvents({});
   const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
+  const polylineCoordsRef = useRef<Map<string, [number, number][]>>(new Map());
   const categoryKey = categoryNames.join("|").toLowerCase();
 
   useEffect(() => {
+    let disposed = false;
+
     if (waypoints.length < 2) {
       polylinesRef.current.forEach((polyline) => map.removeLayer(polyline));
       polylinesRef.current.clear();
+      polylineCoordsRef.current.clear();
       return;
     }
 
@@ -143,16 +191,27 @@ export const RoutingControl = React.memo(function RoutingControl({
         return;
       }
 
-      const key = `${segment.fromIndex}-${segment.toIndex}-${engineId}-${categoryKey}`;
-      activeKeys.add(key);
-
       const fromPoint = waypoints[segment.fromIndex];
       const toPoint = waypoints[segment.toIndex];
-      if (!fromPoint || !toPoint || polylinesRef.current.has(key)) {
+      const key = buildAutoSegmentKey(segment, waypoints, engineId);
+      if (!fromPoint || !toPoint || !key) {
+        return;
+      }
+
+      activeKeys.add(key);
+
+      const existingPolyline = polylinesRef.current.get(key);
+      const existingCoords = polylineCoordsRef.current.get(key);
+      if (existingPolyline && existingCoords) {
+        updatePolylinePresentation(existingPolyline, segment, existingCoords, color, categoryNames);
         return;
       }
 
       fetchRoute(engineId, [fromPoint.lat, fromPoint.lng], [toPoint.lat, toPoint.lng]).then((coords) => {
+        if (disposed) {
+          return;
+        }
+
         const polyline = L.polyline(
           coords.map((coord) => L.latLng(coord[0], coord[1])),
           {
@@ -168,7 +227,13 @@ export const RoutingControl = React.memo(function RoutingControl({
             className: "route-segment-tooltip",
           })
           .addTo(map);
+
+        const previousPolyline = polylinesRef.current.get(key);
+        if (previousPolyline) {
+          map.removeLayer(previousPolyline);
+        }
         polylinesRef.current.set(key, polyline);
+        polylineCoordsRef.current.set(key, coords);
       });
     });
 
@@ -176,17 +241,18 @@ export const RoutingControl = React.memo(function RoutingControl({
       if (!activeKeys.has(key)) {
         map.removeLayer(polyline);
         polylinesRef.current.delete(key);
+        polylineCoordsRef.current.delete(key);
       }
     });
-  }, [categoryKey, categoryNames, color, engineId, map, routeSegments, waypoints]);
 
-  useEffect(() => {
-    polylinesRef.current.forEach((polyline) => map.removeLayer(polyline));
-    polylinesRef.current.clear();
-  }, [categoryKey, engineId, map]);
+    return () => {
+      disposed = true;
+    };
+  }, [categoryKey, color, engineId, map, routeSegments, waypoints]);
 
   useEffect(() => {
     const polylines = polylinesRef.current;
+    const polylineCoords = polylineCoordsRef.current;
     return () => {
       polylines.forEach((polyline) => {
         try {
@@ -196,6 +262,7 @@ export const RoutingControl = React.memo(function RoutingControl({
         }
       });
       polylines.clear();
+      polylineCoords.clear();
     };
   }, [map]);
 

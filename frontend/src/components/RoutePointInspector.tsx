@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import type { PhotoData } from "../api/routes";
 import { useLanguage } from "../context/LanguageContext";
 import { ROUTE_LINE_COLOR_PRESETS } from "../utils/routeColors";
+import { imageFileToRoutePhotoDataUrl } from "../utils/routePhotoResize";
 import {
   MAX_PHOTO_PREVIEW_SIZE,
   MAX_POINT_MARKER_SIZE,
@@ -95,14 +96,14 @@ export const PointDetailsEditor = React.memo(function PointDetailsEditor({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result;
-      if (typeof result === "string") {
+    imageFileToRoutePhotoDataUrl(file)
+      .then((result) => {
         onPhotoChange(point.id, { original: result, status: "pending" });
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch((error) => {
+        console.error("[photo] failed to attach photo:", error);
+        toast.error(t("map.selectImageFile"));
+      });
   };
 
   const handleRemovePhoto = () => {

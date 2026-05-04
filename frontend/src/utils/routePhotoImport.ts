@@ -8,6 +8,7 @@ import {
   DEFAULT_POINT_MARKER_SIZE,
 } from "./routePointStyles";
 import { buildSegmentsForAppendedPoints } from "./routeEditorData";
+import { imageFileToRoutePhotoDataUrl } from "./routePhotoResize";
 
 interface ParsedPhoto {
   lat: number;
@@ -23,22 +24,6 @@ export interface ImportRoutePhotosResult {
   nextPointId: number;
 }
 
-async function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result;
-      if (typeof result === "string") {
-        resolve(result);
-        return;
-      }
-      reject(new Error("Failed to read file as data URL"));
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 async function parsePhoto(file: File): Promise<ParsedPhoto | null> {
   try {
     const exifData = await exifr.parse(file, true);
@@ -48,7 +33,7 @@ async function parsePhoto(file: File): Promise<ParsedPhoto | null> {
       return null;
     }
 
-    const base64 = await readFileAsDataUrl(file);
+    const base64 = await imageFileToRoutePhotoDataUrl(file);
 
     console.log(
       `[photo-import] parsed ${file.name}: lat=${exifData.latitude}, lng=${exifData.longitude}`,

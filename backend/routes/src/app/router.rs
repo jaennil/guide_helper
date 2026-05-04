@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Router,
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     middleware,
     routing::{delete, get, post, put},
 };
@@ -38,6 +38,8 @@ use crate::delivery::http::v1::routes::{
 };
 use crate::delivery::http::v1::settings::{get_difficulty_thresholds, set_difficulty_thresholds};
 use crate::delivery::http::v1::ws::websocket_handler;
+
+const ROUTE_JSON_BODY_LIMIT_BYTES: usize = 25 * 1024 * 1024;
 
 pub fn build_router(shared_state: Arc<AppState>) -> Router {
     Router::new()
@@ -135,6 +137,7 @@ fn build_authenticated_api(shared_state: Arc<AppState>) -> Router<Arc<AppState>>
             "/api/v1/chat/{conversation_id}/messages/{message_id}",
             delete(delete_message),
         )
+        .layer(DefaultBodyLimit::max(ROUTE_JSON_BODY_LIMIT_BYTES))
         .layer(middleware::from_fn_with_state(
             shared_state,
             auth_middleware,
