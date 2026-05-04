@@ -1758,8 +1758,9 @@ body {
 }
 
 .shared-route-controls-card {
-    flex: 0 1 520px;
-    max-width: min(520px, calc(100vw - 24px));
+    flex: 0 0 auto;
+    width: max-content;
+    max-width: min(620px, calc(100vw - 24px));
     padding: 12px;
     border-radius: 22px;
 }
@@ -1768,7 +1769,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 8px;
     max-height: calc(100vh - 24px);
     overflow: visible;
@@ -2757,6 +2758,11 @@ body {
     top: 60px;
     left: auto;
     right: 10px;
+}
+
+.shared-route-page .leaflet-top.leaflet-left {
+    top: 140px;
+    right: 16px;
 }
 
 @media (max-width: 768px) {
