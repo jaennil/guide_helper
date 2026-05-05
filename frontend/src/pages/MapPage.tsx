@@ -675,7 +675,7 @@ export function MapPage() {
         onSave={handleSaveAiDescription}
       />
 
-      {routePoints.length > 0 && !chatOpen && (
+      {routePoints.length > 0 && !chatOpen && !playbackActive && !historicalMode && (
         <RouteInspectorPanel
           routeName={routeName}
           onRouteNameChange={setRouteName}
