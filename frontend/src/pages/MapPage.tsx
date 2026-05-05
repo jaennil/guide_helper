@@ -754,7 +754,7 @@ export function MapPage() {
           startedAt={normalizedRouteStartedAt}
         />
       )}
-      {loadedRouteInfo && !chatOpen && (
+      {loadedRouteInfo && !chatOpen && !playbackActive && !historicalMode && (
         <>
           <LikeRatingBar routeId={loadedRouteInfo.id} />
           <CommentSection
