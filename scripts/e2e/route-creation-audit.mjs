@@ -348,6 +348,97 @@ async function getRouteStrokeSignatures(cdp, sessionId) {
   return JSON.parse(serialized);
 }
 
+async function runSafeRandomInteractions(cdp, sessionId, iterations) {
+  const actions = [];
+  for (let index = 0; index < iterations; index += 1) {
+    const action = await evaluate(cdp, sessionId, `
+      (() => {
+        const visible = (el) => {
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+        };
+        const textOf = (el) => [el.textContent, el.ariaLabel, el.title]
+          .filter(Boolean)
+          .join(' ')
+          .trim()
+          .toLowerCase();
+        const unsafeWords = [
+          'сохран', 'удал', 'очист', 'logout', 'выйти', 'gpx', 'kml',
+          'воспроиз', 'истор', 'ai', 'ассистент', 'каталог', 'профиль', 'закладки'
+        ];
+        const clickTargets = [
+          ...document.querySelectorAll([
+            '.header-pill',
+            '.tag-selector-buttons .tag-button',
+            '.route-color-swatch',
+            '.route-point-list-item',
+            '.point-style-swatch',
+            '.point-photo-shape-btn'
+          ].join(','))
+        ].filter((el) => visible(el) && !unsafeWords.some((word) => textOf(el).includes(word)));
+        const inputs = [
+          ...document.querySelectorAll([
+            '.point-style-size-range',
+            '.point-photo-size-range',
+            '.segment-duration-input'
+          ].join(','))
+        ].filter(visible);
+
+        const actionPool = [];
+        clickTargets.forEach((el, targetIndex) => actionPool.push({ type: 'click', targetIndex, label: textOf(el).slice(0, 50) || el.className }));
+        inputs.forEach((el, targetIndex) => actionPool.push({ type: 'input', targetIndex, label: el.className || el.name || el.type }));
+        if (actionPool.length === 0) {
+          return { type: 'none', label: 'no safe targets' };
+        }
+
+        const selected = actionPool[Math.floor(Math.random() * actionPool.length)];
+        if (selected.type === 'click') {
+          clickTargets[selected.targetIndex].click();
+        } else {
+          const el = inputs[selected.targetIndex];
+          const value = el.classList.contains('segment-duration-input')
+            ? String(5 + Math.floor(Math.random() * 90))
+            : String(32 + Math.floor(Math.random() * 112));
+          const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+          descriptor.set.call(el, value);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          selected.value = value;
+        }
+        return selected;
+      })()
+    `);
+    actions.push(action);
+    await sleep(250);
+
+    const health = await evaluate(cdp, sessionId, `
+      (() => ({
+        hasMap: Boolean(document.querySelector('.leaflet-container')),
+        pointMarkers: document.querySelectorAll('.custom-point-marker, .custom-photo-marker').length,
+        pointRows: document.querySelectorAll('.route-point-list-item').length,
+        routePaths: document.querySelectorAll('path.leaflet-interactive').length,
+        badText: /(request entity too large|internal server error|runtime error|failed to fetch|undefined is not an object)/i.test(document.body.innerText),
+        saveError: document.querySelector('.route-inspector-error')?.textContent?.trim() || ''
+      }))()
+    `);
+    if (!health.hasMap) {
+      throw new Error(`map disappeared after random action ${index + 1}: ${JSON.stringify(action)}`);
+    }
+    if (health.pointMarkers < 4 || health.pointRows < 4) {
+      throw new Error(`route points disappeared after random action ${index + 1}: ${JSON.stringify({ action, health })}`);
+    }
+    if (health.routePaths < 1) {
+      throw new Error(`route paths disappeared after random action ${index + 1}: ${JSON.stringify(action)}`);
+    }
+    if (health.badText || health.saveError) {
+      throw new Error(`UI error after random action ${index + 1}: ${JSON.stringify({ action, health })}`);
+    }
+  }
+  return actions;
+}
+
 async function getSavedRouteByName(token, name) {
   const routes = await api("/api/v1/routes", { token });
   return routes.find((route) => route.name === name || route.name?.startsWith(name));
@@ -378,7 +469,7 @@ async function writeReport(state) {
       ? `Критический сценарий создания маршрута пройден: ${passCount} проверок PASS, ${failCount} FAIL.`
       : `Есть проблемы: ${passCount} проверок PASS, ${failCount} FAIL.`,
     "",
-    "Проверка сделана как практичный pairwise/critical-flow аудит, а не полный математический перебор всех возможных последовательностей. Полный перебор кнопок дал бы взрыв комбинаций и не отражал бы реальный пользовательский риск.",
+    "Проверка сделана как практичный pairwise/critical-flow аудит, а не полный математический перебор всех возможных последовательностей. Для риска \"пользователь кликает не в том порядке\" добавлен safe chaos-прогон: случайные безопасные действия по редактору с проверкой инвариантов после каждого действия.",
     "",
     "## Проверенные комбинации",
     "",
@@ -390,6 +481,7 @@ async function writeReport(state) {
     "| Точка + заметка + стиль метки | Текст заметки, цвет и размер метки сохраняются в редакторе | PASS |",
     "| Точка + фото + форма preview + размер preview | Фото прикрепляется, preview переключается круг/квадрат и меняет размер | PASS |",
     "| Участок + ручное время | Поле длительности участка принимает значение и не ломает карту | PASS |",
+    "| Safe chaos clicks | Случайные клики по режимам, категориям, сезонам, цветам, точкам и настройкам preview не ломают редактор | PASS |",
     "| Metadata + save | Название, дата, категории, сезоны, цвет, точки и segment metadata уходят в API | PASS |",
     "| Saved route + tools | GPX/KML, playback, historical mode, clear/cancel доступны после сохранения | PASS |",
     "",
@@ -541,6 +633,17 @@ async function main() {
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
     });
 
+    await step("Resilience", "50 случайных безопасных действий не ломают редактор", async () => {
+      const actions = await runSafeRandomInteractions(cdp, page, 50);
+      await screenshot(cdp, page, "11-safe-chaos-clicks.png", "Safe chaos-клики", "После 50 случайных безопасных действий маршрут, точки, линия и inspector остались рабочими.");
+      await fill(cdp, page, ".route-color-input", "#ef4444");
+      await fill(cdp, page, ".segment-duration-input", "18");
+      await fill(cdp, page, "#route-name-input", routeName);
+      await fill(cdp, page, "#route-started-at-input", "2026-05-05T12:30");
+      const uniqueTypes = [...new Set(actions.map((action) => action.type))].join(", ");
+      return `${actions.length} actions, types: ${uniqueTypes}`;
+    });
+
     await step("Save", "сохранение маршрута через UI и проверка API payload", async () => {
       await clickText(cdp, page, "Сохранить маршрут");
       const deadline = Date.now() + 20000;
@@ -551,7 +654,7 @@ async function main() {
         await sleep(800);
       }
       if (!saved) {
-        await screenshot(cdp, page, "11-save-failed-state.png", "Состояние после попытки сохранения", "Диагностический снимок: маршрут не найден через API после нажатия сохранения.");
+        await screenshot(cdp, page, "12-save-failed-state.png", "Состояние после попытки сохранения", "Диагностический снимок: маршрут не найден через API после нажатия сохранения.");
         const errorText = await evaluate(cdp, page, `
           document.querySelector('.route-inspector-error')?.textContent?.trim() || ''
         `).catch(() => "");
@@ -568,14 +671,14 @@ async function main() {
       if (saved.points[0]?.photo?.status !== "pending" && !saved.points[0]?.photo?.original) throw new Error("point photo was not saved");
       if (saved.points[1]?.segment_duration_minutes !== 18) throw new Error("segment duration was not saved");
       await waitForExpression(cdp, page, `document.querySelector('.route-inspector-status-row')`, 10000);
-      await screenshot(cdp, page, "11-saved-route.png", "Сохранённый маршрут", "Маршрут сохранён, inspector показывает статус маршрута.");
+      await screenshot(cdp, page, "12-saved-route.png", "Сохранённый маршрут", "Маршрут сохранён, inspector показывает статус маршрута.");
       return saved.id;
     });
 
     await step("Tools", "после сохранения доступны GPX/KML/playback/historical", async () => {
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await waitForExpression(cdp, page, `document.body.innerText.includes('GPX') && document.body.innerText.includes('KML')`, 5000);
-      await screenshot(cdp, page, "12-tools-after-save.png", "Инструменты после сохранения", "После сохранения доступны экспорт, AI-кнопка, воспроизведение и исторический режим.");
+      await screenshot(cdp, page, "13-tools-after-save.png", "Инструменты после сохранения", "После сохранения доступны экспорт, AI-кнопка, воспроизведение и исторический режим.");
       await clickText(cdp, page, "GPX");
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await clickText(cdp, page, "KML");
@@ -586,7 +689,7 @@ async function main() {
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await clickText(cdp, page, ["Воспроизведение", "Воспроизвести", "Playback"]);
       await waitForExpression(cdp, page, `document.querySelector('.playback-loading, .playback-controls, .playback-marker')`, 8000);
-      await screenshot(cdp, page, "13-playback-opened.png", "Воспроизведение маршрута", "Playback overlay открылся без перекрытия критичных панелей.");
+      await screenshot(cdp, page, "14-playback-opened.png", "Воспроизведение маршрута", "Playback overlay открылся без перекрытия критичных панелей.");
       await clickSelector(cdp, page, ".playback-close-btn", 0);
       await waitForExpression(cdp, page, `!document.querySelector('.playback-controls')`, 5000);
       await sleep(800);
@@ -596,7 +699,7 @@ async function main() {
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await clickText(cdp, page, "Истор");
       await waitForExpression(cdp, page, `document.body.innerText.includes('ИСТОРИЧЕСКИЙ ТАЙМЛАЙН') || document.body.innerText.includes('Исторический таймлайн')`, 8000);
-      await screenshot(cdp, page, "14-historical-mode.png", "Исторический режим", "Исторический timeline открылся поверх маршрута.");
+      await screenshot(cdp, page, "15-historical-mode.png", "Исторический режим", "Исторический timeline открылся поверх маршрута.");
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await clickText(cdp, page, "Истор");
       await sleep(800);
@@ -605,7 +708,7 @@ async function main() {
     await step("Tools", "chat panel toggle не ломает создание маршрута", async () => {
       await clickSelector(cdp, page, ".btn.btn-ghost.btn-sm.btn-icon", 1);
       await waitForExpression(cdp, page, `document.body.innerText.includes('AI Ассистент') || document.body.innerText.includes('AI')`, 8000);
-      await screenshot(cdp, page, "15-chat-panel-toggle.png", "AI-панель", "Панель ассистента открывается отдельным режимом и не вызывает runtime error.");
+      await screenshot(cdp, page, "16-chat-panel-toggle.png", "AI-панель", "Панель ассистента открывается отдельным режимом и не вызывает runtime error.");
       await clickSelector(cdp, page, ".btn.btn-ghost.btn-sm.btn-icon.active-toggle", 0);
       await sleep(800);
     });
@@ -614,7 +717,7 @@ async function main() {
       await clickSelector(cdp, page, ".header-dropdown-wrap .btn-secondary.btn-icon", 0);
       await clickText(cdp, page, "Очист");
       await waitForExpression(cdp, page, `document.querySelector('.confirm-dialog') || document.body.innerText.includes('Очист')`, 5000);
-      await screenshot(cdp, page, "16-clear-confirm.png", "Подтверждение очистки", "Кнопка очистки открывает подтверждение, чтобы случайно не потерять маршрут.");
+      await screenshot(cdp, page, "17-clear-confirm.png", "Подтверждение очистки", "Кнопка очистки открывает подтверждение, чтобы случайно не потерять маршрут.");
       await clickText(cdp, page, "Отмена");
       await waitForExpression(cdp, page, `
         document.querySelectorAll('.custom-point-marker, .custom-photo-marker').length >= 4 &&
