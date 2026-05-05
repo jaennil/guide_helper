@@ -587,14 +587,8 @@ async function main() {
       await clickText(cdp, page, ["Воспроизведение", "Воспроизвести", "Playback"]);
       await waitForExpression(cdp, page, `document.querySelector('.playback-loading, .playback-controls, .playback-marker')`, 8000);
       await screenshot(cdp, page, "13-playback-opened.png", "Воспроизведение маршрута", "Playback overlay открылся без перекрытия критичных панелей.");
-      await evaluate(cdp, page, `
-        (() => {
-          const buttons = [...document.querySelectorAll('button')];
-          const close = buttons.find((button) => /закрыть|close|×|x/i.test(button.textContent || button.ariaLabel || ''));
-          if (close) close.click();
-          return Boolean(close);
-        })()
-      `).catch(() => {});
+      await clickSelector(cdp, page, ".playback-close-btn", 0);
+      await waitForExpression(cdp, page, `!document.querySelector('.playback-controls')`, 5000);
       await sleep(800);
     });
 
@@ -622,7 +616,10 @@ async function main() {
       await waitForExpression(cdp, page, `document.querySelector('.confirm-dialog') || document.body.innerText.includes('Очист')`, 5000);
       await screenshot(cdp, page, "16-clear-confirm.png", "Подтверждение очистки", "Кнопка очистки открывает подтверждение, чтобы случайно не потерять маршрут.");
       await clickText(cdp, page, "Отмена");
-      await waitForExpression(cdp, page, `document.querySelectorAll('.route-point-list-item').length >= 4`, 5000);
+      await waitForExpression(cdp, page, `
+        document.querySelectorAll('.custom-point-marker, .custom-photo-marker').length >= 4 &&
+        document.querySelectorAll('path.leaflet-interactive').length > 0
+      `, 5000);
       return "cancel keeps route";
     });
   } finally {
