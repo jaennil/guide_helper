@@ -81,9 +81,23 @@ function ClosePopupsOnOverlay({ active }: { active: boolean }) {
   const map = useMapEvents({});
 
   React.useEffect(() => {
-    if (active) {
+    const closePopups = () => {
       map.closePopup();
+      map.getContainer().querySelectorAll(".leaflet-popup").forEach((popup) => popup.remove());
+    };
+
+    if (active) {
+      closePopups();
+      const firstRetry = window.setTimeout(closePopups, 100);
+      const secondRetry = window.setTimeout(closePopups, 400);
+
+      return () => {
+        window.clearTimeout(firstRetry);
+        window.clearTimeout(secondRetry);
+      };
     }
+
+    return undefined;
   }, [active, map]);
 
   return null;
