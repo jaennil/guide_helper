@@ -77,6 +77,18 @@ function MapClickHandler({
   return null;
 }
 
+function ClosePopupsOnOverlay({ active }: { active: boolean }) {
+  const map = useMapEvents({});
+
+  React.useEffect(() => {
+    if (active) {
+      map.closePopup();
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 interface RouteMapCanvasProps {
   mapRef: MutableRefObject<L.Map | null>;
   tileUrl: string;
@@ -154,6 +166,7 @@ export function RouteMapCanvas({
       <LeafletAttributionPrefix />
       <BaseTileLayer url={tileUrl} attribution={tileAttribution} />
       <MapRefCapture mapRef={mapRef} />
+      <ClosePopupsOnOverlay active={playbackActive || historicalMode} />
       <MapClickHandler onMapClick={onMapClick} />
       <GeoSearchControl />
       {historicalMode && (
