@@ -244,9 +244,11 @@ export function RouteMapCanvas({
             },
           }}
         >
-          <Popup>
-            <PointPopup point={point} index={index} onEdit={onSelectPoint} />
-          </Popup>
+          {!playbackActive && !historicalMode && (
+            <Popup>
+              <PointPopup point={point} index={index} onEdit={onSelectPoint} />
+            </Popup>
+          )}
         </Marker>
       ))}
       {overlayRoutes.map((overlay) => {
@@ -278,29 +280,31 @@ export function RouteMapCanvas({
                 position={point.position}
                 icon={createColoredMarkerIcon(overlay.color, point.photo, point.previewSize, point.previewShape, point.markerColor, point.markerSize)}
               >
-                <Popup>
-                  <div className="point-popup">
-                    <div className="point-popup-header">
-                      <strong>{overlay.name} — {t("map.point", { index: index + 1 })}</strong>
-                    </div>
-                    {point.name && <div className="point-popup-name">{point.name}</div>}
-                    <div className="point-popup-coords">
-                      {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
-                      {point.position[1].toFixed(6)}
-                    </div>
-                    {point.note?.trim() && (
-                      <div className="point-popup-note-text">{point.note}</div>
-                    )}
-                    {getPhotoSrc(point.photo) && (
-                      <div className="point-popup-photo">
-                        <img
-                          src={point.photo?.original || getPhotoSrc(point.photo)}
-                          alt={`${overlay.name} point ${index + 1}`}
-                        />
+                {!playbackActive && !historicalMode && (
+                  <Popup>
+                    <div className="point-popup">
+                      <div className="point-popup-header">
+                        <strong>{overlay.name} — {t("map.point", { index: index + 1 })}</strong>
                       </div>
-                    )}
-                  </div>
-                </Popup>
+                      {point.name && <div className="point-popup-name">{point.name}</div>}
+                      <div className="point-popup-coords">
+                        {t("map.coordinates")} {point.position[0].toFixed(6)},{" "}
+                        {point.position[1].toFixed(6)}
+                      </div>
+                      {point.note?.trim() && (
+                        <div className="point-popup-note-text">{point.note}</div>
+                      )}
+                      {getPhotoSrc(point.photo) && (
+                        <div className="point-popup-photo">
+                          <img
+                            src={point.photo?.original || getPhotoSrc(point.photo)}
+                            alt={`${overlay.name} point ${index + 1}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                )}
               </Marker>
             ))}
           </React.Fragment>
