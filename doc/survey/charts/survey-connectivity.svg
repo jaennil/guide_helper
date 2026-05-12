@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 34px; font-weight: 700; fill: #18202e; }
+      .label { font-family: Arial, sans-serif; font-size: 23px; font-weight: 700; fill: #253047; }
+      .inside { font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; fill: #ffffff; }
+      .legend { font-family: Arial, sans-serif; font-size: 18px; fill: #253047; }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="48" y="54" class="title">Доступность интернета и GPS в маршрутах</text>
+<text x="48" y="141" class="label">Интернет</text><rect x="210" y="110" width="76" height="42" fill="#ef6a6a"/><text x="248" y="138" text-anchor="middle" class="inside">1</text><rect x="286" y="110" width="304" height="42" fill="#f2a65a"/><text x="438" y="138" text-anchor="middle" class="inside">4</text><rect x="590" y="110" width="228" height="42" fill="#f2d45a"/><text x="704" y="138" text-anchor="middle" class="inside">3</text><rect x="818" y="110" width="76" height="42" fill="#74bf78"/><text x="856" y="138" text-anchor="middle" class="inside">1</text><rect x="894" y="110" width="76" height="42" fill="#3f9f68"/><text x="932" y="138" text-anchor="middle" class="inside">1</text><text x="48" y="251" class="label">GPS</text><rect x="210" y="220" width="76" height="42" fill="#ef6a6a"/><text x="248" y="248" text-anchor="middle" class="inside">1</text><rect x="286" y="220" width="76" height="42" fill="#f2a65a"/><text x="324" y="248" text-anchor="middle" class="inside">1</text><rect x="362" y="220" width="228" height="42" fill="#f2d45a"/><text x="476" y="248" text-anchor="middle" class="inside">3</text><rect x="590" y="220" width="228" height="42" fill="#74bf78"/><text x="704" y="248" text-anchor="middle" class="inside">3</text><rect x="818" y="220" width="152" height="42" fill="#3f9f68"/><text x="894" y="248" text-anchor="middle" class="inside">2</text>
+<rect x="210" y="340" width="18" height="18" fill="#ef6a6a"/><text x="235" y="356" class="legend">0–20% времени</text><rect x="390" y="340" width="18" height="18" fill="#f2a65a"/><text x="415" y="356" class="legend">21–40% времени</text><rect x="570" y="340" width="18" height="18" fill="#f2d45a"/><text x="595" y="356" class="legend">41–60% времени</text><rect x="750" y="340" width="18" height="18" fill="#74bf78"/><text x="775" y="356" class="legend">61–80% времени</text><rect x="930" y="340" width="18" height="18" fill="#3f9f68"/><text x="955" y="356" class="legend">81–100% времени</text>
+</svg>

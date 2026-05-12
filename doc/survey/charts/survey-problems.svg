@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="768" viewBox="0 0 1800 768">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 34px; font-weight: 700; fill: #18202e; }
+      .label { font-family: Arial, sans-serif; font-size: 21px; fill: #253047; }
+      .value { font-family: Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #18202e; }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="48" y="54" class="title">Основные проблемы существующих инструментов</text>
+
+  <text x="48" y="120" class="label"><tspan x="48" dy="0">фотографии не связаны с конкретными</tspan><tspan x="48" dy="24">точками на карте</tspan></text>
+  <rect x="620" y="96" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="121" class="value">4 / 40%</text>
+  <text x="48" y="198" class="label"><tspan x="48" dy="0">маршрут неудобно собирать и</tspan><tspan x="48" dy="24">редактировать</tspan></text>
+  <rect x="620" y="174" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="199" class="value">4 / 40%</text>
+  <text x="48" y="276" class="label"><tspan x="48" dy="0">сложно делиться маршрутом с другими</tspan></text>
+  <rect x="620" y="252" width="757" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1389" y="277" class="value">3 / 30%</text>
+  <text x="48" y="354" class="label"><tspan x="48" dy="0">нет удобного офлайн-доступа</tspan></text>
+  <rect x="620" y="330" width="757" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1389" y="355" class="value">3 / 30%</text>
+  <text x="48" y="432" class="label"><tspan x="48" dy="0">не хватает комментариев и описаний к</tspan><tspan x="48" dy="24">точкам</tspan></text>
+  <rect x="620" y="408" width="757" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1389" y="433" class="value">3 / 30%</text>
+  <text x="48" y="510" class="label"><tspan x="48" dy="0">маршрут неудобно использовать в пути</tspan></text>
+  <rect x="620" y="486" width="757" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1389" y="511" class="value">3 / 30%</text>
+  <text x="48" y="588" class="label"><tspan x="48" dy="0">сложно воспринимать маршрут без</tspan><tspan x="48" dy="24">визуального контекста</tspan></text>
+  <rect x="620" y="564" width="505" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1137" y="589" class="value">2 / 20%</text>
+  <text x="48" y="666" class="label"><tspan x="48" dy="0">сложно экспортировать или</tspan><tspan x="48" dy="24">импортировать маршрут</tspan></text>
+  <rect x="620" y="642" width="505" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1137" y="667" class="value">2 / 20%</text>
+</svg>

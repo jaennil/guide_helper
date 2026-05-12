@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="768" viewBox="0 0 1800 768">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 34px; font-weight: 700; fill: #18202e; }
+      .label { font-family: Arial, sans-serif; font-size: 21px; fill: #253047; }
+      .value { font-family: Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #18202e; }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="48" y="54" class="title">Наиболее значимые функции системы</text>
+
+  <text x="48" y="120" class="label"><tspan x="48" dy="0">Просмотр без авторизации</tspan></text>
+  <rect x="620" y="96" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="121" class="value">60%</text>
+  <text x="48" y="198" class="label"><tspan x="48" dy="0">Публикация по ссылке</tspan></text>
+  <rect x="620" y="174" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="199" class="value">60%</text>
+  <text x="48" y="276" class="label"><tspan x="48" dy="0">Создание на карте</tspan></text>
+  <rect x="620" y="252" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="277" class="value">60%</text>
+  <text x="48" y="354" class="label"><tspan x="48" dy="0">Фото к точкам</tspan></text>
+  <rect x="620" y="330" width="1010" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1642" y="355" class="value">60%</text>
+  <text x="48" y="432" class="label"><tspan x="48" dy="0">Расстояние и время</tspan></text>
+  <rect x="620" y="408" width="841" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1473" y="433" class="value">50%</text>
+  <text x="48" y="510" class="label"><tspan x="48" dy="0">Офлайн-доступ</tspan></text>
+  <rect x="620" y="486" width="841" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1473" y="511" class="value">50%</text>
+  <text x="48" y="588" class="label"><tspan x="48" dy="0">Поиск и фильтрация</tspan></text>
+  <rect x="620" y="564" width="841" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1473" y="589" class="value">50%</text>
+  <text x="48" y="666" class="label"><tspan x="48" dy="0">Заметки к точкам</tspan></text>
+  <rect x="620" y="642" width="841" height="34" rx="11" fill="#3f7cff"/>
+  <text x="1473" y="667" class="value">50%</text>
+</svg>
