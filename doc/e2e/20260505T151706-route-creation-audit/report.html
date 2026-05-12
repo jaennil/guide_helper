@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>E2E-аудит Guide Helper</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 12mm 16mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      color: #111827;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      line-height: 1.38;
+      margin: 0;
+    }
+    h1, h2, h3 {
+      color: #0f172a;
+      page-break-after: avoid;
+    }
+    h1 {
+      font-size: 22pt;
+      margin: 0 0 12mm;
+      text-align: center;
+    }
+    h2 {
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 16pt;
+      margin: 8mm 0 4mm;
+      padding-bottom: 1.5mm;
+    }
+    h3 {
+      font-size: 13.5pt;
+      margin: 7mm 0 3mm;
+    }
+    p, li {
+      text-align: justify;
+    }
+    a {
+      color: #1d4ed8;
+      text-decoration: none;
+    }
+    code {
+      background: #f1f5f9;
+      border-radius: 3px;
+      font-family: "Courier New", monospace;
+      font-size: 10pt;
+      padding: 0.5mm 1mm;
+    }
+    pre {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3mm;
+      white-space: pre-wrap;
+    }
+    table {
+      border-collapse: collapse;
+      font-size: 9.2pt;
+      margin: 4mm 0 7mm;
+      page-break-inside: auto;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #94a3b8;
+      padding: 1.4mm 1.8mm;
+      vertical-align: top;
+    }
+    th {
+      background: #e2e8f0;
+      font-weight: 700;
+      text-align: left;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+    figure {
+      break-inside: avoid;
+      margin: 5mm 0 9mm;
+      page-break-inside: avoid;
+    }
+    figure img {
+      border: 1px solid #cbd5e1;
+      display: block;
+      max-height: 178mm;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    figcaption {
+      color: #475569;
+      font-size: 10pt;
+      margin-top: 1.5mm;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<h1>E2E-аудит создания маршрута Guide Helper</h1>
+<p>Дата запуска: 05.05.2026, 18:18:15</p>
+<p>Стенд: https://guidehelper.dubrovskih.ru</p>
+<p>Тестовый пользователь: route-create-20260505T151706@guide-helper.local</p>
+<p>Созданный маршрут: 4954c445-25e8-4ea6-ba09-827c78221724 (удалён cleanup-шагом)</p>
+<h2>Вывод</h2>
+<p>Критический сценарий создания маршрута пройден: 18 проверок PASS, 0 FAIL.</p>
+<p>Проверка сделана как практичный pairwise/critical-flow аудит, а не полный математический перебор всех возможных последовательностей. Для риска &quot;пользователь кликает не в том порядке&quot; добавлен safe chaos-прогон: случайные безопасные действия по редактору с проверкой инвариантов после каждого действия.</p>
+<h2>Проверенные комбинации</h2>
+<table>
+<thead><tr><th>Комбинация</th><th>Что проверено</th><th>Результат</th></tr></thead>
+<tbody>
+<tr><td>Auto-route + категории + сезоны</td><td>Категории/сезоны не должны сбрасывать дорожную геометрию в прямые линии</td><td>PASS</td></tr>
+<tr><td>Auto-route + цвет линии</td><td>Цвет меняется без пересоздания и потери polyline</td><td>PASS</td></tr>
+<tr><td>Auto-route -&gt; manual -&gt; auto</td><td>Новый участок можно добавить как прямой, затем вернуться к маршрутизации по дорогам</td><td>PASS</td></tr>
+<tr><td>Точка + заметка + стиль метки</td><td>Текст заметки, цвет и размер метки сохраняются в редакторе</td><td>PASS</td></tr>
+<tr><td>Точка + фото + форма preview + размер preview</td><td>Фото прикрепляется, preview переключается круг/квадрат и меняет размер</td><td>PASS</td></tr>
+<tr><td>Участок + ручное время</td><td>Поле длительности участка принимает значение и не ломает карту</td><td>PASS</td></tr>
+<tr><td>Safe chaos clicks</td><td>Случайные клики по режимам, категориям, сезонам, цветам, точкам и настройкам preview не ломают редактор</td><td>PASS</td></tr>
+<tr><td>Metadata + save</td><td>Название, дата, категории, сезоны, цвет, точки и segment metadata уходят в API</td><td>PASS</td></tr>
+<tr><td>Saved route + tools</td><td>GPX/KML, playback, historical mode, clear/cancel доступны после сохранения</td><td>PASS</td></tr>
+</tbody>
+</table>
+<h2>Результаты проверок</h2>
+<table>
+<thead><tr><th>Область</th><th>Проверка</th><th>Статус</th><th>Детали</th></tr></thead>
+<tbody>
+<tr><td>Auth</td><td>регистрация тестового пользователя</td><td>PASS</td><td>route-create-20260505T151706@guide-helper.local</td></tr>
+<tr><td>Create</td><td>открытие чистой карты создания маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>Create</td><td>добавление трёх точек в режиме по дорогам</td><td>PASS</td><td>2 route path signatures</td></tr>
+<tr><td>Combinations</td><td>выбор категорий и сезонов не сбрасывает auto-route</td><td>PASS</td><td>route geometry stable</td></tr>
+<tr><td>Combinations</td><td>смена цвета линии обновляет существующий маршрут</td><td>PASS</td><td>stroke=#ef4444</td></tr>
+<tr><td>Combinations</td><td>переключение auto -&gt; manual -&gt; auto работает</td><td>PASS</td><td>4 points, mixed segment modes</td></tr>
+<tr><td>Metadata</td><td>название и дата старта заполняются</td><td>PASS</td><td></td></tr>
+<tr><td>Point</td><td>заметка, цвет и размер метки работают</td><td>PASS</td><td></td></tr>
+<tr><td>Point</td><td>прикрепление фото и настройка preview работают</td><td>PASS</td><td></td></tr>
+<tr><td>Segments</td><td>ручное время участка вводится в bubble у линии</td><td>PASS</td><td></td></tr>
+<tr><td>Tools</td><td>dropdown инструментов до сохранения открывается</td><td>PASS</td><td></td></tr>
+<tr><td>Resilience</td><td>50 случайных безопасных действий не ломают редактор</td><td>PASS</td><td>50 actions, types: click, input</td></tr>
+<tr><td>Save</td><td>сохранение маршрута через UI и проверка API payload</td><td>PASS</td><td>4954c445-25e8-4ea6-ba09-827c78221724</td></tr>
+<tr><td>Tools</td><td>после сохранения доступны GPX/KML/playback/historical</td><td>PASS</td><td>export buttons clicked</td></tr>
+<tr><td>Tools</td><td>воспроизведение маршрута открывается и закрывается</td><td>PASS</td><td></td></tr>
+<tr><td>Tools</td><td>исторический режим включается и выключается</td><td>PASS</td><td></td></tr>
+<tr><td>Tools</td><td>chat panel toggle не ломает создание маршрута</td><td>PASS</td><td></td></tr>
+<tr><td>Clear</td><td>очистка маршрута показывает confirm и cancel сохраняет маршрут на карте</td><td>PASS</td><td>cancel keeps route</td></tr>
+</tbody>
+</table>
+<h2>Browser/API Issues</h2>
+<ul>
+<li>chromium-stderr: [992179:992179:0505/181707.356160:ERROR:ui/gl/init/gl_factory.cc:111] Requested GL implementation (gl=none,angle=none) not found in allowed implementations: [(gl=egl-angle,angle=default)].</li>
+<li>chromium-stderr: [992179:992179:0505/181707.357465:ERROR:components/viz/service/main/viz_main_impl.cc:189] Exiting GPU process due to errors during initialization</li>
+<li>chromium-stderr: [992235:992235:0505/181707.543919:ERROR:ui/gl/init/gl_factory.cc:111] Requested GL implementation (gl=none,angle=none) not found in allowed implementations: [(gl=egl-angle,angle=default)].</li>
+<li>chromium-stderr: [992235:992235:0505/181707.545920:ERROR:components/viz/service/main/viz_main_impl.cc:189] Exiting GPU process due to errors during initialization</li>
+<li>chromium-stderr: [992257:992257:0505/181707.642306:ERROR:ui/gl/init/gl_factory.cc:111] Requested GL implementation (gl=none,angle=none) not found in allowed implementations: [(gl=egl-angle,angle=default)].</li>
+<li>chromium-stderr: [992257:992257:0505/181707.658541:ERROR:components/viz/service/main/viz_main_impl.cc:189] Exiting GPU process due to errors during initialization</li>
+<li>chromium-stderr: [992279:992279:0505/181707.717694:ERROR:ui/gl/init/gl_factory.cc:111] Requested GL implementation (gl=none,angle=none) not found in allowed implementations: [(gl=egl-angle,angle=default)].</li>
+<li>chromium-stderr: [992279:992279:0505/181707.719714:ERROR:components/viz/service/main/viz_main_impl.cc:189] Exiting GPU process due to errors during initialization</li>
+<li>chromium-stderr: [992218:992231:0505/181707.939106:ERROR:gpu/ipc/client/command_buffer_proxy_impl.cc:285] ContextResult::kTransientFailure: Failed to send GpuControl.CreateCommandBuffer.</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.756148179198206,37.61242389678956&amp;point=55.753491681072205,37.62079238891602&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+<li>http-429: https://graphhopper.com/api/1/route?point=55.753491681072205,37.62079238891602&amp;point=55.75469920264955,37.628946304321296&amp;vehicle=foot&amp;locale=ru&amp;calc_points=true&amp;points_encoded=false&amp;key=b76f5387-1e40-4d88-bd34-80c4c88fefb9</li>
+</ul>
+<h2>Скриншоты</h2>
+<h3>1. Чистая карта</h3>
+<p>Редактор открыт, route inspector ещё не показан, маршрут не создан.</p>
+<figure><img src="screenshots/01-empty-map.png" alt="Чистая карта"><figcaption>Чистая карта</figcaption></figure>
+<h3>2. Три точки и auto-route</h3>
+<p>Маршрут построен по дорогам, справа открыт инспектор маршрута.</p>
+<figure><img src="screenshots/02-three-points-auto-route.png" alt="Три точки и auto-route"><figcaption>Три точки и auto-route</figcaption></figure>
+<h3>3. Категории и сезоны</h3>
+<p>Выбраны категории/сезоны, дорожная линия не превратилась в прямую.</p>
+<figure><img src="screenshots/03-tags-do-not-reset-route.png" alt="Категории и сезоны"><figcaption>Категории и сезоны</figcaption></figure>
+<h3>4. Цвет линии маршрута</h3>
+<p>Цвет линии изменился без сброса маршрута.</p>
+<figure><img src="screenshots/04-route-line-color.png" alt="Цвет линии маршрута"><figcaption>Цвет линии маршрута</figcaption></figure>
+<h3>5. Смешанный маршрут</h3>
+<p>Добавлен четвёртый участок прямой линией, затем режим возвращён на маршрутизацию по дорогам.</p>
+<figure><img src="screenshots/05-auto-manual-auto.png" alt="Смешанный маршрут"><figcaption>Смешанный маршрут</figcaption></figure>
+<h3>6. Метаданные маршрута</h3>
+<p>Название и дата старта заполнены перед сохранением.</p>
+<figure><img src="screenshots/06-route-metadata.png" alt="Метаданные маршрута"><figcaption>Метаданные маршрута</figcaption></figure>
+<h3>7. Настройка точки</h3>
+<p>В точке заполнена заметка, изменены цвет и размер метки.</p>
+<figure><img src="screenshots/07-point-note-marker-style.png" alt="Настройка точки"><figcaption>Настройка точки</figcaption></figure>
+<h3>8. Фото точки</h3>
+<p>Фото прикреплено, preview переключён на круг и увеличен.</p>
+<figure><img src="screenshots/08-point-photo-preview.png" alt="Фото точки"><figcaption>Фото точки</figcaption></figure>
+<h3>9. Длительность участка</h3>
+<p>В bubble рядом с участком задано ручное время прохождения.</p>
+<figure><img src="screenshots/09-segment-duration.png" alt="Длительность участка"><figcaption>Длительность участка</figcaption></figure>
+<h3>10. Инструменты до сохранения</h3>
+<p>Меню инструментов открыто: импорт фото, воспроизведение, исторический режим, очистка.</p>
+<figure><img src="screenshots/10-tools-before-save.png" alt="Инструменты до сохранения"><figcaption>Инструменты до сохранения</figcaption></figure>
+<h3>11. Safe chaos-клики</h3>
+<p>После 50 случайных безопасных действий маршрут, точки, линия и inspector остались рабочими.</p>
+<figure><img src="screenshots/11-safe-chaos-clicks.png" alt="Safe chaos-клики"><figcaption>Safe chaos-клики</figcaption></figure>
+<h3>12. Сохранённый маршрут</h3>
+<p>Маршрут сохранён, inspector показывает статус маршрута.</p>
+<figure><img src="screenshots/12-saved-route.png" alt="Сохранённый маршрут"><figcaption>Сохранённый маршрут</figcaption></figure>
+<h3>13. Инструменты после сохранения</h3>
+<p>После сохранения доступны экспорт, AI-кнопка, воспроизведение и исторический режим.</p>
+<figure><img src="screenshots/13-tools-after-save.png" alt="Инструменты после сохранения"><figcaption>Инструменты после сохранения</figcaption></figure>
+<h3>14. Воспроизведение маршрута</h3>
+<p>Playback overlay открылся без перекрытия критичных панелей.</p>
+<figure><img src="screenshots/14-playback-opened.png" alt="Воспроизведение маршрута"><figcaption>Воспроизведение маршрута</figcaption></figure>
+<h3>15. Исторический режим</h3>
+<p>Исторический timeline открылся поверх маршрута.</p>
+<figure><img src="screenshots/15-historical-mode.png" alt="Исторический режим"><figcaption>Исторический режим</figcaption></figure>
+<h3>16. AI-панель</h3>
+<p>Панель ассистента открывается отдельным режимом и не вызывает runtime error.</p>
+<figure><img src="screenshots/16-chat-panel-toggle.png" alt="AI-панель"><figcaption>AI-панель</figcaption></figure>
+<h3>17. Подтверждение очистки</h3>
+<p>Кнопка очистки открывает подтверждение, чтобы случайно не потерять маршрут.</p>
+<figure><img src="screenshots/17-clear-confirm.png" alt="Подтверждение очистки"><figcaption>Подтверждение очистки</figcaption></figure>
+</body>
+</html>

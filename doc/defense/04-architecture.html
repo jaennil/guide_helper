@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide Helper: архитектура</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Назад к пакету защиты</a>
+    <h1>Архитектура простым языком</h1>
+    <p class="lead">Компоненты системы, потоки данных и короткие ответы “почему так”.</p>
+  </header>
+
+  <main class="grid">
+    <section class="card wide">
+      <span class="kicker">Коротко</span>
+      <h2>Почему микросервисы</h2>
+      <p class="quote">Система разделена на сервисы, потому что разные части имеют разный характер нагрузки: быстрые операции профиля и авторизации, тяжёлая обработка фотографий, работа с маршрутами, кеширование тайлов, AI-запросы и внешние интеграции.</p>
+    </section>
+
+    <section class="card">
+      <h2>Клиенты</h2>
+      <ul>
+        <li>Web PWA / Desktop UI — основной интерфейс.</li>
+        <li>Android companion app — запись GPS-маршрута в поле.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Backend-сервисы</h2>
+      <ul>
+        <li>Auth Service — вход, JWT, роли.</li>
+        <li>Routes Service — маршруты, каталог, social, AI.</li>
+        <li>Photo Worker — обработка фото.</li>
+        <li>Tiles Service — прокси тайлов.</li>
+        <li>Cache Service — кеш тайлов.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Хранилища</h2>
+      <ul>
+        <li>PostgreSQL — пользователи, маршруты, комментарии, рейтинги.</li>
+        <li>MinIO — оригиналы фото и миниатюры.</li>
+        <li>NATS JetStream — очередь задач обработки фото.</li>
+        <li>Redis — кеш картографических тайлов.</li>
+      </ul>
+    </section>
+
+    <section class="card wide">
+      <h2>Поток обработки фотографии</h2>
+      <div class="steps">
+        <div class="step"><div><strong>Пользователь прикрепляет фото</strong><p>Frontend отправляет файл в Routes Service.</p></div></div>
+        <div class="step"><div><strong>Создаётся задача</strong><p>Routes Service сохраняет данные и публикует задачу в NATS.</p></div></div>
+        <div class="step"><div><strong>Photo Worker обрабатывает</strong><p>Сжатие, миниатюра, сохранение в MinIO.</p></div></div>
+        <div class="step"><div><strong>Клиент обновляется</strong><p>Статус фото меняется, миниатюра появляется на карте.</p></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Зачем AI</h2>
+      <p>AI не заменяет ручной сценарий. Он помогает текстом построить маршрут, найти место или сгенерировать описание. Если AI недоступен, основной функционал остаётся рабочим.</p>
+    </section>
+
+    <section class="card">
+      <h2>Web vs Mobile</h2>
+      <p>Web основной, потому что маршрут удобнее оформлять на большом экране. Mobile — дополнение для записи GPS-трека во время реального прохождения.</p>
+    </section>
+
+    <section class="card full">
+      <h2>Диаграммы</h2>
+      <p>Все C4, ER и sequence-диаграммы собраны в отдельном просмотрщике.</p>
+      <a class="chip" href="../diagrams/index.html">Открыть диаграммы</a>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Guide Helper"
+     xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>E2E создание маршрута 20260505T151706</name>
+  </metadata>
+  <wpt lat="55.756148179198206" lon="37.61242389678956">
+    <name>Point 1</name>
+    <desc>Тестовая заметка: история места и комментарий к фотографии.</desc>
+  </wpt>
+  <wpt lat="55.753491681072205" lon="37.62079238891602">
+    <name>Point 2</name>
+  </wpt>
+  <wpt lat="55.75469920264955" lon="37.628946304321296">
+    <name>Point 3</name>
+  </wpt>
+  <wpt lat="55.75228412211225" lon="37.634954452514656">
+    <name>Point 4</name>
+  </wpt>
+  <trk>
+    <name>E2E создание маршрута 20260505T151706</name>
+    <trkseg>
+      <trkpt lat="55.756148179198206" lon="37.61242389678956" />
+      <trkpt lat="55.753491681072205" lon="37.62079238891602" />
+      <trkpt lat="55.75469920264955" lon="37.628946304321296" />
+      <trkpt lat="55.75228412211225" lon="37.634954452514656" />
+    </trkseg>
+  </trk>
+</gpx>

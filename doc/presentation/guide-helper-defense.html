@@ -52,7 +52,7 @@
           radial-gradient(circle at bottom left, rgba(121, 200, 145, 0.12), transparent 28%),
           linear-gradient(160deg, #0c1222 0%, #10182d 55%, #12131d 100%);
         display: grid;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
         gap: 18px;
       }
 
@@ -102,6 +102,7 @@
         display: grid;
         gap: 24px;
         align-content: start;
+        min-height: 0;
       }
 
       .two-col {
@@ -260,6 +261,112 @@
         object-fit: cover;
       }
 
+      .hero-frame {
+        position: relative;
+        min-height: 0;
+        height: 100%;
+        background: rgba(248, 250, 255, 0.96);
+      }
+
+      .hero-frame img {
+        object-fit: contain;
+        padding: 18px;
+      }
+
+      .hero-frame.cover img {
+        object-fit: cover;
+        padding: 0;
+      }
+
+      .visual-slide .slide-content {
+        grid-template-rows: minmax(0, 1fr) auto;
+        align-content: stretch;
+      }
+
+      .visual-slide .hero-frame {
+        min-height: 510px;
+      }
+
+      .diagram-slide .slide-content {
+        justify-items: center;
+      }
+
+      .diagram-slide .hero-frame {
+        width: min(100%, 1220px);
+      }
+
+      .single-visual-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.34fr) minmax(320px, 0.66fr);
+        gap: 24px;
+        min-height: 0;
+      }
+
+      .caption-panel {
+        align-self: stretch;
+        display: grid;
+        align-content: center;
+        gap: 16px;
+      }
+
+      .caption-panel h3 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      .caption-panel p {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.36;
+        color: #edf2ff;
+      }
+
+      .big-statement {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        gap: 22px;
+        min-height: 0;
+      }
+
+      .big-statement .lead {
+        font-size: 34px;
+        line-height: 1.22;
+        max-width: 1120px;
+      }
+
+      .pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .pill {
+        padding: 11px 16px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: #eef4ff;
+        font-size: 17px;
+      }
+
+      .large-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .large-metrics .metric {
+        min-height: 142px;
+        display: grid;
+        align-content: center;
+      }
+
+      .large-metrics .metric-value {
+        font-size: 42px;
+      }
+
       .image-grid {
         display: grid;
         gap: 16px;
@@ -407,7 +514,7 @@
 
       .title-slide .slide-content {
         align-content: end;
-        max-width: 980px;
+        max-width: 1060px;
       }
 
       .title-meta {
@@ -471,7 +578,7 @@
 
         html,
         body {
-          background: #ffffff;
+          background: #08101d;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
@@ -480,8 +587,41 @@
           display: grid !important;
           width: 13.333in;
           height: 7.5in;
+          padding: 36px 48px 42px;
+          gap: 12px;
           break-after: page;
           page-break-after: always;
+          background-color: #0c1222 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .slide-title {
+          font-size: 30px;
+          line-height: 1.08;
+        }
+
+        .slide-content {
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .slide-content.two-col,
+        .slide-content.two-col-balanced {
+          align-content: stretch;
+        }
+
+        .image-frame {
+          min-height: 0 !important;
+          height: 100%;
+        }
+
+        .single-visual-layout {
+          min-height: 0;
+        }
+
+        .visual-slide .hero-frame {
+          min-height: 0;
         }
 
         body.screen-mode .slide {
@@ -501,18 +641,18 @@
         <div class="slide-content">
           <div class="slide-kicker">Выпускная квалификационная работа</div>
           <h1 class="slide-title">
-            Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями
+            Разработка корпоративной информационной системы картографии и маршрутов
           </h1>
           <div class="divider"></div>
           <p class="lead">
-            Guide Helper объединяет карту, маршрут, фотографии, публикацию, каталог и
-            интеллектуальные сервисы в одной платформе.
+            Система для сохранения, изменения и публикации маршрутов с геопривязанными фотографиями.
           </p>
           <div class="title-meta">
-            <div class="title-chip">Дубровских Н. Е.</div>
+            <div class="title-chip">Студент: Дубровских Н. Е.</div>
             <div class="title-chip">221-361</div>
+            <div class="title-chip">Руководитель: Васильев Д. Б.</div>
             <div class="title-chip">09.03.03 Прикладная информатика</div>
-            <div class="title-chip">май 2026</div>
+            <div class="title-chip">18 мая 2026</div>
           </div>
         </div>
         <div class="keys-hint">← → для навигации</div>
@@ -521,44 +661,43 @@
       <section class="slide" data-slide="2">
         <header>
           <div class="slide-kicker">Актуальность</div>
-          <h2 class="slide-title">Проблема не в отсутствии карт, а в разрыве рабочего контура</h2>
+          <h2 class="slide-title">Проблема не в картах, а в разорванном процессе подготовки маршрута</h2>
         </header>
-        <div class="slide-content two-col">
-          <div class="panel stack">
+        <div class="slide-content">
+          <div class="panel big-statement">
             <p class="lead">
-              Гид или инструктор собирает один маршрут сразу в нескольких инструментах:
-              карта, трек, фотографии, мессенджер, документы для участников.
+              Автор маршрута вручную собирает карту, фотографии, описание и ссылку в разных инструментах.
+              В результате маршрут трудно показать клиенту, переиспользовать и поддерживать в актуальном виде.
             </p>
-            <ul>
-              <li>фотографии не привязаны к конкретным точкам маршрута;</li>
-              <li>контекст маршрута теряется при передаче ссылки или GPX-файла;</li>
-              <li>подготовка одного маршрута занимает часы ручной сборки и пояснений;</li>
-              <li>существующие сервисы не дают единый контур: создание → обогащение → публикация → повторное использование.</li>
-            </ul>
+            <div class="pill-list">
+              <span class="pill">карта отдельно</span>
+              <span class="pill">фотографии отдельно</span>
+              <span class="pill">описание отдельно</span>
+              <span class="pill">публикация вручную</span>
+              <span class="pill">нет единого результата</span>
+            </div>
           </div>
-          <div class="stack">
-            <div class="card">
-              <h3>До Guide Helper</h3>
-              <p>Карта, папка с фото, GPX, мессенджер и PDF живут отдельно и дублируют друг друга.</p>
+          <div class="large-metrics">
+            <div class="metric">
+              <span class="metric-value">3+</span>
+              <span class="metric-label">инструмента в типичном процессе подготовки</span>
             </div>
-            <div class="card">
-              <h3>Потребность целевой аудитории</h3>
-              <p>Не просто показать трек, а передать «живой» маршрут: фото точек, описание, сложность, контекст, ссылку и возможность вернуться к маршруту позже.</p>
+            <div class="metric">
+              <span class="metric-value">3</span>
+              <span class="metric-label">ключевые роли: автор, турист, администратор</span>
             </div>
-            <div class="metric-grid">
-              <div class="metric">
-                <span class="metric-value">3+</span>
-                <span class="metric-label">несвязанных инструмента в типичном процессе подготовки</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">3</span>
-                <span class="metric-label">ключевые роли в системе: гид, турист, администратор</span>
-              </div>
+            <div class="metric">
+              <span class="metric-value">1</span>
+              <span class="metric-label">единый опубликованный маршрут</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">Web</span>
+              <span class="metric-label">основной клиент для подготовки маршрута</span>
             </div>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">2</span>
         </footer>
       </section>
@@ -566,151 +705,75 @@
       <section class="slide" data-slide="3">
         <header>
           <div class="slide-kicker">Цель и задачи</div>
-          <h2 class="slide-title">Цель работы и задачи, которые должны быть закрыты реализацией</h2>
+          <h2 class="slide-title">Цель: разработать систему полного цикла работы с фотомаршрутом</h2>
         </header>
         <div class="slide-content">
-          <div class="panel">
+          <div class="panel big-statement">
             <p class="lead">
-              <strong>Цель:</strong> разработать информационную систему Guide Helper для создания и публикации туристических маршрутов с геопривязанными фотографиями.
+              Guide Helper должен позволить автору создать маршрут, привязать к нему фотографии и заметки,
+              опубликовать ссылку, а туристу — найти и оценить готовый маршрут.
             </p>
           </div>
-          <div class="task-grid">
-            <div class="card">
-              <h3>Аналитический блок</h3>
-              <ol>
-                <li>изучить предметную область цифрового туризма;</li>
-                <li>провести сравнительный анализ существующих аналогов;</li>
-                <li>сформулировать функциональные и нефункциональные требования.</li>
-              </ol>
+          <div class="large-metrics">
+            <div class="metric">
+              <span class="metric-value">10</span>
+              <span class="metric-label">задач ВКР</span>
             </div>
-            <div class="card">
-              <h3>Проектирование и реализация</h3>
-              <ol start="4">
-                <li>спроектировать архитектуру и схему базы данных;</li>
-                <li>реализовать серверную часть;</li>
-                <li>разработать клиентские интерфейсы;</li>
-                <li>реализовать обработку геопривязанных фотографий;</li>
-                <li>интегрировать интеллектуальные и интерактивные функции.</li>
-              </ol>
+            <div class="metric">
+              <span class="metric-value">37</span>
+              <span class="metric-label">функциональных требований</span>
             </div>
-            <div class="card">
-              <h3>Внедрение и сопровождение</h3>
-              <ol start="9">
-                <li>настроить инфраструктуру развёртывания и сопровождения;</li>
-                <li>провести тестирование, анализ производительности и экономическую оценку.</li>
-              </ol>
+            <div class="metric">
+              <span class="metric-value">3</span>
+              <span class="metric-label">главы основной части</span>
             </div>
-            <div class="metric-grid">
-              <div class="metric">
-                <span class="metric-value">10</span>
-                <span class="metric-label">задач ВКР</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">3</span>
-                <span class="metric-label">главы основной части</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">90</span>
-                <span class="metric-label">страниц итогового PDF</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">51</span>
-                <span class="metric-label">источник в библиографии</span>
-              </div>
+            <div class="metric">
+              <span class="metric-value">51</span>
+              <span class="metric-label">источник в библиографии</span>
             </div>
+          </div>
+          <div class="pill-list">
+            <span class="pill">анализ</span>
+            <span class="pill">требования</span>
+            <span class="pill">архитектура</span>
+            <span class="pill">реализация</span>
+            <span class="pill">тестирование</span>
+            <span class="pill">развёртывание</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">3</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="4">
+      <section class="slide visual-slide" data-slide="4">
         <header>
           <div class="slide-kicker">Анализ</div>
-          <h2 class="slide-title">Предметная область, роли пользователей и результаты сравнения аналогов</h2>
+          <h2 class="slide-title">Сравнение аналогов показало нишу для единого инструмента фотомаршрутов</h2>
         </header>
-        <div class="slide-content two-col">
-          <div class="stack">
-            <div class="role-grid">
-              <div class="card">
-                <h3>Гид / инструктор</h3>
-                <p>Создаёт маршрут, добавляет точки, прикрепляет фотографии и публикует ссылку для участников.</p>
-              </div>
-              <div class="card">
-                <h3>Турист</h3>
-                <p>Находит маршрут, просматривает фото и описание точек, оставляет рейтинг и комментарии.</p>
-              </div>
-              <div class="card">
-                <h3>Администратор</h3>
-                <p>Управляет пользователями, категориями, контентом и общей статистикой платформы.</p>
-              </div>
+        <div class="slide-content">
+          <div class="single-visual-layout">
+            <div class="image-frame hero-frame cover">
+              <img src="../latex/images/mockups/explore.png" alt="Каталог маршрутов Guide Helper" />
             </div>
-            <div class="panel">
-              <p class="text">
-                По итогам анализа аналогов установлено, что существующие решения закрывают отдельные сценарии
-                маршрутизации или спортивного трекинга, но не дают единую платформу для фотомаршрутов с публикацией,
-                визуальным контекстом и AI-помощью.
-              </p>
+            <div class="panel caption-panel">
+              <h3>Вывод анализа</h3>
+              <p>Аналоги закрывают отдельные сценарии: трекинг, карту, каталог или публикацию.</p>
+              <p>Guide Helper объединяет маршрут, фотографии, контекст и публикацию в одном контуре.</p>
             </div>
           </div>
-          <div class="panel">
-            <table class="comparison-table">
-              <thead>
-                <tr>
-                  <th>Сервис</th>
-                  <th>Геопривязанные фото</th>
-                  <th>Публичный шеринг</th>
-                  <th>Единый контур</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Wikiloc</td>
-                  <td class="warn">частично</td>
-                  <td class="ok">да</td>
-                  <td class="no">нет</td>
-                </tr>
-                <tr>
-                  <td>Google My Maps</td>
-                  <td class="warn">частично</td>
-                  <td class="ok">да</td>
-                  <td class="no">нет</td>
-                </tr>
-                <tr>
-                  <td>Strava</td>
-                  <td class="no">нет</td>
-                  <td class="warn">ограниченно</td>
-                  <td class="no">нет</td>
-                </tr>
-                <tr>
-                  <td>Komoot</td>
-                  <td class="warn">частично</td>
-                  <td class="ok">да</td>
-                  <td class="no">нет</td>
-                </tr>
-                <tr>
-                  <td>AllTrails</td>
-                  <td class="warn">частично</td>
-                  <td class="ok">да</td>
-                  <td class="no">нет</td>
-                </tr>
-                <tr>
-                  <td><strong>Guide Helper</strong></td>
-                  <td class="ok">да</td>
-                  <td class="ok">да</td>
-                  <td class="ok">да</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="mini" style="margin-top: 16px;">
-              В ВКР сравнение выполнено по 18 критериям; на слайде показан только итог по самым показательным блокам.
-            </p>
+          <div class="pill-list">
+            <span class="pill">Wikiloc</span>
+            <span class="pill">Google My Maps</span>
+            <span class="pill">Strava</span>
+            <span class="pill">Komoot</span>
+            <span class="pill">AllTrails</span>
+            <span class="pill">18 критериев сравнения</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">4</span>
         </footer>
       </section>
@@ -718,10 +781,10 @@
       <section class="slide" data-slide="5">
         <header>
           <div class="slide-kicker">Требования</div>
-          <h2 class="slide-title">Система формализована через требования и роли, а не только через набор экранов</h2>
+          <h2 class="slide-title">Требования связывают роли, сценарии и проверяемый результат</h2>
         </header>
         <div class="slide-content">
-          <div class="metric-grid">
+          <div class="large-metrics">
             <div class="metric">
               <span class="metric-value">37</span>
               <span class="metric-label">функциональных требований</span>
@@ -739,366 +802,234 @@
               <span class="metric-label">подтверждённая реализация функциональных требований</span>
             </div>
           </div>
-          <div class="two-col-balanced slide-content">
-            <div class="panel">
-              <h3>Ключевые группы FR</h3>
-              <div class="badge-row">
-                <span class="badge">аутентификация и роли</span>
-                <span class="badge">создание и публикация маршрутов</span>
-                <span class="badge">геопривязанные фотографии</span>
-                <span class="badge">социальные функции</span>
-                <span class="badge">каталог и поиск</span>
-                <span class="badge">администрирование</span>
-                <span class="badge">аналитика</span>
-                <span class="badge">AI и расширенные функции</span>
-              </div>
-            </div>
-            <div class="panel">
-              <h3>Ключевые NFR</h3>
-              <ul>
-                <li>время отклика API по 95-му перцентилю не выше 500 мс;</li>
-                <li>обработка фотографии не дольше 10 секунд;</li>
-                <li>двуязычный интерфейс;</li>
-                <li>кроссплатформенность: PWA и desktop-оболочка;</li>
-                <li>работа в контейнерной инфраструктуре и развёртывание в Kubernetes.</li>
-              </ul>
+          <div class="panel">
+            <div class="pill-list">
+              <span class="pill">доступ и роли</span>
+              <span class="pill">маршруты</span>
+              <span class="pill">геофотографии</span>
+              <span class="pill">публикация</span>
+              <span class="pill">каталог</span>
+              <span class="pill">социальные функции</span>
+              <span class="pill">админка</span>
+              <span class="pill">AI</span>
+              <span class="pill">Kubernetes</span>
+              <span class="pill">PWA</span>
             </div>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">5</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="6">
+      <section class="slide visual-slide" data-slide="6">
         <header>
           <div class="slide-kicker">Архитектура</div>
-          <h2 class="slide-title">Guide Helper спроектирован как микросервисная система с внешними геосервисами и AI-провайдерами</h2>
+          <h2 class="slide-title">Контекст системы: пользователи, Guide Helper и внешние сервисы</h2>
         </header>
-        <div class="slide-content two-col">
-          <div class="image-frame" style="min-height: 540px;">
-            <img src="../latex/images/c4-context.png" alt="Диаграмма контекста Guide Helper" />
+        <div class="slide-content">
+          <div class="image-frame hero-frame">
+            <img src="../diagrams/images/c4-context.svg" alt="Диаграмма контекста Guide Helper" />
           </div>
-          <div class="stack">
-            <div class="panel">
-              <h3>Что показывает диаграмма контекста</h3>
-              <ul>
-                <li>в центре находится единая система Guide Helper;</li>
-                <li>пользователи взаимодействуют через клиентское приложение;</li>
-                <li>внешние поставщики закрывают карты, геокодинг, маршрутизацию, погоду и LLM API;</li>
-                <li>маршруты, фото и AI не смешиваются в монолите.</li>
-              </ul>
-            </div>
-            <div class="metric-grid">
-              <div class="metric">
-                <span class="metric-value">5</span>
-                <span class="metric-label">независимо развёртываемых сервисов</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">K8s</span>
-                <span class="metric-label">целевая среда развёртывания</span>
-              </div>
-            </div>
+          <div class="pill-list">
+            <span class="pill">автор маршрута</span>
+            <span class="pill">турист</span>
+            <span class="pill">администратор</span>
+            <span class="pill">геокодинг</span>
+            <span class="pill">тайлы</span>
+            <span class="pill">AI-провайдеры</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">6</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="7">
+      <section class="slide visual-slide diagram-slide" data-slide="7">
         <header>
           <div class="slide-kicker">Проектирование</div>
-          <h2 class="slide-title">Контейнерная схема и модель данных поддерживают полный жизненный цикл маршрута</h2>
+          <h2 class="slide-title">Контейнерная схема разделяет web, API, фотообработку, тайлы и данные</h2>
         </header>
-        <div class="slide-content two-col-balanced">
-          <div class="image-frame" style="min-height: 500px;">
-            <img src="../latex/images/c4-container.png" alt="Контейнерная схема системы" />
+        <div class="slide-content">
+          <div class="image-frame hero-frame">
+            <img src="../diagrams/images/c4-container.svg" alt="Контейнерная схема системы" />
           </div>
-          <div class="stack">
-            <div class="image-frame" style="min-height: 290px;">
-              <img src="../latex/images/er-diagram.png" alt="ER-диаграмма базы данных" />
-            </div>
-            <div class="panel">
-              <h3>Ключевые сущности</h3>
-              <ul>
-                <li>маршрут и массив его точек;</li>
-                <li>категории, комментарии, лайки, рейтинги, закладки;</li>
-                <li>история чатов и уведомлений;</li>
-                <li>JSONB для гибкого хранения точки маршрута и фото-данных.</li>
-              </ul>
-            </div>
+          <div class="pill-list">
+            <span class="pill">auth-service</span>
+            <span class="pill">routes-service</span>
+            <span class="pill">photo-worker</span>
+            <span class="pill">tiles/cache</span>
+            <span class="pill">PostgreSQL</span>
+            <span class="pill">MinIO</span>
+            <span class="pill">NATS</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">7</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="8">
+      <section class="slide visual-slide diagram-slide" data-slide="8">
         <header>
-          <div class="slide-kicker">Backend</div>
-          <h2 class="slide-title">Серверная часть реализует аутентификацию, маршруты и асинхронную обработку фотографий</h2>
+          <div class="slide-kicker">Данные</div>
+          <h2 class="slide-title">Модель данных отражает жизненный цикл маршрута и пользовательские действия</h2>
         </header>
-        <div class="slide-content two-col">
-          <div class="stack">
-            <div class="panel">
-              <h3>Основные backend-компоненты</h3>
-              <ul>
-                <li><strong>auth-service:</strong> JWT access/refresh, роли, middleware авторизации;</li>
-                <li><strong>routes-service:</strong> CRUD маршрутов, публикация, каталог, социальные функции, аналитика;</li>
-                <li><strong>photo-worker:</strong> обработка JPEG/EXIF, генерация миниатюр, публикация событий;</li>
-                <li><strong>sqlx + PostgreSQL:</strong> типобезопасный доступ к данным;</li>
-                <li><strong>NATS JetStream + MinIO:</strong> очередь задач и объектное хранилище.</li>
-              </ul>
-            </div>
-            <div class="metric-grid">
-              <div class="metric">
-                <span class="metric-value">Rust</span>
-                <span class="metric-label">основной язык backend-сервисов</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value">JWT</span>
-                <span class="metric-label">модель аутентификации и ролей</span>
-              </div>
-            </div>
+        <div class="slide-content">
+          <div class="image-frame hero-frame">
+            <img src="../diagrams/images/er-diagram.svg" alt="ER-диаграмма базы данных" />
           </div>
-          <div class="image-frame" style="min-height: 540px;">
-            <img src="../latex/images/sequence-photo.png" alt="Диаграмма последовательности обработки фотографий" />
+          <div class="pill-list">
+            <span class="pill">routes</span>
+            <span class="pill">route_categories</span>
+            <span class="pill">comments</span>
+            <span class="pill">ratings</span>
+            <span class="pill">bookmarks</span>
+            <span class="pill">notifications</span>
+            <span class="pill">chat_messages</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">8</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="9">
+      <section class="slide visual-slide diagram-slide" data-slide="9">
         <header>
-          <div class="slide-kicker">Frontend</div>
-          <h2 class="slide-title">Клиентские интерфейсы закрывают создание, публикацию, каталог и повторное использование маршрута</h2>
+          <div class="slide-kicker">Фото</div>
+          <h2 class="slide-title">Фотографии обрабатываются асинхронно: загрузка не блокирует работу пользователя</h2>
         </header>
         <div class="slide-content">
-          <div class="image-grid three">
-            <div class="image-frame" style="position: relative; min-height: 420px;">
-              <img src="../latex/images/mockups/map-editor.png" alt="Редактор маршрутов" />
-              <div class="image-caption">Редактор маршрута</div>
-            </div>
-            <div class="image-frame" style="position: relative; min-height: 420px;">
-              <img src="../latex/images/mockups/shared-route.png" alt="Публичный просмотр маршрута" />
-              <div class="image-caption">Публичный маршрут</div>
-            </div>
-            <div class="image-frame" style="position: relative; min-height: 420px;">
-              <img src="../latex/images/mockups/profile.png" alt="Профиль пользователя" />
-              <div class="image-caption">Профиль автора</div>
-            </div>
+          <div class="image-frame hero-frame">
+            <img src="../diagrams/images/sequence-photo.svg" alt="Диаграмма последовательности обработки фотографий" />
           </div>
-          <div class="panel">
-            <ul>
-              <li>React PWA с интерактивной картой Leaflet, профилем высот и погодным блоком;</li>
-              <li>публичный просмотр маршрута по ссылке без обязательной глубокой онбординговой цепочки;</li>
-              <li>профиль пользователя с управлением версиями маршрута, экспортом и шарингом;</li>
-              <li>desktop-оболочка на Tauri поверх той же клиентской логики.</li>
-            </ul>
+          <div class="pill-list">
+            <span class="pill">upload</span>
+            <span class="pill">NATS task</span>
+            <span class="pill">photo-worker</span>
+            <span class="pill">EXIF/GPS</span>
+            <span class="pill">thumbnail</span>
+            <span class="pill">MinIO</span>
+            <span class="pill">status update</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">9</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="10">
+      <section class="slide visual-slide" data-slide="10">
         <header>
-          <div class="slide-kicker">AI и расширенные функции</div>
-          <h2 class="slide-title">Система не ограничивается треком: она добавляет контекст, автоматизацию и интерактивность</h2>
+          <div class="slide-kicker">Web-клиент</div>
+          <h2 class="slide-title">Основной сценарий автора: собрать маршрут на большом экране</h2>
         </header>
         <div class="slide-content">
-          <div class="tool-grid">
-            <div class="card">
-              <h3>AI-ассистент</h3>
-              <p>Диалоговый интерфейс с tool use для геокодинга, поиска маршрутов, получения деталей маршрута и прогноза погоды.</p>
-            </div>
-            <div class="card">
-              <h3>AI-описание маршрута</h3>
-              <p>Генерация краткого описания маршрута на основе привязанных фотографий и собранного контекста.</p>
-            </div>
-            <div class="card">
-              <h3>Интерактивный шеринг</h3>
-              <p>Публичная ссылка, QR-код, встраиваемый iframe-виджет и повторное открытие маршрута без потери контекста.</p>
-            </div>
-            <div class="card">
-              <h3>Контекст прохождения</h3>
-              <p>Погода, сезонность, исторический таймлайн и аналитические метрики маршрута внутри интерфейса.</p>
-            </div>
+          <div class="image-frame hero-frame cover">
+            <img src="../latex/images/mockups/map-editor.png" alt="Редактор маршрутов" />
           </div>
           <div class="badge-row">
-            <span class="badge">tool calling</span>
-            <span class="badge">multi-provider AI</span>
-            <span class="badge">weather context</span>
-            <span class="badge">historical layer</span>
-            <span class="badge">QR / embed</span>
-            <span class="badge">season filters</span>
+            <span class="badge">точки маршрута</span>
+            <span class="badge">фото и заметки</span>
+            <span class="badge">цвет линии</span>
+            <span class="badge">превью меток</span>
+            <span class="badge">расстояние участка</span>
+            <span class="badge">погода и высоты</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">10</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="11">
+      <section class="slide visual-slide" data-slide="11">
         <header>
-          <div class="slide-kicker">Инфраструктура</div>
-          <h2 class="slide-title">Разработка доведена до реального стенда: локальная среда, CI/CD и Kubernetes</h2>
+          <div class="slide-kicker">Публикация</div>
+          <h2 class="slide-title">Турист получает готовый маршрут как интерактивную страницу</h2>
         </header>
         <div class="slide-content">
-          <div class="timeline">
-            <div class="timeline-step">
-              <strong>Локальная среда</strong>
-              <span>Docker Compose поднимает PostgreSQL, NATS, MinIO, Redis, backend-сервисы и frontend.</span>
-            </div>
-            <div class="timeline-step">
-              <strong>CI</strong>
-              <span>GitHub Actions запускает тесты и сборку после коммитов в основную ветку.</span>
-            </div>
-            <div class="timeline-step">
-              <strong>Registry</strong>
-              <span>Docker-образы публикуются в GitHub Container Registry с тегами коммитов.</span>
-            </div>
-            <div class="timeline-step">
-              <strong>CD</strong>
-              <span>Актуальные образы раскатываются через Kubernetes-манифесты и Kustomize.</span>
-            </div>
-            <div class="timeline-step">
-              <strong>Эксплуатация</strong>
-              <span>Система доступна как демонстрационный стенд и может использоваться для демонстрации полного цикла.</span>
-            </div>
+          <div class="image-frame hero-frame cover">
+            <img src="../latex/images/mockups/shared-route.png" alt="Публичный просмотр маршрута" />
           </div>
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-value">Docker</span>
-              <span class="metric-label">локальная воспроизводимая среда</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">GHCR</span>
-              <span class="metric-label">реестр контейнерных образов</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">K8s</span>
-              <span class="metric-label">production-like развёртывание</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">CI/CD</span>
-              <span class="metric-label">полный контур сборки и доставки</span>
-            </div>
+          <div class="pill-list">
+            <span class="pill">публичная ссылка</span>
+            <span class="pill">QR-код</span>
+            <span class="pill">iframe</span>
+            <span class="pill">комментарии</span>
+            <span class="pill">оценки</span>
+            <span class="pill">закладки</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">11</span>
         </footer>
       </section>
 
-      <section class="slide" data-slide="12">
+      <section class="slide visual-slide" data-slide="12">
         <header>
-          <div class="slide-kicker">Тестирование</div>
-          <h2 class="slide-title">Качество проверяется не только на глаз: есть тесты, критические пути и матрицы трассируемости</h2>
+          <div class="slide-kicker">Расширенные функции</div>
+          <h2 class="slide-title">AI-ассистент и исторический слой добавляют маршруту контекст</h2>
         </header>
         <div class="slide-content">
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-value">115</span>
-              <span class="metric-label">модульных тестов</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">3</span>
-              <span class="metric-label">сценария критического пути: гид, турист, администратор</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">37 / 37</span>
-              <span class="metric-label">подтверждённых функциональных требований</span>
-            </div>
-            <div class="metric">
-              <span class="metric-value">2</span>
-              <span class="metric-label">матрицы трассируемости в главе 3</span>
-            </div>
+          <div class="image-frame hero-frame cover">
+            <img src="../e2e/20260505T151706-route-creation-audit/screenshots/15-historical-mode.png" alt="Исторический таймлайн" />
           </div>
-          <div class="two-col-balanced slide-content">
-            <div class="panel">
-              <h3>Что проверялось</h3>
-              <ul>
-                <li>доменные модели и бизнес-логика;</li>
-                <li>JWT, роли и middleware авторизации;</li>
-                <li>обработка фотографий и WebSocket-уведомления;</li>
-                <li>каталог, социальные функции, AI-чат и rate limiting.</li>
-              </ul>
-            </div>
-            <div class="panel">
-              <h3>Как зафиксирован результат</h3>
-              <ul>
-                <li>программа и методика испытаний в приложении Б;</li>
-                <li>таблицы критического пути для трёх ролей;</li>
-                <li>матрица «задача → раздел → результат»;</li>
-                <li>матрица «требование → реализация → проверка → доказательство».</li>
-              </ul>
-            </div>
+          <div class="pill-list">
+            <span class="pill">поиск мест</span>
+            <span class="pill">построение маршрута</span>
+            <span class="pill">описания</span>
+            <span class="pill">погода</span>
+            <span class="pill">исторический таймлайн</span>
+            <span class="pill">сравнение карт</span>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">12</span>
         </footer>
       </section>
 
       <section class="slide" data-slide="13">
         <header>
-          <div class="slide-kicker">Результаты</div>
-          <h2 class="slide-title">Производительность и экономическая оценка подтверждают практическую состоятельность решения</h2>
+          <div class="slide-kicker">Тестирование</div>
+          <h2 class="slide-title">Результат проверен модульными тестами, E2E-сценариями и трассируемостью</h2>
         </header>
         <div class="slide-content">
-          <div class="metric-grid">
+          <div class="large-metrics">
             <div class="metric">
-              <span class="metric-value">&lt; 30 мс</span>
-              <span class="metric-label">медиана чтения ключевых API-эндпоинтов</span>
+              <span class="metric-value">115</span>
+              <span class="metric-label">модульных тестов</span>
             </div>
             <div class="metric">
-              <span class="metric-value">45–80 мс</span>
-              <span class="metric-label">среднее время записи маршрута</span>
+              <span class="metric-value">37 / 37</span>
+              <span class="metric-label">функциональных требований закрыто</span>
             </div>
             <div class="metric">
-              <span class="metric-value">2–4 с</span>
-              <span class="metric-label">полный цикл обработки фотографии</span>
+              <span class="metric-value">3</span>
+              <span class="metric-label">критических пути: автор, турист, админ</span>
             </div>
             <div class="metric">
-              <span class="metric-value">≤ 500 мс</span>
-              <span class="metric-label">целевой порог по 95-му перцентилю выполнен</span>
+              <span class="metric-value">E2E</span>
+              <span class="metric-label">отчёты со скриншотами по интерфейсам</span>
             </div>
           </div>
-          <div class="two-col-balanced slide-content">
-            <div class="panel">
-              <h3>Трудоёмкость и себестоимость</h3>
-              <ul>
-                <li><strong>570</strong> человеко-часов суммарной трудоёмкости;</li>
-                <li><strong>1 897 508 руб.</strong> расчётная себестоимость разработки;</li>
-                <li><strong>79 500 руб./год</strong> эксплуатационные расходы на инфраструктуру.</li>
-              </ul>
-            </div>
-            <div class="panel">
-              <h3>Практический эффект</h3>
-              <ul>
-                <li>подготовка маршрута сокращается примерно с 3 часов до 30 минут;</li>
-                <li>ориентировочная экономия времени: 2,5 часа на один маршрут;</li>
-                <li>система пригодна как рабочий инструмент и как основа для дальнейшего развития продукта.</li>
-              </ul>
+          <div class="panel">
+            <div class="pill-list">
+              <span class="pill">unit tests</span>
+              <span class="pill">route creation audit</span>
+              <span class="pill">матрица требований</span>
+              <span class="pill">программа испытаний</span>
+              <span class="pill">нормоконтроль PDF</span>
             </div>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">13</span>
         </footer>
       </section>
@@ -1106,36 +1037,43 @@
       <section class="slide" data-slide="14">
         <header>
           <div class="slide-kicker">Итог</div>
-          <h2 class="slide-title">Практический результат: не прототип на бумаге, а развернутый контур создания и публикации маршрутов</h2>
+          <h2 class="slide-title">Практический результат: работающий контур создания и публикации маршрутов</h2>
         </header>
         <div class="slide-content">
-          <div class="result-grid">
-            <div class="card">
-              <h3>Функциональный baseline</h3>
-              <p>Реализованы создание, публикация, просмотр, каталог, профиль автора, социальные функции, аналитика и AI-контур.</p>
+          <div class="large-metrics">
+            <div class="metric">
+              <span class="metric-value">&lt; 30 мс</span>
+              <span class="metric-label">медиана чтения ключевых API</span>
             </div>
-            <div class="card">
-              <h3>Развёртывание</h3>
-              <p>Система работает как демонстрационный стенд в Kubernetes и сопровождается CI/CD-пайплайном.</p>
+            <div class="metric">
+              <span class="metric-value">2–4 с</span>
+              <span class="metric-label">обработка фотографии</span>
             </div>
-            <div class="card">
-              <h3>Документация</h3>
-              <p>Подготовлены техническое задание, программа и методика испытаний, приложения и аналитическая часть ВКР.</p>
+            <div class="metric">
+              <span class="metric-value">K8s</span>
+              <span class="metric-label">демонстрационный стенд</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">570 ч</span>
+              <span class="metric-label">расчётная трудоёмкость</span>
             </div>
           </div>
-          <div class="panel">
-            <h3>Направления развития</h3>
+          <div class="panel big-statement">
+            <p class="lead">
+              Система закрывает путь от идеи маршрута до опубликованной интерактивной страницы с фото, точками,
+              оценками и возможностью дальнейшего развития мобильного контура.
+            </p>
             <div class="badge-row">
-              <span class="badge">production-ready мобильный клиент</span>
-              <span class="badge">устойчивая офлайн-синхронизация</span>
+              <span class="badge">web-клиент</span>
+              <span class="badge">backend-сервисы</span>
+              <span class="badge">Android companion</span>
+              <span class="badge">CI/CD</span>
               <span class="badge">PDF-экспорт маршрутов</span>
-              <span class="badge">персонализированные рекомендации</span>
-              <span class="badge">расширение AI-инструментов</span>
             </div>
           </div>
         </div>
         <footer class="footer">
-          <span>Дубровских Н. Е. | 221-361 | Разработка информационной системы для создания и публикации туристических маршрутов с геопривязанными фотографиями | май 2026</span>
+          <span>Дубровских Н. Е. | 221-361 | Разработка корпоративной информационной системы картографии и маршрутов | 18 мая 2026</span>
           <span class="slide-number">14</span>
         </footer>
       </section>
@@ -1145,10 +1083,11 @@
         <div class="slide-content">
           <div class="slide-kicker">Заключение</div>
           <h2 class="slide-title">Спасибо за внимание</h2>
-          <p class="lead">Готов ответить на вопросы и показать работу системы на демонстрационном стенде.</p>
+          <p class="lead">Готов ответить на вопросы и показать работу Guide Helper на демонстрационном стенде.</p>
           <div class="title-meta">
             <div class="title-chip">Guide Helper</div>
-            <div class="title-chip">демо + ВКР + приложения</div>
+            <div class="title-chip">Дубровских Н. Е.</div>
+            <div class="title-chip">Руководитель: Васильев Д. Б.</div>
           </div>
         </div>
         <div></div>

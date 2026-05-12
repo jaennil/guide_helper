@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640">
+  <rect width="960" height="640" fill="#ef4444"/>
+  <circle cx="480" cy="250" r="120" fill="#111827"/>
+  <text x="480" y="500" font-family="Georgia, serif" font-size="54" fill="#fff" text-anchor="middle">Route point photo</text>
+</svg>

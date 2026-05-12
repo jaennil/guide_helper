@@ -1,0 +1,68 @@
+@startuml c4-context
+
+title C4 Level 1. Контекст системы Guide Helper
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam ArrowColor #4B5563
+skinparam ArrowThickness 1
+skinparam dpi 180
+skinparam nodesep 90
+skinparam ranksep 110
+
+skinparam rectangle {
+  RoundCorner 18
+  BorderColor #1F4E79
+}
+
+skinparam rectangle<<Role>> {
+  BackgroundColor #0B5CAD
+  BorderColor #08427B
+  FontColor white
+}
+
+skinparam rectangle<<System>> {
+  BackgroundColor #1168BD
+  BorderColor #0B4884
+  FontColor white
+}
+
+skinparam rectangle<<External>> {
+  BackgroundColor #D9E2F2
+  BorderColor #7A8CA5
+  FontColor #1F2937
+}
+
+package "Пользователи" {
+  rectangle "Гид / автор маршрута\n\nСоздаёт и публикует\nмаршруты" as Guide <<Role>>
+  rectangle "Турист\n\nПросматривает,\nкомментирует,\nоценивает и сохраняет" as Tourist <<Role>>
+  rectangle "Администратор\n\nУправляет категориями,\nнастройками и контентом" as Admin <<Role>>
+}
+
+rectangle "Guide Helper\n\nПлатформа для создания,\nпубликации и изучения\nтуристических маршрутов\nс геопривязанными фотографиями" as GuideHelper <<System>>
+
+package "Внешние сервисы" {
+  rectangle "Nominatim\n\nГеокодинг" as Nominatim <<External>>
+  rectangle "AI providers\n\nClaude, OpenAI-compatible,\nOllama, Anthropic" as AI <<External>>
+  rectangle "Tile sources\n\nOpenStreetMap / Yandex" as Tiles <<External>>
+  rectangle "Weather / Elevation APIs\n\nПогода и высоты" as Meteo <<External>>
+}
+
+Guide -[hidden]down-> Tourist
+Tourist -[hidden]down-> Admin
+Nominatim -[hidden]down-> AI
+AI -[hidden]down-> Tiles
+Tiles -[hidden]down-> Meteo
+
+Guide --> GuideHelper : создание маршрутов
+Tourist --> GuideHelper : просмотр и реакции
+Admin --> GuideHelper : администрирование
+
+GuideHelper --> Nominatim : геокодинг
+GuideHelper --> AI : AI-чат и описания
+GuideHelper --> Tiles : картографические тайлы
+GuideHelper --> Meteo : погода и высоты
+
+@enduml

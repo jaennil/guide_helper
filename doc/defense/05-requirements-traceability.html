@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide Helper: требования</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --paper: #fffdf8;
+      --ink: #1d2430;
+      --muted: #687083;
+      --line: #ddd3c4;
+      --accent: #1f6feb;
+      --ok: #128a52;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: radial-gradient(circle at 10% 0%, rgb(31 111 235 / 13%), transparent 32rem), var(--bg);
+      font: 16px/1.55 "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    header,
+    main {
+      width: min(1500px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 38px 0 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 68px);
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0;
+    }
+
+    nav a,
+    .back {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 13px;
+      background: rgb(255 255 255 / 68%);
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    nav a:hover,
+    .back:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 26px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      background: var(--paper);
+      box-shadow: 0 14px 42px rgb(40 32 18 / 10%);
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ok);
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .section {
+      margin: 0 0 30px;
+    }
+
+    .section h2 {
+      margin: 0 0 14px;
+      font-size: 30px;
+      letter-spacing: -0.02em;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .req {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      background: var(--paper);
+      box-shadow: 0 14px 42px rgb(40 32 18 / 9%);
+    }
+
+    .req h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .req p {
+      margin: 0 0 10px;
+      color: var(--muted);
+    }
+
+    .label {
+      display: inline-flex;
+      margin-right: 6px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: rgb(18 138 82 / 12%);
+      color: var(--ok);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1100px) {
+      .summary,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Назад к пакету защиты</a>
+    <h1>Требования и трассируемость</h1>
+    <p class="lead">Все 37 функциональных требований сгруппированы по смыслу. У каждого требования указано, где оно реализовано и как его показать на демо.</p>
+    <nav>
+      <a href="#access">Пользователи</a>
+      <a href="#routes">Маршруты</a>
+      <a href="#photos">Фото и точки</a>
+      <a href="#social">Социальные функции</a>
+      <a href="#catalog">Каталог</a>
+      <a href="#admin">Админка</a>
+      <a href="#geo">Геоданные</a>
+      <a href="#extra">Доп. функции</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="summary">
+      <div class="metric"><strong>37/37</strong>функциональных требований реализованы</div>
+      <div class="metric"><strong>100%</strong>подтверждено функциональным тестированием</div>
+      <div class="metric"><strong>6</strong>нефункциональных требований</div>
+      <div class="metric"><strong>3</strong>критических пути: гид, турист, админ</div>
+    </section>
+
+    <section class="section" id="access">
+      <h2>Пользователи и доступ</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-01. Регистрация пользователя <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Auth Service, экран входа/регистрации.</p><p><span class="label">Проверка:</span>зарегистрировать пользователя по email и паролю.</p></article>
+        <article class="req"><h3>FR-02. Авторизация пользователя <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Auth Service, JWT access/refresh tokens.</p><p><span class="label">Проверка:</span>войти и открыть профиль.</p></article>
+        <article class="req"><h3>FR-03. Обновление токена <span class="status">готово</span></h3><p><span class="label">Реализация:</span>refresh-token endpoint и клиентская обработка.</p><p><span class="label">Проверка:</span>сессия не должна падать сразу после истечения access token.</p></article>
+        <article class="req"><h3>FR-04. Профиль пользователя <span class="status">готово</span></h3><p><span class="label">Реализация:</span>страница профиля.</p><p><span class="label">Проверка:</span>email, имя, роль, язык, маршруты пользователя.</p></article>
+        <article class="req"><h3>FR-05. Ролевая модель <span class="status">готово</span></h3><p><span class="label">Реализация:</span>user, moderator, admin; protected admin routes.</p><p><span class="label">Проверка:</span>admin открывает админку, обычный user нет.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="routes">
+      <h2>Маршруты</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-06. Создание маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>редактор карты и Routes Service.</p><p><span class="label">Проверка:</span>создать маршрут, добавить точки, сохранить.</p></article>
+        <article class="req"><h3>FR-07. Редактирование маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>редактор маршрута.</p><p><span class="label">Проверка:</span>изменить название, точки, категории, цвет линии, настройки меток.</p></article>
+        <article class="req"><h3>FR-08. Удаление маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Routes Service, мои маршруты, admin routes.</p><p><span class="label">Проверка:</span>удалить свой маршрут или удалить через админку.</p></article>
+        <article class="req"><h3>FR-09. Публичная ссылка <span class="status">готово</span></h3><p><span class="label">Реализация:</span>share_token, shared route page.</p><p><span class="label">Проверка:</span>открыть /shared/{token} без авторизации.</p></article>
+        <article class="req"><h3>FR-10. QR-код маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>QR modal.</p><p><span class="label">Проверка:</span>открыть QR-код из share workflow.</p></article>
+        <article class="req"><h3>FR-11. Встраиваемый виджет <span class="status">готово</span></h3><p><span class="label">Реализация:</span>embed route page.</p><p><span class="label">Проверка:</span>открыть iframe/embed-представление.</p></article>
+        <article class="req"><h3>FR-12. Статистика маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>расстояние, высоты, время, сложность.</p><p><span class="label">Проверка:</span>построить маршрут и посмотреть статистику.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="photos">
+      <h2>Фото и точки</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-13. Фото к точке <span class="status">готово</span></h3><p><span class="label">Реализация:</span>popup точки, upload endpoint.</p><p><span class="label">Проверка:</span>прикрепить изображение к точке.</p></article>
+        <article class="req"><h3>FR-14. Асинхронная обработка фото <span class="status">готово</span></h3><p><span class="label">Реализация:</span>NATS + Photo Worker + MinIO.</p><p><span class="label">Проверка:</span>после загрузки появляется обработанная миниатюра.</p></article>
+        <article class="req"><h3>FR-15. Миниатюра на карте <span class="status">готово</span></h3><p><span class="label">Реализация:</span>photo marker preview.</p><p><span class="label">Проверка:</span>маркер отображает preview.</p></article>
+        <article class="req"><h3>FR-16. Заметка к точке <span class="status">готово</span></h3><p><span class="label">Реализация:</span>textarea в popup точки.</p><p><span class="label">Проверка:</span>написать комментарий, сохранить, открыть снова.</p></article>
+        <article class="req"><h3>FR-17. Кастомизация меток <span class="status">готово</span></h3><p><span class="label">Реализация:</span>цвет, размер, форма превью.</p><p><span class="label">Проверка:</span>изменить настройки и увидеть маркер на карте.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="social">
+      <h2>Социальные функции</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-18. Оценка маршрута <span class="status">готово</span></h3><p><span class="label">Реализация:</span>route ratings.</p><p><span class="label">Проверка:</span>поставить оценку и увидеть обновление рейтинга.</p></article>
+        <article class="req"><h3>FR-19. Комментарии <span class="status">готово</span></h3><p><span class="label">Реализация:</span>comments endpoint, shared route UI, admin comments.</p><p><span class="label">Проверка:</span>оставить комментарий и увидеть его в списке.</p></article>
+        <article class="req"><h3>FR-20. Закладки <span class="status">готово</span></h3><p><span class="label">Реализация:</span>bookmarks endpoints и страница закладок.</p><p><span class="label">Проверка:</span>добавить маршрут в закладки.</p></article>
+        <article class="req"><h3>FR-21. Уведомления <span class="status">готово</span></h3><p><span class="label">Реализация:</span>notifications dropdown.</p><p><span class="label">Проверка:</span>создать активность на маршруте и открыть уведомления.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="catalog">
+      <h2>Каталог и поиск</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-22. Каталог маршрутов <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Explore page.</p><p><span class="label">Проверка:</span>открыть список публичных маршрутов.</p></article>
+        <article class="req"><h3>FR-23. Поиск и фильтрация <span class="status">готово</span></h3><p><span class="label">Реализация:</span>поиск, категории, сезоны, актуальность.</p><p><span class="label">Проверка:</span>ввести текст поиска и выбрать фильтры.</p></article>
+        <article class="req"><h3>FR-24. Сортировка и пагинация <span class="status">готово</span></h3><p><span class="label">Реализация:</span>catalog controls.</p><p><span class="label">Проверка:</span>переключить порядок или страницу.</p></article>
+        <article class="req"><h3>FR-25. Категории маршрутов <span class="status">готово</span></h3><p><span class="label">Реализация:</span>route categories, admin categories.</p><p><span class="label">Проверка:</span>создать категорию и выбрать её у маршрута.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="admin">
+      <h2>Администрирование</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-26. Управление пользователями <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Admin users.</p><p><span class="label">Проверка:</span>изменить роль пользователя.</p></article>
+        <article class="req"><h3>FR-27. Управление маршрутами <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Admin routes.</p><p><span class="label">Проверка:</span>удалить нарушающий маршрут.</p></article>
+        <article class="req"><h3>FR-28. Модерация комментариев <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Admin comments.</p><p><span class="label">Проверка:</span>удалить комментарий через админку.</p></article>
+        <article class="req"><h3>FR-29. Настройки сложности <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Admin settings.</p><p><span class="label">Проверка:</span>изменить пороги расстояния, высоты и балла.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="geo">
+      <h2>Геоданные и импорт/экспорт</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-30. Импорт GeoJSON <span class="status">готово</span></h3><p><span class="label">Реализация:</span>импорт маршрута в web-клиенте.</p><p><span class="label">Проверка:</span>загрузить GeoJSON и увидеть точки.</p></article>
+        <article class="req"><h3>FR-31. Экспорт GPX <span class="status">готово</span></h3><p><span class="label">Реализация:</span>export action.</p><p><span class="label">Проверка:</span>нажать GPX и получить файл.</p></article>
+        <article class="req"><h3>FR-32. Экспорт KML <span class="status">готово</span></h3><p><span class="label">Реализация:</span>export action.</p><p><span class="label">Проверка:</span>нажать KML и получить файл.</p></article>
+        <article class="req"><h3>FR-33. Геокодинг и поиск мест <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Nominatim и AI tools.</p><p><span class="label">Проверка:</span>найти место или попросить AI построить маршрут.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="extra">
+      <h2>Дополнительные функции</h2>
+      <div class="cards">
+        <article class="req"><h3>FR-34. Погода <span class="status">готово</span></h3><p><span class="label">Реализация:</span>Weather widget.</p><p><span class="label">Проверка:</span>открыть маршрут и увидеть погодный блок.</p></article>
+        <article class="req"><h3>FR-35. Исторический таймлайн <span class="status">готово</span></h3><p><span class="label">Реализация:</span>historical map overlay, timeline, compare mode.</p><p><span class="label">Проверка:</span>включить исторический слой и сравнение.</p></article>
+        <article class="req"><h3>FR-36. AI-ассистент <span class="status">готово</span></h3><p><span class="label">Реализация:</span>chat endpoint, tool calling, frontend panel.</p><p><span class="label">Проверка:</span>попросить ассистента найти место или построить маршрут.</p></article>
+        <article class="req"><h3>FR-37. Android companion app <span class="status">готово</span></h3><p><span class="label">Реализация:</span>мобильный клиент в mobile/.</p><p><span class="label">Проверка:</span>записать GPS-маршрут и синхронизировать.</p></article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

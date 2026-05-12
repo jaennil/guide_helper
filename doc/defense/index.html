@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide Helper: подготовка к защите</title>
+  <style>
+    :root {
+      --bg: #0f1424;
+      --panel: #171d31;
+      --panel-2: #202841;
+      --ink: #f3f6ff;
+      --muted: #a9b2c7;
+      --line: #343d5b;
+      --accent: #70e1b2;
+      --blue: #73a7ff;
+      --warn: #ffd36a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 0%, rgb(112 225 178 / 18%), transparent 28rem),
+        radial-gradient(circle at 90% 10%, rgb(115 167 255 / 14%), transparent 32rem),
+        var(--bg);
+      font: 16px/1.55 "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    header,
+    main {
+      width: min(1500px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 44px 0 24px;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0 0 12px;
+      font-size: clamp(38px, 6vw, 78px);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin: 22px 0;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      background: linear-gradient(145deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 2%));
+      box-shadow: 0 18px 60px rgb(0 0 0 / 22%);
+    }
+
+    .wide {
+      grid-column: span 2;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    h2,
+    h3 {
+      margin: 0 0 10px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      font-size: 26px;
+    }
+
+    h3 {
+      font-size: 19px;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 21px;
+      color: var(--muted);
+    }
+
+    li + li {
+      margin-top: 5px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .links a {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgb(255 255 255 / 4%);
+      color: var(--ink);
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: var(--panel-2);
+    }
+
+    .pill strong {
+      display: block;
+      color: var(--accent);
+      font-size: 26px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .pill span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .script {
+      counter-reset: step;
+      display: grid;
+      gap: 10px;
+    }
+
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgb(255 255 255 / 4%);
+    }
+
+    .step::before {
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #08111f;
+      font-weight: 700;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .step span {
+      color: var(--muted);
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgb(255 255 255 / 4%);
+    }
+
+    details + details {
+      margin-top: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .shot-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .shot {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .shot img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      object-position: top;
+      background: #0b1020;
+    }
+
+    .shot a {
+      display: block;
+      padding: 10px;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1100px) {
+      .grid,
+      .metric,
+      .shot-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wide,
+      .full {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Guide Helper: что нужно понимать перед защитой</h1>
+    <p class="lead">Одна страница для быстрого входа в проект: суть, роли, архитектура, требования, вопросы комиссии и сильные скриншоты.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card wide">
+        <h2>Суть проекта</h2>
+        <p>Guide Helper — информационная система для создания, изменения, публикации и просмотра туристических маршрутов с геопривязанными фотографиями.</p>
+        <p>Главный практический результат: автор маршрута может собрать интерактивный маршрут с точками, фотографиями, заметками, статистикой и публичной ссылкой, а турист может найти, посмотреть, оценить и сохранить маршрут.</p>
+        <div class="links">
+          <a href="01-project-overview.html">Полный обзор</a>
+          <a href="../latex/main.pdf">PDF ВКР</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Цифры</h2>
+        <div class="metric">
+          <div class="pill"><strong>37/37</strong><span>функциональных требований</span></div>
+          <div class="pill"><strong>115</strong><span>модульных тестов</span></div>
+          <div class="pill"><strong>5</strong><span>backend-сервисов</span></div>
+          <div class="pill"><strong>54</strong><span>источника в библиографии</span></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Роли</h2>
+        <ul>
+          <li>Автор / гид: создаёт и публикует маршруты.</li>
+          <li>Турист: ищет, смотрит, оценивает и сохраняет.</li>
+          <li>Администратор: управляет пользователями, маршрутами, комментариями, категориями и настройками.</li>
+          <li>Мобильный пользователь: записывает GPS-маршрут в поле.</li>
+        </ul>
+        <div class="links">
+          <a href="03-roles-and-scenarios.html">Роли и сценарии</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Архитектура</h2>
+        <p>Web-клиент является основным интерфейсом. Android-клиент — полевое дополнение для записи маршрута. Backend разделён на auth, routes, photo-worker, tiles и cache.</p>
+        <div class="links">
+          <a href="04-architecture.html">Архитектура словами</a>
+          <a href="../diagrams/index.html">Диаграммы</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Требования</h2>
+        <p>Требования сгруппированы по пользователям, маршрутам, фото, социальным функциям, каталогу, администрированию, геоданным и дополнительным функциям.</p>
+        <div class="links">
+          <a href="05-requirements-traceability.html">37 требований</a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Качество текста</h2>
+        <p>Правила переписывания ВКР: каждое утверждение должно быть связано с источником, требованием, реализацией, тестом или пользовательской проблемой.</p>
+        <div class="links">
+          <a href="09-thesis-quality-rules.html">Чек-лист текста</a>
+        </div>
+      </article>
+
+      <article class="card full">
+        <h2>Лучший demo-flow</h2>
+        <div class="script">
+          <div class="step"><div><strong>Открыть редактор карты</strong><span>Показать, что маршрут создаётся на интерактивной карте.</span></div></div>
+          <div class="step"><div><strong>Добавить точки</strong><span>Пояснить, что точки являются смысловыми остановками маршрута.</span></div></div>
+          <div class="step"><div><strong>Прикрепить фото и заметку</strong><span>Показать ключевую фичу: геопривязанная фотография к конкретному месту.</span></div></div>
+          <div class="step"><div><strong>Построить маршрут и статистику</strong><span>Показать расстояние, высоты, сложность и погоду.</span></div></div>
+          <div class="step"><div><strong>Опубликовать</strong><span>Открыть публичную ссылку, QR-код или embed.</span></div></div>
+          <div class="step"><div><strong>Показать каталог и админку</strong><span>Доказать, что это платформа, а не одиночный редактор карты.</span></div></div>
+        </div>
+      </article>
+
+      <article class="card full">
+        <h2>Вопросы, которые почти точно зададут</h2>
+        <details open>
+          <summary>Почему это не просто CRUD?</summary>
+          <p>Потому что система работает с геоданными, фотографиями, EXIF/GPS, маршрутами, асинхронной обработкой изображений, публичными интерактивными ссылками, AI-инструментами и мобильной записью маршрута.</p>
+        </details>
+        <details>
+          <summary>Почему микросервисы, а не монолит?</summary>
+          <p>Разные части имеют разную нагрузку: авторизация, маршруты, обработка фото, кеш тайлов и AI-запросы. Их удобнее масштабировать и обслуживать независимо.</p>
+        </details>
+        <details>
+          <summary>Зачем AI?</summary>
+          <p>AI — вспомогательный интерфейс. Он помогает строить маршрут текстовой командой, искать места и генерировать описания, но ручной сценарий работает без AI.</p>
+        </details>
+        <details>
+          <summary>Почему web основной, а mobile дополнительный?</summary>
+          <p>Оформлять маршрут, выбирать фото, писать описания и публиковать удобнее на большом экране. Mobile нужен для записи GPS-трека в полевых условиях.</p>
+        </details>
+        <div class="links">
+          <a href="06-commission-questions.html">Все вопросы и ответы</a>
+        </div>
+      </article>
+
+      <article class="card full">
+        <h2>Сильные скриншоты</h2>
+        <p>Показывать лучше в таком порядке: редактор маршрута, popup точки, публичный маршрут, каталог, AI, админка, архитектура.</p>
+        <div class="shot-grid">
+          <div class="shot"><img src="../screenshots/web/03-map-route-editor.png" alt=""><a href="../screenshots/web/03-map-route-editor.png">Редактор маршрута</a></div>
+          <div class="shot"><img src="../screenshots/web/17-map-point-popup.png" alt=""><a href="../screenshots/web/17-map-point-popup.png">Фото и заметка</a></div>
+          <div class="shot"><img src="../screenshots/web/08-shared-route.png" alt=""><a href="../screenshots/web/08-shared-route.png">Публичный маршрут</a></div>
+          <div class="shot"><img src="../screenshots/web/05-explore-catalog.png" alt=""><a href="../screenshots/web/05-explore-catalog.png">Каталог</a></div>
+          <div class="shot"><img src="../screenshots/web/04-ai-chat-panel.png" alt=""><a href="../screenshots/web/04-ai-chat-panel.png">AI-ассистент</a></div>
+        </div>
+        <div class="links">
+          <a href="08-strong-screenshots.html">Описание скриншотов</a>
+          <a href="../e2e/20260504T080220-guide-helper/report.pdf">E2E PDF-отчёт</a>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

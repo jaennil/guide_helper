@@ -1,0 +1,71 @@
+@startuml c4-container
+
+title C4 Level 2. Контейнеры системы Guide Helper
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam ArrowColor #4B5563
+skinparam ArrowThickness 1.2
+skinparam dpi 180
+skinparam nodesep 100
+skinparam ranksep 120
+
+skinparam rectangle {
+  RoundCorner 18
+  BorderColor #1F4E79
+}
+
+skinparam rectangle<<Client>> {
+  BackgroundColor #2F855A
+  BorderColor #276749
+  FontColor white
+}
+
+skinparam rectangle<<Core>> {
+  BackgroundColor #438DD5
+  BorderColor #2A6CAA
+  FontColor white
+}
+
+skinparam rectangle<<Map>> {
+  BackgroundColor #4C51BF
+  BorderColor #3730A3
+  FontColor white
+}
+
+skinparam rectangle<<Data>> {
+  BackgroundColor #BEE3F8
+  BorderColor #2B6CB0
+  FontColor #1F2937
+}
+
+skinparam rectangle<<External>> {
+  BackgroundColor #D9E2F2
+  BorderColor #7A8CA5
+  FontColor #1F2937
+}
+
+package "Guide Helper" {
+  rectangle "Клиентские приложения\n\nWeb PWA / Desktop UI\nAndroid companion app" as Clients <<Client>>
+
+  rectangle "Core services\n\nAuth Service\nRoutes Service\nPhoto Worker" as Core <<Core>>
+
+  rectangle "Map subsystem\n\nTiles Service\nCache Service" as Maps <<Map>>
+
+  rectangle "Data and messaging\n\nPostgreSQL\nNATS JetStream\nMinIO\nRedis" as Data <<Data>>
+
+  rectangle "External services\n\nNominatim\nAI providers\nWeather / Elevation APIs\nTile sources" as External <<External>>
+}
+
+Clients --> Core : auth / API / sync
+Clients --> Maps : maps
+
+Core --> Data : data / events / media
+Core --> External : geocoding / AI / weather
+
+Maps --> Data : tile cache
+Maps --> External : map tiles
+
+@enduml

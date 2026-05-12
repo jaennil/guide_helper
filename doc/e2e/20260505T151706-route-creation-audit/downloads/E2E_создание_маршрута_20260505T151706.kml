@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>E2E создание маршрута 20260505T151706</name>
+    <Placemark>
+      <name>E2E создание маршрута 20260505T151706</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>37.61242389678956,55.756148179198206,0 37.62079238891602,55.753491681072205,0 37.628946304321296,55.75469920264955,0 37.634954452514656,55.75228412211225,0</coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>Point 1</name>
+
+      <description>Тестовая заметка: история места и комментарий к фотографии.</description>
+      <Point>
+        <coordinates>37.61242389678956,55.756148179198206,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Point 2</name>
+
+      <Point>
+        <coordinates>37.62079238891602,55.753491681072205,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Point 3</name>
+
+      <Point>
+        <coordinates>37.628946304321296,55.75469920264955,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Point 4</name>
+
+      <Point>
+        <coordinates>37.634954452514656,55.75228412211225,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

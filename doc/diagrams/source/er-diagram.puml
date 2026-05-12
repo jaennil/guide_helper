@@ -1,0 +1,142 @@
+@startuml er-diagram
+
+title ER-диаграмма PostgreSQL-схемы Guide Helper
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundcorner 14
+skinparam defaultTextAlignment left
+skinparam dpi 180
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * email : TEXT <<UNIQUE>>
+  * password_hash : TEXT
+  name : TEXT
+  avatar_url : TEXT
+  * role : TEXT
+}
+
+entity "routes" as routes {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID
+  * name : TEXT
+  * points : JSONB
+  share_token : UUID
+  seasons : TEXT[]
+  description : TEXT
+  line_color : TEXT
+  started_at : TIMESTAMPTZ
+  is_draft : BOOLEAN
+  version_group_id : UUID
+  version_number : INTEGER
+}
+
+entity "categories" as categories {
+  * id : UUID <<PK>>
+  --
+  * name : TEXT <<UNIQUE>>
+}
+
+entity "route_categories" as route_categories {
+  * route_id : UUID <<FK>>
+  * category_id : UUID <<FK>>
+}
+
+entity "comments" as comments {
+  * id : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+  text : TEXT
+  created_at : TIMESTAMPTZ
+}
+
+entity "route_likes" as route_likes {
+  * id : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+}
+
+entity "route_ratings" as route_ratings {
+  * id : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+  * rating : SMALLINT
+}
+
+entity "route_bookmarks" as route_bookmarks {
+  * id : UUID <<PK>>
+  --
+  * route_id : UUID <<FK>>
+  * user_id : UUID
+}
+
+entity "notifications" as notifications {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID
+  * route_id : UUID
+  notification_type : TEXT
+  is_read : BOOLEAN
+}
+
+entity "chat_messages" as chat_messages {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID
+  * conversation_id : UUID
+  role : TEXT
+  content : TEXT
+  actions : JSONB
+}
+
+entity "settings" as settings {
+  * key : TEXT <<PK>>
+  --
+  * value : JSONB
+}
+
+categories -[hidden]right-> routes
+routes -[hidden]down-> comments
+comments -[hidden]right-> route_likes
+route_likes -[hidden]right-> route_ratings
+route_ratings -[hidden]right-> route_bookmarks
+users -[hidden]right-> notifications
+notifications -[hidden]down-> chat_messages
+chat_messages -[hidden]down-> settings
+
+users ||--o{ routes : logical owner
+routes ||--o{ comments : comments
+routes ||--o{ route_likes : likes
+routes ||--o{ route_ratings : ratings
+routes ||--o{ route_bookmarks : bookmarks
+routes ||--o{ route_categories : categories
+categories ||--o{ route_categories : contains
+users ||--o{ notifications : receives
+users ||--o{ chat_messages : owns
+
+note right of users
+users хранятся в auth-контуре.
+В routes-контуре user_id используется
+как логическая ссылка без FK.
+end note
+
+note right of routes
+points хранится в JSONB.
+Это осознанное решение для гибкой
+структуры точки маршрута.
+end note
+
+note right of chat_messages
+conversation_id хранится
+внутри chat_messages.
+Отдельная таблица conversations
+в текущей схеме не используется.
+end note
+
+@enduml

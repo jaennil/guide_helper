@@ -1,38 +1,32 @@
-# Защитная Презентация Guide Helper
+# Защитная презентация Guide Helper
 
 Файлы:
-- `guide-helper-defense.html` — основной слайд-дек для показа в браузере
-- `guide-helper-defense.pdf` — печатная/export-версия
-- `export_pdf.sh` — экспорт HTML-дека в PDF через Chromium
+- `guide-helper-defense.pptx` — основной файл презентации по шаблону Московского Политеха;
+- `guide-helper-defense.pdf` — PDF-экспорт презентации для просмотра без PowerPoint/LibreOffice;
+- `Шаблон_Презентации_ВЕБ_брендбука_Политеха_для_вкр_ВЕБ_2.pptx` — исходный шаблон Политеха;
+- `assets/` — подготовленные изображения для слайдов;
+- `../../scripts/build_defense_pptx_from_template.py` — генератор PPTX из шаблона.
 
-## Быстрый запуск
+`guide-helper-defense.html` оставлен как черновой/резервный HTML-вариант, но
+основным артефактом для защиты является PPTX.
 
-Открыть HTML в браузере:
-
-```bash
-xdg-open /home/jaennil/dev/uni/guide_helper/doc/presentation/guide-helper-defense.html
-```
-
-Навигация:
-- `←` / `→`
-- `PageUp` / `PageDown`
-- `Home` / `End`
-
-## Экспорт В PDF
+## Быстрый просмотр
 
 ```bash
-cd /home/jaennil/dev/uni/guide_helper/doc/presentation
-bash export_pdf.sh
+xdg-open /home/jaennil/dev/uni/guide_helper/doc/presentation/guide-helper-defense.pdf
 ```
 
-## Источники Визуальных Материалов
+## Пересборка PPTX
+
+```bash
+cd /home/jaennil/dev/uni/guide_helper
+python3 scripts/build_defense_pptx_from_template.py
+libreoffice --headless --convert-to pdf --outdir doc/presentation doc/presentation/guide-helper-defense.pptx
+```
+
+## Источники визуальных материалов
 
 - `doc/latex/images/mockups/` — актуальные интерфейсы
-- `doc/latex/images/c4-context.png` — контекстная диаграмма
-- `doc/latex/images/c4-container.png` — контейнерная диаграмма
-- `doc/latex/images/er-diagram.png` — ER-диаграмма
-- `doc/latex/images/sequence-photo.png` — последовательность обработки фото
-
-## Ограничение
-
-Это не `pptx`, а HTML/PDF-версия презентации. Если понадобится отправка именно в PowerPoint или Google Slides, этот дек уже можно переносить 1:1 без перепридумывания структуры и текста.
+- `doc/diagrams/images/` — архитектурные SVG-диаграммы
+- `doc/presentation/assets/` — изображения, специально адаптированные под слайды
+- `doc/e2e/20260505T151706-route-creation-audit/screenshots/` — скриншоты E2E-сценария создания маршрута
