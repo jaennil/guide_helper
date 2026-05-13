@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide Helper: единые формулировки</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Назад к пакету защиты</a>
+    <h1>Единые формулировки</h1>
+    <p class="lead">Источник истины для ВКР, презентации, речи, demo и ответов комиссии.</p>
+  </header>
+
+  <main>
+    <section class="card full">
+      <h2>Тема и дата</h2>
+      <p class="quote">Разработка корпоративной информационной системы картографии и маршрутов.</p>
+      <p>Дата защиты: июнь 2026. Точная дата требует финального подтверждения: 10 или 11 июня 2026. До подтверждения в презентации используется нейтральная дата <strong>июнь 2026</strong>.</p>
+    </section>
+
+    <section class="card full">
+      <h2>Главный результат</h2>
+      <p>Разработана информационная система Guide Helper для создания, изменения, публикации и просмотра туристических маршрутов с геопривязанными фотографиями.</p>
+      <p>Практическая польза: автор маршрута получает единый контур, в котором можно собрать карту, точки, фотографии, заметки, статистику и публичную ссылку.</p>
+    </section>
+
+    <section class="card full">
+      <h2>Цифры</h2>
+      <div class="grid compact">
+        <div class="mini"><strong>37/37</strong><span>функциональных требований реализованы</span></div>
+        <div class="mini"><strong>115</strong><span>модульных тестов</span></div>
+        <div class="mini"><strong>54</strong><span>источника в списке литературы</span></div>
+        <div class="mini"><strong>13</strong><span>слайдов в презентации</span></div>
+        <div class="mini"><strong>web</strong><span>основной клиент</span></div>
+        <div class="mini"><strong>Android</strong><span>companion app для полевого сценария</span></div>
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>Роли</h2>
+      <ul>
+        <li>Автор маршрута / гид: создаёт, редактирует, оформляет и публикует маршруты.</li>
+        <li>Турист: просматривает маршруты, оценки, комментарии, фотографии и сохраняет интересные маршруты.</li>
+        <li>Администратор: управляет пользователями, маршрутами, комментариями, категориями и настройками.</li>
+        <li>Moderator: дополнительная системная роль для модерационных действий.</li>
+        <li>Android-пользователь: полевой сценарий записи GPS-трека, не основной интерфейс публикации.</li>
+      </ul>
+    </section>
+
+    <section class="card full">
+      <h2>Позиционирование</h2>
+      <details open><summary>Android</summary><p>Android-клиент не является полной заменой web-клиента. Он является companion app для полевого сценария: записать GPS-трек во время прохождения маршрута, сохранить черновик и затем доработать маршрут в web-клиенте.</p></details>
+      <details><summary>AI</summary><p>AI-ассистент является дополнительным интерфейсом для поиска мест, построения маршрута по текстовому запросу и подготовки описаний. Основной сценарий создания, сохранения и публикации маршрута не зависит от AI.</p></details>
+      <details><summary>Микросервисы</summary><p>Микросервисы выбраны из-за разных профилей нагрузки и отказов: auth должен быть стабильным, routes обслуживает основной домен, photo worker работает в фоне, tiles/cache изолирует картографические тайлы, AI-интеграция деградирует отдельно.</p></details>
+    </section>
+
+    <section class="card full">
+      <h2>Demo и fallback</h2>
+      <p>Показывать: редактор маршрута, подготовленный маршрут, точку с фото и заметкой, статистику, публичную страницу, каталог.</p>
+      <p>Не показывать без вопроса: ручной login, длинное построение маршрута с нуля, долгий AI-чат, админку, Android live-debug, devtools.</p>
+      <p>Fallback: <a href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E PDF-отчёт</a>.</p>
+      <div class="links">
+        <a href="day-of-defense-checklist.html">День защиты</a>
+        <a href="quick-answers.html">Быстрые ответы</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

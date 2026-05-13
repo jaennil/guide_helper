@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide Helper: чек-лист на день защиты</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Назад к пакету защиты</a>
+    <h1>Чек-лист на день защиты</h1>
+    <p class="lead">Что открыть заранее, что проверить за 10 минут, что показывать live и что делать, если стенд или AI упадёт.</p>
+  </header>
+
+  <main>
+    <section class="card full">
+      <h2>Открыть заранее</h2>
+      <div class="grid compact">
+        <div class="mini"><strong>Презентация</strong><span><a href="../presentation/guide-helper-defense.pptx">PPTX</a> и <a href="../presentation/guide-helper-defense.pdf">PDF</a></span></div>
+        <div class="mini"><strong>ВКР</strong><span><a href="../latex/main.pdf">doc/latex/main.pdf</a></span></div>
+        <div class="mini"><strong>Стенд</strong><span><a href="https://guidehelper.dubrovskih.ru">guidehelper.dubrovskih.ru</a></span></div>
+        <div class="mini"><strong>Карта</strong><span><a href="https://guidehelper.dubrovskih.ru/map">/map</a></span></div>
+        <div class="mini"><strong>Fallback</strong><span><a href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E PDF-отчёт</a></span></div>
+        <div class="mini"><strong>Подготовка</strong><span><a href="index.html">общий пакет защиты</a></span></div>
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>Проверить за 10 минут</h2>
+      <ul>
+        <li>Сайт открывается, карта загружает тайлы.</li>
+        <li>Пользователь авторизован.</li>
+        <li>Подготовленный маршрут открывается.</li>
+        <li>Публичная ссылка маршрута открывается.</li>
+        <li>PDF-презентация и E2E-отчёт открываются локально.</li>
+        <li>В браузере нет лишних вкладок, уведомлений и devtools.</li>
+      </ul>
+    </section>
+
+    <section class="card full">
+      <h2>Live demo</h2>
+      <div class="steps">
+        <div class="step"><div><strong>Редактор</strong><span>Показать карту и подготовленный маршрут.</span></div></div>
+        <div class="step"><div><strong>Точка</strong><span>Открыть popup точки с фото и заметкой.</span></div></div>
+        <div class="step"><div><strong>Статистика</strong><span>Показать расстояние, сложность, высоты или время участка.</span></div></div>
+        <div class="step"><div><strong>Публикация</strong><span>Открыть публичную страницу маршрута.</span></div></div>
+        <div class="step"><div><strong>Каталог</strong><span>Показать, что маршрут живёт в платформе, а не только в редакторе.</span></div></div>
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>Не показывать без вопроса</h2>
+      <div class="grid compact">
+        <div class="mini"><strong>AI-чат</strong><span>Не делать центральной частью demo: внешний провайдер может быть нестабилен.</span></div>
+        <div class="mini"><strong>Login</strong><span>Не логиниться вручную на глазах комиссии, если сессия уже есть.</span></div>
+        <div class="mini"><strong>Маршрут с нуля</strong><span>Не строить длинный маршрут live, лучше показать готовый.</span></div>
+        <div class="mini"><strong>Админка</strong><span>Показывать только если спросят про роли и корпоративность.</span></div>
+        <div class="mini"><strong>Devtools</strong><span>Закрыть заранее, не показывать сетевые ошибки.</span></div>
+        <div class="mini"><strong>Android debug</strong><span>Не чинить телефон на защите.</span></div>
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>Если что-то падает</h2>
+      <details open><summary>Падает AI</summary><p>AI является дополнительным интерфейсом, основной сценарий маршрутов работает независимо.</p></details>
+      <details><summary>Падает карта или стенд</summary><p>Открыть E2E PDF-отчёт и показать тот же пользовательский flow по скриншотам.</p></details>
+      <details><summary>Спрашивают Android</summary><p>Android-клиент является companion app для записи GPS-трека в поле. Основной дипломный результат — web-система для оформления и публикации маршрута.</p></details>
+    </section>
+
+    <section class="card full">
+      <h2>Главные ответы</h2>
+      <details open><summary>Зачем система нужна?</summary><p>Потому что автор маршрута часто держит карту, фото, описание и ссылку в разных инструментах. Guide Helper собирает это в единый публикуемый маршрут.</p></details>
+      <details><summary>Почему это не CRUD?</summary><p>Потому что система работает с геоданными, маршрутами, геопривязанными фотографиями, публикацией, экспортом, AI-интерфейсом, фоновой обработкой фото и мобильной записью маршрута.</p></details>
+      <details><summary>Почему микросервисы?</summary><p>Потому что auth, routes, photo worker, tiles/cache и AI имеют разные нагрузки и разные причины отказа. Их полезно изолировать.</p></details>
+      <details><summary>Что сделал лично?</summary><p>Backend-сервисы, web-интерфейс, обработка маршрутов и фотографий, публикация, AI-интеграция, административные функции, инфраструктура, тесты, E2E-отчёты и Android companion app.</p></details>
+    </section>
+
+    <section class="card full">
+      <h2>Финальная фраза</h2>
+      <p class="quote">В результате работы реализован рабочий контур Guide Helper: автор создаёт маршрут, добавляет точки, фотографии и заметки, публикует результат, а турист получает интерактивную страницу маршрута. Цель работы достигнута.</p>
+      <div class="links">
+        <a href="quick-answers.html">Быстрые ответы</a>
+        <a href="final-rehearsal-plan.html">Финальная репетиция</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

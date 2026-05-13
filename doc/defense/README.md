@@ -9,7 +9,12 @@
 - `04-architecture.md` — архитектура простым языком: компоненты, данные, потоки.
 - `05-requirements-traceability.md` — 37 функциональных требований: где реализовано и как проверять.
 - `06-commission-questions.md` — вопросы комиссии и короткие устные ответы.
-- `quick-answers.md` — короткая шпаргалка: вопрос комиссии → ответ на 15--20 секунд.
+- `quick-answers.md` / `quick-answers.html` — короткая шпаргалка: вопрос комиссии → ответ на 15--20 секунд.
+- `previous-defense-analysis.md` / `previous-defense-analysis.html` — выводы из записей прошлых защит и риски для Guide Helper.
+- `final-rehearsal-plan.md` / `final-rehearsal-plan.html` — финальный тайминг доклада, сокращения, demo и опасные вопросы.
+- `day-of-defense-checklist.md` / `day-of-defense-checklist.html` — что открыть и проверить в день защиты.
+- `source-of-truth.md` / `source-of-truth.html` — единые формулировки, цифры и позиционирование проекта.
+- `10-conceptual-defense.md` / `10-conceptual-defense.html` — концептуальные ответы: CRUD, микросервисы, corporate, AI, web/mobile, NATS, MinIO.
 - `08-strong-screenshots.md` — какие скриншоты показывать и зачем.
 
 Дополнительно:
