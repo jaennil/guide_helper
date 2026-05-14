@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Командный центр защиты</title>
+  <link rel="stylesheet" href="page.css">
+  <style>
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .hero-actions a {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 12px 16px;
+      background: var(--ink);
+      color: white;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .hero-actions a.secondary {
+      background: rgb(255 255 255 / 70%);
+      color: var(--ink);
+    }
+
+    .status-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgb(255 255 255 / 70%);
+    }
+
+    .status-item::before {
+      content: "✓";
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--green);
+      color: white;
+      font-weight: 800;
+    }
+
+    .danger::before {
+      content: "!";
+      background: #c2410c;
+    }
+
+    .status-item strong,
+    .step strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .status-item span,
+    .step span {
+      display: block;
+      color: var(--muted);
+    }
+
+    .answer {
+      border-left: 5px solid var(--green);
+      padding-left: 14px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← К пакету защиты</a>
+    <h1>Командный центр защиты</h1>
+    <p class="lead">Одна стартовая страница перед защитой: что открыть, что говорить, что показывать и какие ответы держать под рукой.</p>
+    <div class="hero-actions">
+      <a href="../presentation/guide-helper-defense.pdf">Открыть презентацию</a>
+      <a href="../latex/main.pdf">Открыть ВКР</a>
+      <a href="../presentation/speaker-notes.html">Speaker notes</a>
+      <a class="secondary" href="https://guidehelper.dubrovskih.ru/map">Production-стенд</a>
+      <a class="secondary" href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E-отчёт</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">Главная позиция</span>
+        <div class="quote">Guide Helper - не просто CRUD и не просто карта. Это система полного цикла: автор создаёт маршрут с точками, фото и заметками, публикует его, а турист получает интерактивный маршрут для просмотра и прохождения.</div>
+      </article>
+
+      <article class="card">
+        <h2>15 минут до защиты</h2>
+        <div class="status-list">
+          <div class="status-item"><div><strong>Открыть презентацию</strong><span>PDF и PPTX должны быть доступны без ожидания.</span></div></div>
+          <div class="status-item"><div><strong>Открыть ВКР</strong><span>Нужна вкладка с PDF на случай вопроса по тексту.</span></div></div>
+          <div class="status-item"><div><strong>Открыть demo-стенд</strong><span>Проверить карту, подготовленный маршрут, публичную страницу и каталог.</span></div></div>
+          <div class="status-item"><div><strong>Открыть fallback</strong><span>E2E PDF-отчёт со скриншотами на случай проблем с сетью.</span></div></div>
+          <div class="status-item"><div><strong>Открыть speaker notes</strong><span>Не для чтения на защите, а для последней сверки.</span></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Порядок доклада</h2>
+        <div class="steps">
+          <div class="step"><div><strong>Тема и результат</strong><span>Guide Helper как система создания и публикации фотомаршрутов.</span></div></div>
+          <div class="step"><div><strong>Проблема</strong><span>Процесс автора маршрута разорван между картами, фото, описаниями и ссылками.</span></div></div>
+          <div class="step"><div><strong>Цель и задачи</strong><span>Не код ради кода, а проверяемая система полного цикла.</span></div></div>
+          <div class="step"><div><strong>Архитектура</strong><span>Web основной, Android вспомогательный, backend разделён по нагрузке.</span></div></div>
+          <div class="step"><div><strong>Реализация и проверка</strong><span>37/37 требований, 115 unit-тестов, E2E-аудит, demo-стенд.</span></div></div>
+          <div class="step"><div><strong>Итог</strong><span>Создать маршрут → прикрепить фото → опубликовать → передать туристам.</span></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Demo-flow</h2>
+        <div class="status-list">
+          <div class="status-item"><div><strong>Редактор карты</strong><span>Показать точки, линию маршрута, категории и цвет.</span></div></div>
+          <div class="status-item"><div><strong>Точка маршрута</strong><span>Открыть фото и заметку: это главный смысл геопривязанного контента.</span></div></div>
+          <div class="status-item"><div><strong>Публичная страница</strong><span>Показать, что автор передаёт туристу готовый интерактивный результат.</span></div></div>
+          <div class="status-item"><div><strong>Каталог</strong><span>Показать поиск и фильтрацию маршрутов.</span></div></div>
+          <div class="status-item"><div><strong>Админка</strong><span>Показывать только если спросят про управление платформой.</span></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Не показывать первым</h2>
+        <div class="status-list">
+          <div class="status-item danger"><div><strong>AI как главный результат</strong><span>AI - дополнительный интерфейс, не основа защиты.</span></div></div>
+          <div class="status-item danger"><div><strong>Android debug</strong><span>Мобильный клиент - companion app, не надо рисковать live-отладкой.</span></div></div>
+          <div class="status-item danger"><div><strong>DevTools и логи</strong><span>Только если комиссия технически попросит.</span></div></div>
+          <div class="status-item danger"><div><strong>Долгие настройки</strong><span>Не кликать хаотично. Demo должен быть коротким и подготовленным.</span></div></div>
+        </div>
+      </article>
+
+      <article class="card full">
+        <h2>5 вопросов, которые надо держать в голове</h2>
+        <div class="grid compact">
+          <div class="mini"><strong>Это просто CRUD?</strong><span class="answer">Нет. CRUD - базовый слой, а основной результат связан с геоданными, фото, маршрутизацией, публикацией, фоновой обработкой и мобильной записью трека.</span></div>
+          <div class="mini"><strong>Почему микросервисы?</strong><span class="answer">Разные контуры имеют разную нагрузку и причины отказа: auth, routes, photo worker, tiles/cache и AI.</span></div>
+          <div class="mini"><strong>Зачем AI?</strong><span class="answer">AI снижает порог входа, но ручной сценарий создания и публикации маршрута работает без него.</span></div>
+          <div class="mini"><strong>Почему web основной?</strong><span class="answer">Автор оформляет маршрут после прохождения: выбирает фото, пишет заметки, проверяет публикацию. Это удобнее на большом экране.</span></div>
+          <div class="mini"><strong>Что доказано?</strong><span class="answer">37/37 функциональных требований, 115 unit-тестов, E2E-аудит, demo-стенд, ВКР, диаграммы и трассировка требований.</span></div>
+          <div class="mini"><strong>Что развивать дальше?</strong><span class="answer">Android, offline-режим, фильтрация GPS-ошибок, модерация, реальные данные эксплуатации и развитие каталога.</span></div>
+        </div>
+      </article>
+
+      <article class="card full">
+        <h2>Быстрые ссылки</h2>
+        <div class="links">
+          <a href="../presentation/guide-helper-defense.pptx">PPTX</a>
+          <a href="../presentation/guide-helper-defense.pdf">PDF презентации</a>
+          <a href="../latex/main.pdf">PDF ВКР</a>
+          <a href="../presentation/speaker-notes.html">Speaker notes</a>
+          <a href="oral-formulas.html">Устные формулы</a>
+          <a href="hard-questions.html">Жёсткие вопросы</a>
+          <a href="demo-script.html">Demo-сценарий</a>
+          <a href="source-of-truth.html">Единые формулировки</a>
+          <a href="day-of-defense-checklist.html">День защиты</a>
+          <a href="../diagrams/index.html">Диаграммы</a>
+          <a href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E-отчёт</a>
+          <a href="https://guidehelper.dubrovskih.ru/map">Production</a>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

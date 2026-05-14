@@ -15,6 +15,7 @@
 - `day-of-defense-checklist.md` / `day-of-defense-checklist.html` — что открыть и проверить в день защиты.
 - `source-of-truth.md` / `source-of-truth.html` — единые формулировки, цифры и позиционирование проекта.
 - `10-conceptual-defense.md` / `10-conceptual-defense.html` — концептуальные ответы: CRUD, микросервисы, corporate, AI, web/mobile, NATS, MinIO.
+- `defense-command-center.html` — стартовая страница перед защитой: ссылки, demo-flow, риски и быстрые ответы.
 - `final-brief.md` / `final-brief.html` — короткий финальный бриф: что сказать, какие цифры помнить и чего не говорить.
 - `oral-formulas.md` / `oral-formulas.html` — короткие устные формулы для ответов на защите.
 - `hard-questions.md` / `hard-questions.html` — 30 жёстких вопросов комиссии с короткими ответами.
