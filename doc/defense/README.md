@@ -16,6 +16,7 @@
 - `source-of-truth.md` / `source-of-truth.html` — единые формулировки, цифры и позиционирование проекта.
 - `10-conceptual-defense.md` / `10-conceptual-defense.html` — концептуальные ответы: CRUD, микросервисы, corporate, AI, web/mobile, NATS, MinIO.
 - `defense-command-center.html` — стартовая страница перед защитой: ссылки, demo-flow, риски и быстрые ответы.
+- `defense-consistency-final.html` — финальная сверка формулировок ВКР, презентации и устных ответов.
 - `final-brief.md` / `final-brief.html` — короткий финальный бриф: что сказать, какие цифры помнить и чего не говорить.
 - `oral-formulas.md` / `oral-formulas.html` — короткие устные формулы для ответов на защите.
 - `pressure-questions.html` — стресс-протокол: что не говорить, короткий ответ и вторая линия защиты.

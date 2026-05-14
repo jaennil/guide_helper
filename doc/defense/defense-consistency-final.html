@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Финальная сверка защиты</title>
+  <link rel="stylesheet" href="page.css">
+  <style>
+    .audit-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 10px;
+    }
+
+    .audit-table th {
+      padding: 0 12px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .audit-table td {
+      padding: 14px 12px;
+      vertical-align: top;
+      background: var(--paper);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .audit-table td:first-child {
+      border-left: 1px solid var(--line);
+      border-radius: 16px 0 0 16px;
+      font-weight: 700;
+    }
+
+    .audit-table td:last-child {
+      border-right: 1px solid var(--line);
+      border-radius: 0 16px 16px 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ok {
+      background: rgb(18 138 82 / 12%);
+      color: var(--green);
+    }
+
+    .risk {
+      background: rgb(194 65 12 / 12%);
+      color: #c2410c;
+    }
+
+    .watch {
+      background: rgb(31 111 235 / 12%);
+      color: var(--accent);
+    }
+
+    .source-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .source-list li + li {
+      margin-top: 3px;
+    }
+
+    @media (max-width: 980px) {
+      .audit-table,
+      .audit-table tbody,
+      .audit-table tr,
+      .audit-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .audit-table thead {
+        display: none;
+      }
+
+      .audit-table td {
+        border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+        border-radius: 0;
+      }
+
+      .audit-table td:first-child {
+        border-radius: 16px 16px 0 0;
+      }
+
+      .audit-table td:last-child {
+        border-radius: 0 0 16px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← К пакету защиты</a>
+    <h1>Финальная сверка защиты</h1>
+    <p class="lead">Контрольная карта непротиворечивости: ВКР, презентация, speaker notes и устные ответы должны говорить одно и то же.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">Итог сверки</span>
+        <div class="quote">Критичных противоречий в ключевых формулировках не найдено. Основной риск организационный: для презентации источником истины считать PDF/PPTX на 13 слайдов, а не старый HTML-черновик.</div>
+      </article>
+    </section>
+
+    <section class="card full">
+      <h2>Критичные формулировки</h2>
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Что сверяем</th>
+            <th>Статус</th>
+            <th>Где встречается</th>
+            <th>Единая формулировка</th>
+            <th>Что говорить на защите</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Тема</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>титульный лист ВКР</li>
+                <li>генератор презентации</li>
+                <li>speaker notes</li>
+              </ul>
+            </td>
+            <td>Разработка корпоративной информационной системы картографии и маршрутов.</td>
+            <td>Не спорить с формулировкой приказа. Раскрывать тему через систему управления маршрутным контентом: роли, маршруты, публикация, фото, каталог, администрирование.</td>
+          </tr>
+
+          <tr>
+            <td>Главный результат</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение</li>
+                <li>заключение</li>
+                <li>командный центр</li>
+                <li>устные формулы</li>
+              </ul>
+            </td>
+            <td>Guide Helper - система полного цикла для создания, редактирования, публикации и просмотра туристических маршрутов с геопривязанными фотографиями.</td>
+            <td>Главное не “сайт” и не “карта”, а связанный сценарий: автор создаёт маршрут, прикрепляет фото и заметки, публикует, турист просматривает интерактивный маршрут.</td>
+          </tr>
+
+          <tr>
+            <td>Цель</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>аннотация</li>
+                <li>введение</li>
+                <li>speaker notes</li>
+              </ul>
+            </td>
+            <td>Разработать корпоративную информационную систему Guide Helper для картографического описания, создания и публикации маршрутов с геопривязанными фотографиями.</td>
+            <td>Цель раскрывает тему через прикладной результат: не абстрактная платформа, а система для маршрутов, точек, фотографий и публикации.</td>
+          </tr>
+
+          <tr>
+            <td>Задачи</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение: 10 задач</li>
+                <li>заключение: все 10 задач выполнены</li>
+                <li>слайд 3</li>
+              </ul>
+            </td>
+            <td>Анализ, аналоги, требования, архитектура и БД, backend, frontend, фото, интерактивные функции, инфраструктура, тестирование.</td>
+            <td>Не перечислять все задачи долго. Говорить блоками: анализ → проектирование → реализация → проверка.</td>
+          </tr>
+
+          <tr>
+            <td>Актуальность</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение</li>
+                <li>слайд 2</li>
+                <li>pressure questions</li>
+              </ul>
+            </td>
+            <td>Проблема не в отсутствии карт, а в разорванном процессе подготовки маршрута: карта, фото, описание и публичная ссылка живут в разных инструментах.</td>
+            <td>Не говорить “аналогов нет”. Говорить: существующие сервисы закрывают части сценария, а работа объединяет полный контур подготовки фотомаршрута.</td>
+          </tr>
+
+          <tr>
+            <td>Геопривязанная фотография</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение</li>
+                <li>аннотация</li>
+                <li>speaker notes</li>
+                <li>устные формулы</li>
+              </ul>
+            </td>
+            <td>Фотография, связанная с координатами точки маршрута вручную пользователем или автоматически на основе GPS-данных из EXIF.</td>
+            <td>Это не просто картинка в галерее, а фото в контексте конкретного места маршрута.</td>
+          </tr>
+
+          <tr>
+            <td>Роли</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>speaker notes</li>
+                <li>roles and scenarios</li>
+                <li>hard questions</li>
+              </ul>
+            </td>
+            <td>Сценарные роли: автор маршрута, турист, администратор. Системные роли: user, moderator, admin.</td>
+            <td>Обычный user может быть и автором, и туристом. Moderator/admin нужны для управления и модерации платформы.</td>
+          </tr>
+
+          <tr>
+            <td>Требования</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение</li>
+                <li>заключение</li>
+                <li>speaker notes</li>
+                <li>командный центр</li>
+              </ul>
+            </td>
+            <td>37 функциональных требований реализованы, 37 из 37 закрыты.</td>
+            <td>Если спросят доказательство: есть матрица трассировки, unit-тесты, E2E-аудит и demo-стенд.</td>
+          </tr>
+
+          <tr>
+            <td>Тесты</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>введение</li>
+                <li>заключение</li>
+                <li>слайд 11</li>
+                <li>speaker notes</li>
+              </ul>
+            </td>
+            <td>115 модульных тестов, функциональное тестирование, E2E-аудит критического сценария и проверка требований.</td>
+            <td>Не обещать “багов нет”. Говорить: проверялись разные уровни - backend-логика, пользовательский путь и соответствие требованиям.</td>
+          </tr>
+
+          <tr>
+            <td>Источники</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>аннотация</li>
+                <li>список литературы</li>
+              </ul>
+            </td>
+            <td>54 источника: 29 печатных и 25 интернет-источников.</td>
+            <td>Если спросят про источники: они используются для туризма, требований, архитектуры, тестирования, нормативной базы и аналогов.</td>
+          </tr>
+
+          <tr>
+            <td>Микросервисы</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>архитектура</li>
+                <li>заключение</li>
+                <li>speaker notes</li>
+                <li>pressure questions</li>
+              </ul>
+            </td>
+            <td>Микросервисы выбраны для разделения контуров с разной нагрузкой и отказами: auth, routes, photo worker, tiles/cache, AI.</td>
+            <td>Не говорить “потому что современно”. Признать, что монолит проще, но хуже изолирует фото, тайлы и AI от основного API.</td>
+          </tr>
+
+          <tr>
+            <td>AI</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>слайд 10</li>
+                <li>speaker notes</li>
+                <li>архитектура</li>
+                <li>pressure questions</li>
+              </ul>
+            </td>
+            <td>AI - дополнительный интерфейс для поиска мест, построения маршрута и подготовки описаний. Основной сценарий работает без AI.</td>
+            <td>Не делать AI главным результатом. Главный результат - система маршрутов; AI снижает порог входа.</td>
+          </tr>
+
+          <tr>
+            <td>Android</td>
+            <td><span class="status ok">ОК</span></td>
+            <td>
+              <ul class="source-list">
+                <li>архитектура</li>
+                <li>speaker notes</li>
+                <li>pressure questions</li>
+              </ul>
+            </td>
+            <td>Android-клиент - companion app для полевой записи GPS-трека. Web-клиент остаётся основным интерфейсом оформления и публикации маршрута.</td>
+            <td>Не оправдываться, что Android не полный. Он осознанно ограничен полевым сценарием и дополняет web-контур.</td>
+          </tr>
+
+          <tr>
+            <td>Презентация</td>
+            <td><span class="status risk">Риск</span></td>
+            <td>
+              <ul class="source-list">
+                <li>guide-helper-defense.pdf: 13 страниц</li>
+                <li>guide-helper-defense.pptx: основной артефакт</li>
+                <li>guide-helper-defense.html: старый черновик на 15 слайдов</li>
+              </ul>
+            </td>
+            <td>Для защиты использовать PDF/PPTX, сгенерированные по шаблону Политеха. HTML-презентацию считать черновиком/резервом.</td>
+            <td>Не открывать HTML-презентацию на защите. Открывать `guide-helper-defense.pdf` или PPTX.</td>
+          </tr>
+
+          <tr>
+            <td>Demo</td>
+            <td><span class="status watch">Контроль</span></td>
+            <td>
+              <ul class="source-list">
+                <li>командный центр</li>
+                <li>demo script</li>
+                <li>E2E PDF-отчёт</li>
+              </ul>
+            </td>
+            <td>Показывать короткий подготовленный сценарий: редактор → точка с фото/заметкой → публичная страница → каталог.</td>
+            <td>Не кликать хаотично. Если live demo нестабилен, переходить на E2E-отчёт со скриншотами.</td>
+          </tr>
+
+          <tr>
+            <td>Дата защиты</td>
+            <td><span class="status watch">Контроль</span></td>
+            <td>
+              <ul class="source-list">
+                <li>презентация: июнь 2026</li>
+                <li>материалы защиты</li>
+              </ul>
+            </td>
+            <td>В материалах защиты не фиксировать неподтверждённую точную дату, если она может измениться. Использовать “июнь 2026”.</td>
+            <td>Если устно спросят дату - отвечать фактическую дату защиты по расписанию кафедры.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Что открыть</h2>
+        <div class="links">
+          <a href="../presentation/guide-helper-defense.pdf">PDF презентации</a>
+          <a href="../presentation/guide-helper-defense.pptx">PPTX</a>
+          <a href="../latex/main.pdf">PDF ВКР</a>
+          <a href="defense-command-center.html">Командный центр</a>
+          <a href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E-отчёт</a>
+        </div>
+      </article>
+
+      <article class="card wide">
+        <h2>Финальная формула</h2>
+        <div class="quote">ВКР защищается не как набор технологий, а как разработанная информационная система: проблема автора маршрута → требования → архитектура → реализация → проверка → демонстрация результата.</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
