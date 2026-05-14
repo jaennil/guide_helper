@@ -22,6 +22,7 @@
 - `defense-training.html` — интерактивный тренажёр вопросов комиссии.
 - `one-page-cheatsheet.html` — краткая шпаргалка с самым важным перед защитой.
 - `submission-checklist.html` — чеклист сдачи, открытых вкладок и fallback.
+- `mock-defense-session.md` / `mock-defense-session.html` — симулятор защиты: тайминг доклада, вопросы, хорошие и плохие ответы.
 - `08-strong-screenshots.md` — какие скриншоты показывать и зачем.
 
 Дополнительно:

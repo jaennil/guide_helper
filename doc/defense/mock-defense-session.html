@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Симулятор защиты</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Симулятор защиты</h1>
+    <p class="lead">Одна полноценная тренировка: 7 минут доклада, затем 12 вопросов комиссии с хорошими и плохими ответами.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">правила</span>
+        <h2>Тренировка без паузы</h2>
+        <ol>
+          <li>Включить таймер на 7 минут.</li>
+          <li>Проговорить доклад по слайдам без остановки.</li>
+          <li>Ответить на 12 вопросов подряд.</li>
+          <li>Если ответ сорвался, восстановиться и закончить мысль.</li>
+          <li>После тренировки повторить 3 самых слабых ответа.</li>
+        </ol>
+      </article>
+
+      <article class="card wide">
+        <span class="kicker">7 минут</span>
+        <h2>Тайминг доклада</h2>
+        <div class="steps">
+          <div class="step"><div><strong>0:00-0:40</strong><p>Тема и результат: система для маршрутов с геопривязанными фото.</p></div></div>
+          <div class="step"><div><strong>0:40-1:20</strong><p>Актуальность: карта, фото, заметки и ссылка живут в разных инструментах.</p></div></div>
+          <div class="step"><div><strong>1:20-2:00</strong><p>Цель и задачи: объединить маршрут, фото, публикацию и просмотр.</p></div></div>
+          <div class="step"><div><strong>2:00-2:40</strong><p>Аналоги закрывают части сценария, но не весь фотомаршрут.</p></div></div>
+          <div class="step"><div><strong>2:40-3:20</strong><p>Роли и требования: автор, турист, админ; 37 требований.</p></div></div>
+          <div class="step"><div><strong>3:20-4:20</strong><p>Архитектура: auth, routes, photo worker, tiles/cache, AI.</p></div></div>
+          <div class="step"><div><strong>4:20-5:00</strong><p>Фотообработка: NATS, worker, MinIO, PostgreSQL.</p></div></div>
+          <div class="step"><div><strong>5:00-5:50</strong><p>Интерфейс и публикация: web для автора, публичная страница для туриста.</p></div></div>
+          <div class="step"><div><strong>5:50-6:25</strong><p>AI и Android как расширения, не критические зависимости.</p></div></div>
+          <div class="step"><div><strong>6:25-7:00</strong><p>115 тестов, E2E-аудит, 37/37 требований, цель достигнута.</p></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">если поплыл</span>
+        <h2>Фраза восстановления</h2>
+        <p class="quote">Я бы разделил ответ на две части: пользовательскую и техническую. Пользовательски это нужно для ..., технически это реализовано через ...</p>
+      </article>
+
+      <article class="card full">
+        <span class="kicker">вопросы</span>
+        <h2>12 вопросов комиссии</h2>
+      </article>
+
+      <details open><summary>1. Это просто CRUD?</summary><p><strong>Хорошо:</strong> CRUD есть в любой системе, но здесь результат связан с картой, геоданными, фото, EXIF/GPS, фоновой обработкой, публикацией, каталогом, AI и mobile. <strong>Плохо:</strong> “Ну да, CRUD, но большой”.</p></details>
+      <details><summary>2. Почему это корпоративная ИС?</summary><p><strong>Хорошо:</strong> это не ERP, но система поддерживает деятельность команды гидов: роли, каталог, публикация, администрирование, модерация. <strong>Плохо:</strong> “Так в приказе написано”.</p></details>
+      <details><summary>3. Почему микросервисы?</summary><p><strong>Хорошо:</strong> разные контуры нагрузки и отказов: auth, routes, photo worker, tiles/cache, AI. <strong>Плохо:</strong> “Потому что современно”.</p></details>
+      <details><summary>4. Почему не монолит?</summary><p><strong>Хорошо:</strong> для MVP монолит проще, но здесь есть фоновые задачи, объектное хранилище, тайлы, AI и синхронизация. <strong>Плохо:</strong> “Монолит плохой”.</p></details>
+      <details><summary>5. Зачем AI?</summary><p><strong>Хорошо:</strong> AI — дополнительный интерфейс, основной сценарий работает без него. <strong>Плохо:</strong> “Чтобы было модно”.</p></details>
+      <details><summary>6. Зачем Android?</summary><p><strong>Хорошо:</strong> Android записывает GPS-трек в поле, web остаётся основным для оформления и публикации. <strong>Плохо:</strong> “Потому что захотелось мобильное приложение”.</p></details>
+      <details><summary>7. Как доказана актуальность?</summary><p><strong>Хорошо:</strong> предметная проблема и опрос: важны передача маршрута, фото в контексте места и единая подготовка материала. <strong>Плохо:</strong> “Мне кажется, это нужно”.</p></details>
+      <details><summary>8. Отличие от Strava/Komoot/Wikiloc?</summary><p><strong>Хорошо:</strong> аналоги закрывают части сценария, Guide Helper объединяет авторский фотомаршрут, публикацию, админку и фотообработку. <strong>Плохо:</strong> “У них такого нет”.</p></details>
+      <details><summary>9. Что такое геопривязанная фотография?</summary><p><strong>Хорошо:</strong> фото, связанное с координатой или точкой маршрута; координаты из EXIF/GPS или вручную. <strong>Плохо:</strong> “Это просто фото на карте”.</p></details>
+      <details><summary>10. Как проверялась система?</summary><p><strong>Хорошо:</strong> 115 модульных тестов, E2E-аудит, матрица 37 требований, сборка и стенд. <strong>Плохо:</strong> “Я руками потыкал”.</p></details>
+      <details><summary>11. Что если demo упадёт?</summary><p><strong>Хорошо:</strong> есть fallback: подготовленный маршрут, скриншоты и E2E PDF-отчёт. <strong>Плохо:</strong> “Не должно упасть”.</p></details>
+      <details><summary>12. Что развивать дальше?</summary><p><strong>Хорошо:</strong> production-ready Android, офлайн-карты, рекомендации, модерация, аналитика, PDF-экспорт. <strong>Плохо:</strong> “Не знаю”.</p></details>
+
+      <article class="card full">
+        <span class="kicker">запреты</span>
+        <h2>Что нельзя делать</h2>
+        <ul>
+          <li>Не спорить с комиссией.</li>
+          <li>Не говорить “я не знаю” без продолжения.</li>
+          <li>Не оправдываться за технологии.</li>
+          <li>Не открывать devtools.</li>
+          <li>Не чинить стенд во время защиты.</li>
+          <li>Не уходить в Kubernetes, если вопрос был про пользователя.</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
+
