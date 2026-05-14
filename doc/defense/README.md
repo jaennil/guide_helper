@@ -18,6 +18,7 @@
 - `defense-command-center.html` — стартовая страница перед защитой: ссылки, demo-flow, риски и быстрые ответы.
 - `final-brief.md` / `final-brief.html` — короткий финальный бриф: что сказать, какие цифры помнить и чего не говорить.
 - `oral-formulas.md` / `oral-formulas.html` — короткие устные формулы для ответов на защите.
+- `pressure-questions.html` — стресс-протокол: что не говорить, короткий ответ и вторая линия защиты.
 - `hard-questions.md` / `hard-questions.html` — 30 жёстких вопросов комиссии с короткими ответами.
 - `demo-script.md` / `demo-script.html` — live demo-flow и fallback-сценарии.
 - `presentation-audit.md` / `presentation-audit.html` — аудит слайдов: назначение, риск вопроса и что говорить.

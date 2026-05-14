@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Комиссия давит: стресс-вопросы</title>
+  <link rel="stylesheet" href="page.css">
+  <style>
+    .pressure-grid {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 42px;
+    }
+
+    .pressure-card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .pressure-card h2 {
+      margin-bottom: 8px;
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .answer-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgb(255 255 255 / 70%);
+    }
+
+    .answer-box strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .answer-box.danger {
+      background: rgb(194 65 12 / 8%);
+    }
+
+    .answer-box.ok {
+      background: rgb(18 138 82 / 8%);
+    }
+
+    .answer-box.next {
+      background: rgb(31 111 235 / 8%);
+    }
+
+    @media (max-width: 980px) {
+      .answer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← К пакету защиты</a>
+    <h1>Комиссия давит</h1>
+    <p class="lead">Стресс-протокол для концептуальных вопросов. Задача - не спорить, не оправдываться и не уходить в детали, а возвращать ответ к проблеме, реализованному результату и проверке.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">Правило ответа</span>
+        <div class="quote">Сначала признать границу вопроса, затем дать короткую позицию, затем подкрепить её фактом из системы: требование, архитектура, тест, demo или пользовательский сценарий.</div>
+      </article>
+    </section>
+
+    <section class="pressure-grid">
+      <article class="pressure-card">
+        <span class="kicker">1</span>
+        <h2>Это просто CRUD?</h2>
+        <p>Опасность вопроса: если отвечать через таблицы и endpoints, работа выглядит как обычная учебная админка.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Ну CRUD тоже есть”, “зато много экранов”, “я много сделал”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>CRUD - только базовый слой. Содержательная часть - геоданные, маршрутизация, геопривязанные фото, фоновая обработка, публикация интерактивного маршрута и мобильная запись трека.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Показать flow: точка маршрута → фото/заметка → обработка фото → публичная страница. Это уже не просто запись в таблице.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">2</span>
+        <h2>Почему нельзя было сделать это в Google My Maps?</h2>
+        <p>Опасность вопроса: комиссия может решить, что разработка не нужна, потому что карты уже существуют.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Google плохой”, “у них нет такой кнопки”, “я хотел своё”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Карты закрывают отображение, но не полный управляемый сценарий: роли, каталог, публикация, фотообработка, комментарии, оценки, администрирование и собственная логика маршрута.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сказать: я не конкурирую с картами как источником тайлов, я строю информационную систему вокруг маршрута как контента.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">3</span>
+        <h2>Где здесь корпоративная информационная система?</h2>
+        <p>Опасность вопроса: слово “корпоративная” могут трактовать как ERP, бухгалтерию или документооборот.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Так написано в приказе”, “любой сайт корпоративный”, “это ERP”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Корпоративность предметная: система поддерживает деятельность команды гидов или туристической организации - роли, контент, каталог, публикация, модерация, настройки и администрирование.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Привязать к приказу: тема про корпоративную ИС картографии и маршрутов, а реализованный контур управляет маршрутным контентом организации.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">4</span>
+        <h2>Почему микросервисы, если монолит проще?</h2>
+        <p>Опасность вопроса: микросервисы могут выглядеть как “модно ради модно”.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Микросервисы современные”, “так круче”, “монолит устарел”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Монолит был бы проще для MVP, но хуже разделял бы контуры с разной нагрузкой и отказами: auth, routes, photo worker, tiles/cache и AI.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Признать tradeoff: “Да, это сложнее. Но разделение оправдано там, где есть фоновые фото, внешние API и кэш тайлов, которые не должны блокировать основной API”.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">5</span>
+        <h2>Не переусложнена ли архитектура?</h2>
+        <p>Опасность вопроса: если защищать каждую технологию отдельно, ответ станет слабым.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Нет, всё идеально”, “чем больше сервисов, тем лучше”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Риск переусложнения есть, поэтому сервисы выделены по крупным ответственностям, а не по каждой таблице: auth, routes, фото, тайлы и кэш.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сказать, что в промышленной версии можно объединять части, но для ВКР важно показать осознанное разделение медленных, внешних и основных контуров.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">6</span>
+        <h2>Зачем AI, если есть кнопки?</h2>
+        <p>Опасность вопроса: AI может выглядеть как лишняя игрушка или нестабильная зависимость.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“AI всё понимает”, “без AI система не нужна”, “так модно”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>AI - дополнительный интерфейс, а не основа системы. Он снижает порог входа: пользователь может текстом попросить найти место, построить маршрут или подготовить описание.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Подчеркнуть fallback: ручной сценарий создания, сохранения, публикации и просмотра маршрута полностью работает без AI.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">7</span>
+        <h2>Почему web основной, а Android не полный?</h2>
+        <p>Опасность вопроса: могут посчитать мобильный клиент недоделанным.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Не успел”, “мобилка пока слабая”, “потом доделаю всё”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Web закрывает основной публикационный сценарий: автор после прохождения выбирает фото, пишет описания и проверяет результат на большом экране. Android - companion app для записи GPS-трека в поле.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сказать, что мобильный клиент осознанно ограничен: он не должен дублировать админку и весь редактор, его задача - сбор полевых данных.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">8</span>
+        <h2>Как доказана актуальность?</h2>
+        <p>Опасность вопроса: без доказательств проблема звучит как личное предположение.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Мне кажется”, “это очевидно”, “всем гидам нужно”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Актуальность обоснована предметной проблемой, анализом аналогов и опросом потенциальных пользователей: проверялись передача маршрута, фото в контексте места, публичная ссылка и запись маршрута в полевых условиях.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сказать, что опрос не доказывает весь рынок, но подтверждает наличие проблемы у целевой группы и используется для формирования требований.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">9</span>
+        <h2>Чем отличается от Strava, Komoot, Wikiloc?</h2>
+        <p>Опасность вопроса: комиссия может ожидать полного рыночного превосходства.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Они плохие”, “у нас лучше всё”, “аналогов нет”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Эти сервисы сильны в своих сценариях: спорт, треки, маршруты. Guide Helper фокусируется на авторском фотомаршруте, управляемой публикации, администрировании и обработке фотографий.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сформулировать нишу: не заменить все туристические сервисы, а закрыть сценарий подготовки и публикации маршрута с геопривязанным визуальным материалом.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">10</span>
+        <h2>Зачем NATS и MinIO?</h2>
+        <p>Опасность вопроса: технологии могут выглядеть как избыточный набор инфраструктуры.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Потому что production”, “так делают все”, “это популярно”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>NATS отделяет пользовательский запрос от фоновой обработки фото. MinIO хранит оригиналы и превью как объекты, а PostgreSQL хранит метаданные, связи и статусы.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Показать границу ответственности: PostgreSQL - структура, MinIO - файлы, NATS - задачи, Photo Worker - обработка.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">11</span>
+        <h2>Как проверялась система?</h2>
+        <p>Опасность вопроса: “я потыкал руками” не считается достаточным ответом.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Я проверял, вроде работает”, “багов нет”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Проверка включает 115 unit-тестов, E2E-аудит критического сценария, матрицу трассировки 37 функциональных требований и демонстрационный стенд.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Разделить: unit-тесты проверяют backend-логику, E2E - пользовательский путь, трассировка - соответствие требованиям.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">12</span>
+        <h2>Что если live demo упадёт?</h2>
+        <p>Опасность вопроса: защита не должна зависеть от сети, AI или внешних карт.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Не упадёт”, “надеюсь, всё будет нормально”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Есть fallback: подготовленный маршрут, скриншоты, E2E PDF-отчёт, диаграммы и defense-пакет. Тот же сценарий можно показать без live-зависимостей.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Сказать: demo подтверждает удобство, но факт реализации подтверждается кодом, тестами, отчётом и развёрнутым стендом.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">13</span>
+        <h2>Что сделал лично автор?</h2>
+        <p>Опасность вопроса: при большом проекте комиссия может усомниться в личном вкладе.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Всё”, “много всего”, “с помощью AI”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Мной реализованы backend-сервисы, web-интерфейс, обработка маршрутов и фотографий, публикация, AI-интеграция, админка, инфраструктура, тесты, E2E-отчёты и Android companion app.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Разложить по артефактам: код, ВКР, диаграммы, тесты, презентация, demo-стенд и GitHub-репозиторий.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">14</span>
+        <h2>Почему тема не слишком широкая?</h2>
+        <p>Опасность вопроса: AI, Android, исторический слой и микросервисы могут размыть основной результат.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Да, я просто много добавил”, “всё важно одинаково”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Scope ограничен основным сценарием: создать, изменить, сохранить, опубликовать и просмотреть маршрут с геопривязанными фотографиями. Остальные функции расширяют этот сценарий.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Вернуться к цели ВКР и demo-flow: редактор → фото/заметки → публичный маршрут → каталог.</span></div>
+        </div>
+      </article>
+
+      <article class="pressure-card">
+        <span class="kicker">15</span>
+        <h2>Что является главным научно-практическим результатом?</h2>
+        <p>Опасность вопроса: если ответить “сайт”, ценность работы падает.</p>
+        <div class="answer-grid">
+          <div class="answer-box danger"><strong>Не говорить</strong><span>“Сайт с маршрутами”, “карта”, “много функций”.</span></div>
+          <div class="answer-box ok"><strong>Короткий ответ</strong><span>Главный результат - разработанная и проверенная информационная система полного цикла работы с туристическим маршрутом: от создания и привязки фотографий до публикации и просмотра.</span></div>
+          <div class="answer-box next"><strong>Если давят дальше</strong><span>Подкрепить доказательствами: 37/37 требований, архитектура, БД, сервисы, web-клиент, photo pipeline, demo-стенд и E2E-отчёт.</span></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
