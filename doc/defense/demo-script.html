@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo-сценарий защиты</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Demo-сценарий защиты</h1>
+    <p class="lead">Показывать не все кнопки, а главный результат: маршрут можно создать, оформить фотографиями, опубликовать и посмотреть как турист.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">главный принцип</span>
+        <h2>Показывать подготовленный стабильный сценарий</h2>
+        <p class="quote">Не импровизировать, не открывать devtools, не логиниться вручную, не ждать AI и не строить маршрут с нуля дольше 30 секунд.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">открыть заранее</span>
+        <h2>Перед защитой</h2>
+        <ul>
+          <li>Презентация.</li>
+          <li>Production-стенд Guide Helper.</li>
+          <li>Подготовленный маршрут в редакторе.</li>
+          <li>Публичная страница маршрута.</li>
+          <li>Каталог маршрутов.</li>
+          <li>E2E PDF-отчёт.</li>
+          <li>Defense index.</li>
+        </ul>
+      </article>
+
+      <article class="card wide">
+        <span class="kicker">2-3 минуты</span>
+        <h2>Основной demo-flow</h2>
+        <div class="steps">
+          <div class="step"><div><strong>Редактор маршрута</strong><p>“Это основной рабочий экран автора маршрута”.</p></div></div>
+          <div class="step"><div><strong>Точки маршрута</strong><p>“Точки являются смысловыми остановками, а не просто координатами”.</p></div></div>
+          <div class="step"><div><strong>Popup точки</strong><p>“Фото и заметка привязаны к конкретному месту маршрута”.</p></div></div>
+          <div class="step"><div><strong>Линия и статистика</strong><p>“Система рассчитывает расстояние, высоты, время и сложность”.</p></div></div>
+          <div class="step"><div><strong>Настройки маршрута</strong><p>“Автор оформляет маршрут как публикационный материал”.</p></div></div>
+          <div class="step"><div><strong>Публичная страница</strong><p>“Так маршрут видит турист или клиент”.</p></div></div>
+          <div class="step"><div><strong>Каталог</strong><p>“Это уже не одиночный редактор, а контур публикации маршрутов”.</p></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">не показывать</span>
+        <h2>Без прямого вопроса</h2>
+        <ul>
+          <li>Login/logout.</li>
+          <li>Devtools.</li>
+          <li>ArgoCD и логи.</li>
+          <li>Долгий AI-chat.</li>
+          <li>Android live-debug.</li>
+          <li>Создание аккаунта.</li>
+          <li>Сырые админские формы.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="kicker">fallback</span>
+        <h2>Если сайт не открывается</h2>
+        <p>Открыть E2E PDF-отчёт и сказать, что он фиксирует тот же критический сценарий: создание маршрута, точки, фотографии, настройки, публикация и проверка результата.</p>
+        <div class="links"><a href="../e2e/20260505T151706-route-creation-audit/report.pdf">E2E PDF-отчёт</a></div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">fallback</span>
+        <h2>Если AI не отвечает</h2>
+        <p>AI является дополнительным интерфейсом. Основной сценарий создания, сохранения и публикации маршрута работает независимо от AI.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">fallback</span>
+        <h2>Если карта тормозит</h2>
+        <p>Карта использует внешние tile-провайдеры и кеширующий слой. Если внешние тайлы отвечают медленно, результат показывается по подготовленным скриншотам и E2E-отчёту.</p>
+      </article>
+
+      <article class="card full">
+        <span class="kicker">мини-речь</span>
+        <h2>Что говорить во время demo</h2>
+        <p class="quote">Сейчас покажу основной сценарий автора маршрута. На карте открыт подготовленный маршрут. У него есть точки, линия маршрута и статистика. У точки можно открыть карточку: здесь видно, что фотография и заметка связаны с конкретным местом. После оформления маршрут можно сохранить и опубликовать. Публичная страница показывает тот же маршрут уже для туриста: он видит карту, точки, фото, описание и может взаимодействовать с маршрутом.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
+

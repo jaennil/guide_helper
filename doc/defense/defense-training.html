@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тренажёр вопросов защиты</title>
+  <link rel="stylesheet" href="page.css">
+  <style>
+    .trainer {
+      display: grid;
+      gap: 18px;
+    }
+
+    .question-box {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: clamp(22px, 4vw, 42px);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .question-no {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .question-text {
+      margin: 12px 0 18px;
+      font-size: clamp(30px, 4vw, 56px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+
+    .answer {
+      display: none;
+      border-left: 5px solid var(--accent);
+      border-radius: 16px;
+      padding: 16px 18px;
+      background: rgb(31 111 235 / 8%);
+      color: var(--ink);
+      font-size: 20px;
+    }
+
+    .answer.visible {
+      display: block;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 12px 16px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Тренажёр вопросов защиты</h1>
+    <p class="lead">Открываешь случайный вопрос, отвечаешь вслух, затем сверяешься с эталоном. Работает локально без сервера.</p>
+  </header>
+
+  <main>
+    <section class="trainer">
+      <article class="question-box">
+        <div class="question-no" id="counter">Вопрос</div>
+        <div class="question-text" id="question">Нажми “случайный вопрос”.</div>
+        <p class="hint">Сначала ответь вслух за 15-30 секунд. Только потом открывай эталон.</p>
+        <div class="answer" id="answer"></div>
+      </article>
+
+      <div class="toolbar">
+        <button class="primary" id="random">Случайный вопрос</button>
+        <button id="next">Следующий</button>
+        <button id="toggle">Показать ответ</button>
+        <button id="hard">Опасный вопрос</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const questions = [
+      {
+        q: "Это просто CRUD?",
+        a: "CRUD есть в любой информационной системе, но здесь результат не сводится к созданию записей. Система работает с картой, геоданными, маршрутизацией, фото, EXIF/GPS, фоновой обработкой, публикацией, каталогом, AI и мобильной записью маршрута.",
+        hard: true
+      },
+      {
+        q: "Почему нельзя было сделать Google My Maps?",
+        a: "Google My Maps закрывает карту, но не закрывает роли, каталог, публикацию маршрутов как продукта, обработку фотографий, социальные функции, администрирование, AI и собственную логику характеристик маршрута.",
+        hard: true
+      },
+      {
+        q: "Где здесь корпоративная информационная система?",
+        a: "Это не ERP. Корпоративность здесь предметная: система поддерживает деятельность туристической организации или команды гидов. Есть пользователи, роли, публикация контента, каталог, администрирование, модерация и настройки.",
+        hard: true
+      },
+      {
+        q: "Почему тема не слишком широкая?",
+        a: "Основной сценарий ограничен созданием, изменением, публикацией и просмотром маршрутов с геопривязанными фотографиями. Android, AI и исторический слой являются дополнительными контурами.",
+        hard: true
+      },
+      {
+        q: "Почему микросервисы, а не монолит?",
+        a: "Для маленького MVP монолит был бы проще. Но здесь есть разные контуры нагрузки: авторизация, маршруты, обработка фото, тайлы, AI и синхронизация. Фото и AI могут быть медленными, поэтому они не должны блокировать основной API.",
+        hard: true
+      },
+      {
+        q: "Не переусложнена ли архитектура?",
+        a: "Сервисы разделены по крупным ответственностям, а не по каждой таблице. Отдельно вынесены только те части, где это даёт практический смысл: auth, routes, photo worker, tiles/cache.",
+        hard: true
+      },
+      {
+        q: "Зачем NATS?",
+        a: "NATS отделяет пользовательский запрос от фоновой обработки фотографий. API быстро принимает загрузку, а worker обрабатывает изображение отдельно и может быть перезапущен.",
+        hard: false
+      },
+      {
+        q: "Зачем MinIO?",
+        a: "PostgreSQL хранит структуру и связи. Фотографии — большие бинарные объекты, поэтому их логичнее хранить в объектном хранилище с S3-compatible API.",
+        hard: false
+      },
+      {
+        q: "Почему PostgreSQL?",
+        a: "Нужны транзакции, связи между сущностями, индексы, роли, маршруты, комментарии, оценки, закладки и JSONB для гибких данных точек маршрута.",
+        hard: false
+      },
+      {
+        q: "Зачем Redis?",
+        a: "Redis кеширует картографические тайлы, ускоряет повторную загрузку карты и снижает зависимость от внешних tile-провайдеров.",
+        hard: false
+      },
+      {
+        q: "Зачем AI?",
+        a: "AI — дополнительный интерфейс: пользователь может текстом попросить найти место, построить маршрут или подготовить описание. Основной сценарий работает без AI.",
+        hard: true
+      },
+      {
+        q: "Что если AI недоступен?",
+        a: "Создание, редактирование, сохранение, публикация, каталог, фото и админка продолжают работать. AI — вспомогательный слой.",
+        hard: false
+      },
+      {
+        q: "Почему web основной?",
+        a: "Автор маршрута оформляет результат после прохождения: выбирает фото, редактирует точки, пишет описания, проверяет публикацию. Это удобнее на большом экране.",
+        hard: true
+      },
+      {
+        q: "Зачем Android?",
+        a: "Android — companion app для полевого сценария: записать GPS-трек во время прохождения и синхронизировать его для дальнейшего оформления в web.",
+        hard: true
+      },
+      {
+        q: "Почему mobile не полный?",
+        a: "Он решает другую задачу. Основной дипломный результат — публикационный web-контур, mobile дополняет его записью маршрута в поле.",
+        hard: true
+      },
+      {
+        q: "Как доказана актуальность?",
+        a: "Актуальность обоснована предметной проблемой и опросом потенциальных пользователей: важны передача маршрута, фотографии в контексте места и единый способ подготовить материал.",
+        hard: true
+      },
+      {
+        q: "Отличие от Strava?",
+        a: "Strava про спортивную активность и треки. Guide Helper про оформление и публикацию туристического маршрута с фотографиями, точками, заметками и каталогом.",
+        hard: false
+      },
+      {
+        q: "Что такое геопривязанная фотография?",
+        a: "Это фото, связанное с координатой или точкой маршрута. Координаты берутся из EXIF/GPS или задаются вручную через карту.",
+        hard: false
+      },
+      {
+        q: "Как считается сложность?",
+        a: "По совокупности расстояния, набора высоты и оценки времени. Порогами можно управлять через настройки.",
+        hard: false
+      },
+      {
+        q: "Что сделал лично?",
+        a: "Backend-сервисы, web-интерфейс, обработка маршрутов и фотографий, публикация, AI-интеграция, админка, инфраструктура, тесты, E2E-отчёты и Android companion app.",
+        hard: true
+      },
+      {
+        q: "Как проверялась система?",
+        a: "115 модульных тестов, E2E-аудит критического сценария, матрица трассируемости 37 функциональных требований, сборка документации и проверка стенда.",
+        hard: true
+      },
+      {
+        q: "Что если live demo упадёт?",
+        a: "Есть fallback: подготовленный маршрут, скриншоты, E2E PDF-отчёт и defense-пакет. Можно показать тот же сценарий без сети, AI и тайлов.",
+        hard: true
+      },
+      {
+        q: "Зачем админка?",
+        a: "Админка превращает систему из одиночного редактора в платформу: пользователи, категории, маршруты, комментарии и настройки управляются централизованно.",
+        hard: false
+      },
+      {
+        q: "Ограничения текущей версии?",
+        a: "Android пока companion app, AI и карты зависят от внешних сервисов, офлайн-карты и production-ready mobile можно развивать дальше.",
+        hard: true
+      },
+      {
+        q: "Что самое важное практически?",
+        a: "Автор быстрее получает готовый материал для туристов, а турист видит маршрут как карту с точками, фото, описанием и обратной связью.",
+        hard: false
+      },
+      {
+        q: "Что развивать дальше?",
+        a: "Production-ready Android, офлайн-карты, рекомендации, модерация, аналитика, PDF-экспорт маршрута и более глубокая обработка фотографий.",
+        hard: false
+      }
+    ];
+
+    let current = 0;
+    const qEl = document.getElementById("question");
+    const aEl = document.getElementById("answer");
+    const cEl = document.getElementById("counter");
+
+    function showQuestion(index) {
+      current = ((index % questions.length) + questions.length) % questions.length;
+      const item = questions[current];
+      qEl.textContent = item.q;
+      aEl.textContent = item.a;
+      aEl.classList.remove("visible");
+      cEl.textContent = `Вопрос ${current + 1} из ${questions.length}${item.hard ? " · опасный" : ""}`;
+    }
+
+    document.getElementById("random").addEventListener("click", () => {
+      showQuestion(Math.floor(Math.random() * questions.length));
+    });
+
+    document.getElementById("next").addEventListener("click", () => {
+      showQuestion(current + 1);
+    });
+
+    document.getElementById("toggle").addEventListener("click", () => {
+      aEl.classList.toggle("visible");
+    });
+
+    document.getElementById("hard").addEventListener("click", () => {
+      const hard = questions.map((item, index) => item.hard ? index : -1).filter(index => index >= 0);
+      showQuestion(hard[Math.floor(Math.random() * hard.length)]);
+    });
+
+    showQuestion(0);
+  </script>
+</body>
+</html>
+

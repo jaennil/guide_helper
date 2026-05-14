@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Финальный бриф защиты</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Финальный бриф защиты</h1>
+    <p class="lead">Короткая страница для восстановления позиции перед докладом: что обязательно сказать, какие цифры помнить и чего не говорить первым.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">главная мысль</span>
+        <h2>Guide Helper собирает маршрут в единый интерактивный объект</h2>
+        <p class="quote">Система нужна автору маршрута, потому что без неё карта, фотографии, заметки, описание и ссылка для клиента живут в разных инструментах.</p>
+        <p>Разработанный результат позволяет создать маршрут, добавить точки, фотографии и заметки, сохранить, опубликовать и показать туристам готовую интерактивную страницу.</p>
+      </article>
+
+      <article class="card wide">
+        <span class="kicker">что сказать за 6-7 минут</span>
+        <h2>Каркас доклада</h2>
+        <div class="steps">
+          <div class="step"><div><strong>Проблема</strong><p>Разрозненная подготовка туристического маршрута: карта, фото, заметки и ссылка живут отдельно.</p></div></div>
+          <div class="step"><div><strong>Пользователи</strong><p>Автор маршрута создаёт и публикует, турист смотрит и оценивает, администратор управляет контентом.</p></div></div>
+          <div class="step"><div><strong>Результат</strong><p>Web-клиент, backend-сервисы, обработка фото, каталог, публикация, AI, админка и Android companion app.</p></div></div>
+          <div class="step"><div><strong>Ключевая фича</strong><p>Геопривязанная фотография показывается в контексте конкретной точки маршрута.</p></div></div>
+          <div class="step"><div><strong>Архитектура</strong><p>Микросервисы разделяют auth, routes, photo worker, tiles/cache и AI из-за разных профилей нагрузки.</p></div></div>
+          <div class="step"><div><strong>Проверка</strong><p>37/37 требований, 115 модульных тестов, E2E-аудит и демонстрационный стенд.</p></div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">цифры</span>
+        <h2>Запомнить</h2>
+        <div class="mini"><strong>37/37</strong><span>функциональных требований реализованы</span></div>
+        <div class="mini"><strong>115</strong><span>модульных тестов</span></div>
+        <div class="mini"><strong>54</strong><span>источника в списке литературы</span></div>
+        <div class="mini"><strong>13</strong><span>слайдов в презентации</span></div>
+        <div class="mini"><strong>5</strong><span>backend-сервисов</span></div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">не говорить первым</span>
+        <h2>Ловушки</h2>
+        <ul>
+          <li>Не начинать с Kubernetes, Rust, Go и React.</li>
+          <li>Не говорить “микросервисы потому что современно”.</li>
+          <li>Не доказывать, что аналогов вообще нет.</li>
+          <li>Не показывать devtools и login без вопроса.</li>
+          <li>Не тянуть Android как основной результат.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="kicker">opening</span>
+        <h2>Первая фраза</h2>
+        <p class="quote">В работе разработана информационная система Guide Helper для создания, изменения и публикации туристических маршрутов с геопривязанными фотографиями.</p>
+      </article>
+
+      <article class="card full">
+        <span class="kicker">closing</span>
+        <h2>Финальная фраза</h2>
+        <p class="quote">В результате реализован рабочий контур системы: автор создаёт маршрут, добавляет точки, фотографии и заметки, публикует результат, а турист получает интерактивную страницу маршрута. Функциональные требования выполнены, система проверена модульными тестами и E2E-аудитом, цель работы достигнута.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
+

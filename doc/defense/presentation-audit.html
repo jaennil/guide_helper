@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аудит презентации</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Аудит презентации</h1>
+    <p class="lead">Проверка 13 слайдов: зачем каждый нужен, что говорить и где возможен вопрос комиссии.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">общий вывод</span>
+        <h2>Презентация пригодна для защиты</h2>
+        <p class="quote">Главный риск не в визуале, а в устных ответах: CRUD, корпоративная ИС, микросервисы, AI, Android и актуальность.</p>
+        <p>PDF проверен: 13 слайдов, дата июнь 2026, ключевые цифры согласованы с defense-пакетом.</p>
+      </article>
+
+      <article class="card"><span class="kicker">слайд 1</span><h2>Титульный</h2><p>Зафиксировать тему, автора и руководителя. Риск: вопрос “почему корпоративная ИС?”.</p></article>
+      <article class="card"><span class="kicker">слайд 2</span><h2>Актуальность</h2><p>Показать проблему разрозненной подготовки маршрута. Риск: доказательства актуальности.</p></article>
+      <article class="card"><span class="kicker">слайд 3</span><h2>Цель и задачи</h2><p>Связать тему, цель и крупные блоки задач. Не уходить в технологии.</p></article>
+      <article class="card"><span class="kicker">слайд 4</span><h2>Аналоги</h2><p>Аналоги закрывают части сценария, но не весь контур фотомаршрута.</p></article>
+      <article class="card"><span class="kicker">слайд 5</span><h2>Роли</h2><p>Сценарные роли: автор, турист, администратор. Системные роли: user, moderator, admin.</p></article>
+      <article class="card"><span class="kicker">слайд 6</span><h2>Архитектура</h2><p>Объяснять словами: клиенты, сервисы, данные, внешние API. Не читать диаграмму полностью.</p></article>
+      <article class="card"><span class="kicker">слайд 7</span><h2>Фотообработка</h2><p>Сильный технический слайд: NATS, worker, MinIO, PostgreSQL, асинхронность.</p></article>
+      <article class="card"><span class="kicker">слайд 8</span><h2>Интерфейс автора</h2><p>Показать основной flow: маршрут, точки, фото, заметки, настройки.</p></article>
+      <article class="card"><span class="kicker">слайд 9</span><h2>Публичный маршрут</h2><p>Доказать, что это публикационный контур, а не личный редактор.</p></article>
+      <article class="card"><span class="kicker">слайд 10</span><h2>AI</h2><p>AI — дополнительный интерфейс. Основной сценарий работает без него.</p></article>
+      <article class="card"><span class="kicker">слайд 11</span><h2>Тестирование</h2><p>115 модульных тестов, E2E-аудит, 37/37 требований.</p></article>
+      <article class="card"><span class="kicker">слайд 12</span><h2>Заключение</h2><p>Зафиксировать цель: создать маршрут → прикрепить фото → опубликовать.</p></article>
+      <article class="card"><span class="kicker">слайд 13</span><h2>Вопросы</h2><p>Переход к вопросам и demo только если формат защиты это позволяет.</p></article>
+
+      <article class="card full">
+        <span class="kicker">репетировать</span>
+        <h2>Минимум перед защитой</h2>
+        <div class="steps">
+          <div class="step"><div><strong>Доклад</strong><p>Проговорить за 6-7 минут.</p></div></div>
+          <div class="step"><div><strong>CRUD</strong><p>Ответить за 20 секунд без оправданий.</p></div></div>
+          <div class="step"><div><strong>Корпоративная ИС</strong><p>Объяснить предметный смысл, не называя систему ERP.</p></div></div>
+          <div class="step"><div><strong>Микросервисы</strong><p>Связать архитектуру с разными контурами нагрузки.</p></div></div>
+          <div class="step"><div><strong>Demo</strong><p>Показать сценарий за 2-3 минуты без devtools.</p></div></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

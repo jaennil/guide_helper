@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Краткая шпаргалка защиты</title>
+  <link rel="stylesheet" href="page.css">
+  <style>
+    @media print {
+      body {
+        background: white;
+      }
+
+      header,
+      main {
+        width: 100%;
+      }
+
+      .back {
+        display: none;
+      }
+
+      .card {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← к defense index</a>
+    <h1>Краткая шпаргалка защиты</h1>
+    <p class="lead">Одна страница, которую можно открыть перед защитой: тема, цель, результат, цифры, опасные вопросы и demo-flow.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">тема</span>
+        <h2>Разработка корпоративной информационной системы картографии и маршрутов</h2>
+        <p class="quote">Guide Helper — система для создания, изменения, публикации и просмотра туристических маршрутов с геопривязанными фотографиями.</p>
+      </article>
+
+      <article class="card wide">
+        <span class="kicker">цель</span>
+        <h2>Разработать систему для маршрутов с геопривязанными фото</h2>
+        <p>Главный результат: автор создаёт маршрут, добавляет точки, фото и заметки, публикует результат, а турист открывает интерактивную страницу маршрута.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">цифры</span>
+        <ul>
+          <li>37/37 требований.</li>
+          <li>115 модульных тестов.</li>
+          <li>54 источника.</li>
+          <li>13 слайдов.</li>
+          <li>5 backend-сервисов.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="kicker">польза</span>
+        <h2>Для автора</h2>
+        <p>Меньше времени на сборку материала: карта, точки, фото, заметки, статистика и публичная ссылка находятся в одном контуре.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">польза</span>
+        <h2>Для туриста</h2>
+        <p>Понятная интерактивная страница маршрута: карта, точки, фотографии, описание, оценки и комментарии.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">архитектура</span>
+        <h2>Почему так</h2>
+        <p>Микросервисы разделяют auth, routes, photo worker, tiles/cache и AI, потому что у них разная нагрузка и разные причины отказа.</p>
+      </article>
+
+      <article class="card full">
+        <span class="kicker">5 опасных вопросов</span>
+        <div class="grid compact">
+          <div class="mini"><strong>Это CRUD?</strong><span>Нет: карта, геоданные, фото, EXIF/GPS, публикация, AI, mobile.</span></div>
+          <div class="mini"><strong>Почему corporate?</strong><span>Система поддерживает деятельность команды гидов: роли, каталог, публикация, админка.</span></div>
+          <div class="mini"><strong>Почему микросервисы?</strong><span>Разные контуры нагрузки: фото, AI, тайлы, auth, routes.</span></div>
+          <div class="mini"><strong>Зачем AI?</strong><span>Дополнительный интерфейс. Основной сценарий работает без AI.</span></div>
+          <div class="mini"><strong>Зачем Android?</strong><span>Companion app для полевой записи GPS-трека.</span></div>
+          <div class="mini"><strong>Что если demo упадёт?</strong><span>Показать подготовленный маршрут, скриншоты и E2E PDF-отчёт.</span></div>
+        </div>
+      </article>
+
+      <article class="card full">
+        <span class="kicker">demo-flow</span>
+        <div class="steps">
+          <div class="step"><div><strong>Редактор карты</strong><p>Показать маршрут и точки.</p></div></div>
+          <div class="step"><div><strong>Фото и заметка</strong><p>Открыть popup точки.</p></div></div>
+          <div class="step"><div><strong>Статистика</strong><p>Показать расстояние, высоты, время, сложность.</p></div></div>
+          <div class="step"><div><strong>Публикация</strong><p>Открыть публичную страницу.</p></div></div>
+          <div class="step"><div><strong>Каталог</strong><p>Показать, что это платформа маршрутов.</p></div></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
