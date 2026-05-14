@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speaker notes к презентации</title>
+  <link rel="stylesheet" href="../defense/page.css">
+</head>
+<body>
+  <header>
+    <a class="back" href="../defense/index.html">← К пакету защиты</a>
+    <h1>Speaker notes</h1>
+    <p class="lead">Сценарий доклада под фактическую 13-слайдовую презентацию. Каждый слайд закрывает один вопрос комиссии: зачем это нужно, что сделано и как это проверено.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <article class="card full">
+        <span class="kicker">Общий ориентир</span>
+        <div class="quote">Доклад: 6-7 минут. Не читать текст слайда. Говорить связку: проблема → решение → реализация → доказательство.</div>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 1 · 25-35 сек</span>
+        <h2>Титульный</h2>
+        <p>Guide Helper - система для создания, редактирования, публикации и просмотра туристических маршрутов с геопривязанными фотографиями.</p>
+        <p><strong>Не говорить:</strong> “я сделал сайт”, технологии, Android.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 2 · 35-45 сек</span>
+        <h2>Актуальность</h2>
+        <p>Проблема не в отсутствии карт, а в разорванном процессе: маршрут, фото, описание и ссылка живут в разных инструментах.</p>
+        <p><strong>Вопрос:</strong> чем подтверждена актуальность?</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 3 · 35-45 сек</span>
+        <h2>Цель и задачи</h2>
+        <p>Цель - разработать систему для сохранения, изменения и публикации маршрутов с геопривязанными фотографиями.</p>
+        <p><strong>Акцент:</strong> задачи связаны с проверяемым результатом.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 4 · 35-45 сек</span>
+        <h2>Аналоги</h2>
+        <p>Аналоги закрывают части сценария: карты, треки или публикацию. Guide Helper объединяет полный сценарий фотомаршрута.</p>
+        <p><strong>Не говорить:</strong> “аналогов нет”.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 5 · 35-45 сек</span>
+        <h2>Роли и требования</h2>
+        <p>Сценарные роли: автор, турист, администратор. Системные роли: user, moderator, admin. Требования: 37 из 37 закрыты.</p>
+        <p><strong>Риск:</strong> не путать автора с отдельной системной ролью.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 6 · 55-70 сек</span>
+        <h2>Архитектура</h2>
+        <p>Auth, Routes, Photo Worker, Tiles и Cache разделены из-за разных профилей нагрузки и отказов.</p>
+        <p><strong>Ответ на монолит:</strong> монолит проще, но хуже изолирует фото, AI и тайлы от основного сценария.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 7 · 45-55 сек</span>
+        <h2>Фото</h2>
+        <p>Фото привязано к точке маршрута. Routes Service ставит задачу в NATS, Photo Worker обрабатывает изображение, MinIO хранит файлы, PostgreSQL хранит метаданные.</p>
+        <p><strong>Акцент:</strong> обработка не блокирует пользователя.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 8 · 40-50 сек</span>
+        <h2>Редактор</h2>
+        <p>Автор создаёт маршрут, добавляет точки, фото, заметки, категории, сезонность, цвет линии и параметры меток.</p>
+        <p><strong>Главное:</strong> точка становится смысловым объектом, а не просто координатой.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 9 · 35-45 сек</span>
+        <h2>Публикация</h2>
+        <p>Турист получает интерактивную страницу маршрута. Каталог превращает личный редактор в платформу публикации.</p>
+        <p><strong>Не обещать:</strong> маркетплейс и оплату.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 10 · 35-45 сек</span>
+        <h2>AI и контекст</h2>
+        <p>AI - дополнительный интерфейс для поиска мест, построения маршрута и подготовки описаний. Основной ручной сценарий работает без AI.</p>
+        <p><strong>Риск:</strong> не делать AI главным результатом.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 11 · 45-60 сек</span>
+        <h2>Тестирование</h2>
+        <p>115 unit-тестов, E2E-аудит критического сценария, трассировка 37 функциональных требований и production-стенд.</p>
+        <p><strong>Fallback:</strong> подготовленный маршрут, скриншоты и E2E PDF.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 12 · 35-45 сек</span>
+        <h2>Заключение</h2>
+        <p>Закрыт сценарий: создать маршрут → прикрепить фото и заметки → сохранить → опубликовать → передать туристам.</p>
+        <p><strong>Дальше:</strong> Android, offline, GPS-фильтрация, модерация.</p>
+      </article>
+
+      <article class="card">
+        <span class="kicker">Слайд 13 · 10-15 сек</span>
+        <h2>Спасибо</h2>
+        <p>Закончить доклад и предложить короткое demo, если комиссия разрешит: редактор, точка с фото, публичный маршрут, каталог.</p>
+      </article>
+
+      <article class="card full">
+        <h2>Быстрые ответы</h2>
+        <div class="grid compact">
+          <div class="mini"><strong>Это CRUD?</strong><span>Нет. CRUD - базовый слой, результат связан с геоданными, фото, маршрутизацией, публикацией, обработкой изображений и мобильной записью.</span></div>
+          <div class="mini"><strong>Почему микросервисы?</strong><span>Разные контуры имеют разную нагрузку и причины отказа: фото, AI, тайлы, auth и routes.</span></div>
+          <div class="mini"><strong>Что сделал лично?</strong><span>Backend, web, обработка фото, публикация, AI, админка, инфраструктура, тесты, E2E и Android-клиент.</span></div>
+          <div class="mini"><strong>Зачем Android?</strong><span>Это companion app для полевой записи GPS-трека, основной клиент для оформления маршрута - web.</span></div>
+          <div class="mini"><strong>Что такое геофото?</strong><span>Фотография, связанная с конкретной точкой маршрута через EXIF/GPS или координату на карте.</span></div>
+          <div class="mini"><strong>Почему MinIO и NATS?</strong><span>MinIO хранит фото как объекты, NATS отделяет тяжёлую обработку изображения от пользовательского запроса.</span></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

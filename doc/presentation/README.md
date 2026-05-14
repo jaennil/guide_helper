@@ -3,6 +3,7 @@
 Файлы:
 - `guide-helper-defense.pptx` — основной файл презентации по шаблону Московского Политеха;
 - `guide-helper-defense.pdf` — PDF-экспорт презентации для просмотра без PowerPoint/LibreOffice;
+- `speaker-notes.md` / `speaker-notes.html` — сценарий доклада и короткие ответы по фактическим 13 слайдам;
 - `Шаблон_Презентации_ВЕБ_брендбука_Политеха_для_вкр_ВЕБ_2.pptx` — исходный шаблон Политеха;
 - `assets/` — подготовленные изображения для слайдов;
 - `../../scripts/build_defense_pptx_from_template.py` — генератор PPTX из шаблона.
