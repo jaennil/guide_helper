@@ -8,8 +8,9 @@
 - `assets/` — подготовленные изображения для слайдов;
 - `../../scripts/build_defense_pptx_from_template.py` — генератор PPTX из шаблона.
 
-`guide-helper-defense.html` оставлен как черновой/резервный HTML-вариант, но
-основным артефактом для защиты является PPTX.
+Основные артефакты для защиты — только `guide-helper-defense.pptx` и
+`guide-helper-defense.pdf`. Старый HTML-дек перенесён в `archive/` и не должен
+использоваться на защите.
 
 ## Быстрый просмотр
 
@@ -24,6 +25,10 @@ cd /home/jaennil/dev/uni/guide_helper
 python3 scripts/build_defense_pptx_from_template.py
 libreoffice --headless --convert-to pdf --outdir doc/presentation doc/presentation/guide-helper-defense.pptx
 ```
+
+Не использовать `archive/export_pdf_from_html_draft.sh` для финальной
+презентации: он относится к старому HTML-черновику и может создать PDF не из
+актуального PPTX.
 
 ## Источники визуальных материалов
 

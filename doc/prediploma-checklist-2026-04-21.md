@@ -85,7 +85,7 @@
 Статус: `выполнено, требуется финальная вычитка`
 
 Что уже собрано:
-- HTML-дек: `doc/presentation/guide-helper-defense.html`;
+- HTML-дек: архивный черновик `doc/presentation/archive/guide-helper-defense-draft.html`, на защите не использовать;
 - PDF-версия презентации: `doc/presentation/guide-helper-defense.pdf`;
 - заметки к выступлению: `doc/presentation/speaker-notes.md`;
 - отдельный план структуры: `doc/defense-presentation-outline-2026-04-21.md`.

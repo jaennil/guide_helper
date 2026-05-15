@@ -577,7 +577,6 @@ make verify-fonts
 ```text
 doc/presentation/guide-helper-defense.pptx
 doc/presentation/guide-helper-defense.pdf
-doc/presentation/guide-helper-defense.html
 ```
 
 Демо-сценарии:

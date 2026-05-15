@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INPUT_HTML="${SCRIPT_DIR}/guide-helper-defense.html"
-OUTPUT_PDF="${SCRIPT_DIR}/guide-helper-defense.pdf"
+INPUT_HTML="${SCRIPT_DIR}/guide-helper-defense-draft.html"
+OUTPUT_PDF="${SCRIPT_DIR}/guide-helper-defense-draft.pdf"
 
 /usr/bin/chromium \
   --headless=new \
