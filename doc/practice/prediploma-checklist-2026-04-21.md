@@ -76,7 +76,7 @@
 - отдельно визуально открыть финальный PDF и просмотреть проблемные места с длинными таблицами и подписями.
 
 Внутренний рабочий чек-лист для этой проверки собран отдельно:
-- `doc/internal-normocontrol-checklist-2026-04-23.md`
+- `doc/archive/2026-04-prep/internal-normocontrol-checklist-2026-04-23.md`
 
 Вывод: технически PDF готов, но статус «нормоконтроль пройден» пока фиксировать рано без отдельной ручной проверки по чек-листу.
 
@@ -88,7 +88,7 @@
 - HTML-дек: архивный черновик `doc/presentation/archive/guide-helper-defense-draft.html`, на защите не использовать;
 - PDF-версия презентации: `doc/presentation/guide-helper-defense.pdf`;
 - заметки к выступлению: `doc/presentation/speaker-notes.md`;
-- отдельный план структуры: `doc/defense-presentation-outline-2026-04-21.md`.
+- отдельный план структуры: `doc/archive/2026-04-prep/defense-presentation-outline-2026-04-21.md`.
 
 Подтверждённые факты:
 - текущая PDF-презентация содержит `15` слайдов;

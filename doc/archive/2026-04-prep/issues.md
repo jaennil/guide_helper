@@ -2,8 +2,8 @@
 
 > Исторический снимок на 2026-04-08. Часть пунктов ниже уже закрыта и не должна использоваться как актуальный статус-файл.
 > Актуальные документы состояния:
-> - `doc/prediploma-checklist-2026-04-21.md`
-> - `doc/internal-normocontrol-checklist-2026-04-23.md`
+> - `doc/practice/prediploma-checklist-2026-04-21.md`
+> - `doc/archive/2026-04-prep/internal-normocontrol-checklist-2026-04-23.md`
 
 ## КРИТИЧЕСКИЕ (без них работа не может быть принята)
 

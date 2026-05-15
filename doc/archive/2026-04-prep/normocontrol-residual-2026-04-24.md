@@ -6,7 +6,7 @@
 - [main.pdf](/home/jaennil/dev/uni/guide_helper/doc/latex/main.pdf)
 
 Опорный локальный документ:
-- `doc/2025_Критерии нормоконтроля.pdf`
+- `doc/references/normocontrol/2025_Критерии нормоконтроля.pdf`
 
 ## Уже Закрыто
 

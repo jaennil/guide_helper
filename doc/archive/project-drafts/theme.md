@@ -2,9 +2,9 @@
 
 > Документ относится к этапу согласования темы и раннего планирования.
 > Для актуального защищаемого baseline использовать:
-> - `doc/system-passport-2026-04-21.md`
-> - `doc/defense-quick-cheatsheet-2026-04-23.md`
-> - `doc/prediploma-checklist-2026-04-21.md`
+> - `doc/archive/2026-04-prep/system-passport-2026-04-21.md`
+> - `doc/archive/2026-04-prep/defense-quick-cheatsheet-2026-04-23.md`
+> - `doc/practice/prediploma-checklist-2026-04-21.md`
 
 ## 0. Титульный лист
 
